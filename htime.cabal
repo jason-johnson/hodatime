@@ -1,0 +1,15 @@
+name:           htime
+version:        0.1
+cabal-version:  >=1.2
+build-type:     Simple
+author:         jason
+
+library
+  hs-source-dirs:  src
+  build-depends:   base >= 4
+  ghc-options:     -Wall
+  exposed-modules: Data.HTime
+  other-modules:   
+                   Data.HTime.Internal,
+                   Data.HTime.Constants
+
