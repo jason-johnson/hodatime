@@ -52,7 +52,9 @@ daysPerMonth :: Num a => [a]
 daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28]
 
 monthDayOffsets :: Num a => [a]
-monthDayOffsets = zipWith (+) daysPerMonth (0:monthDayOffsets)
+monthDayOffsets = 0 : rest
+  where
+    rest = zipWith (+) daysPerMonth (0:rest)
 
 -- conversion constants
 
