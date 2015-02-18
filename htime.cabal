@@ -11,5 +11,6 @@ library
   exposed-modules: Data.HTime
   other-modules:   
                    Data.HTime.Internal,
-                   Data.HTime.Constants
+                   Data.HTime.Constants,
+                   Data.HTime.CacheTable
 
