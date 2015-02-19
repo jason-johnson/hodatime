@@ -18,7 +18,9 @@ data DTCacheTable = DTCacheTable [DTCacheTableDaysEntry] [DTCacheTableDaysEntry]
 
 mkCacheTable :: DTCacheTable
 mkCacheTable = DTCacheTable days negDays hours where
-  days = [ encodeDate y m d | y <- [0..127], m <- [1..12], d <- daysInMonth m y]
+  days = firstYear ++ restYears
+  firstYear = [ encodeDate 0 m d | m <- [3..12], d <- daysInMonth m 0]
+  restYears = [ encodeDate y m d | y <- [1..127], m <- [1..12], d <- daysInMonth m y]
   negDays = [ encodeDate y m d | y <- [1..127], m <- [1..12], d <- daysInMonth m $ - y]   -- NOTE: all that matters is the feb calculation which is fixed by negating the year
   hours = [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
 
@@ -48,7 +50,7 @@ monthShift = 5
 encodeDate :: Word16 -> Word16 -> Word16 -> Word16
 encodeDate y m d = shift y yearShift .|. shift m monthShift .|. d
 
-daysInMonth :: (Num a, Num t, Integral a1, Eq a, Enum t) => a -> a1 -> [t]
+daysInMonth :: Word16 -> Word16 -> [Word16]
 daysInMonth n _
   | n == 1 || n == 3 || n == 5 || n == 7 || n == 8 || n == 10 || n == 12 = [1..31]
   | n == 4 || n == 6 || n == 9 || n == 11                                = [1..30]
