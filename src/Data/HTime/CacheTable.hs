@@ -13,15 +13,14 @@ type DTCacheTableHoursEntry = Word16
 
 data DTCacheTable = DTCacheTable [DTCacheTableDaysEntry] [DTCacheTableDaysEntry] [DTCacheTableHoursEntry]
 
--- TODO: The cache tale is created perfectly, except for the minor (major) detail that the entries don't match DateTime's internal days count.  That is, if x is days from the cache table
--- TODO: then   x !! dtDays date     will not work because dtDays has the month shifted and the cache table does not.  Shame, as this solution was really pretty. :)
-
 mkCacheTable :: DTCacheTable
 mkCacheTable = DTCacheTable days negDays hours where
   days = firstYear ++ restYears
   firstYear = [ encodeDate 0 m d | m <- [3..12], d <- daysInMonth m 0]
   restYears = [ encodeDate y m d | y <- [1..127], m <- [1..12], d <- daysInMonth m y]
-  negDays = [ encodeDate y m d | y <- [1..127], m <- [1..12], d <- daysInMonth m $ - y]   -- NOTE: all that matters is the feb calculation which is fixed by negating the year
+  negDays = 0 : negFirstYear ++ restPrevYears                                                   -- TODO: instead of 0 it should be undefined, as this should never be accessed
+  negFirstYear = [ encodeDate 0 m d | m <- [2,1], d <- reverse . daysInMonth m $ 0]
+  restPrevYears = [ encodeDate y m d | y <- [1..127], m <- [12,11..1], d <- reverse . daysInMonth m $ - y]   -- NOTE: all that matters is the feb calculation which is fixed by negating the year
   hours = [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
 
 {-
