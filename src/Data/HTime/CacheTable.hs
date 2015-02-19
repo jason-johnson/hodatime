@@ -51,9 +51,6 @@ encodeDate :: Word16 -> Word16 -> Word16 -> Word16
 encodeDate y m d = shift y yearShift .|. shift m monthShift .|. d
 
 daysInMonth :: Word16 -> Word16 -> [Word16]
-daysInMonth n _
-  | n == 1 || n == 3 || n == 5 || n == 7 || n == 8 || n == 10 || n == 12 = [1..31]
-  | n == 4 || n == 6 || n == 9 || n == 11                                = [1..30]
 daysInMonth 2 y
   | isLeap                                                               = [1..29]
   | otherwise                                                            = [1..28]
@@ -62,7 +59,9 @@ daysInMonth 2 y
     isLeap
       | 0 == y' `mod` 100 = 0 == y' `mod` 400
       | otherwise    = 0 == y' `mod` 4
-daysInMonth _ _ = error "malformed date received"
+daysInMonth n _
+  | n == 4 || n == 6 || n == 9 || n == 11                                = [1..30]
+  | otherwise                                                            = [1..31]
 
 hourShift :: Num a => a
 hourShift = 12
