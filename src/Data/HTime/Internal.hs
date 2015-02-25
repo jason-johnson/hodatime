@@ -9,6 +9,9 @@ where
 
 import Data.Word (Word)
 import Data.HTime.Constants
+import Control.Arrow ((>>>), first)
+import Data.List (findIndex)
+import Data.Maybe (fromMaybe)
 
 data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
   deriving (Show, Eq, Ord, Enum, Bounded)
@@ -78,3 +81,18 @@ toDateTime' year month day hour minute second = DateTime days secs
     secs = hour * secondsPerHour + minute * minutesPerHour + second
     yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
     days = yearDays + monthDayOffsets !! month' + day - 1
+
+decodeDate' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
+decodeDate' (DateTime days secs nsecs) = (year, fromInt month', day, hour, minute, sec, nsecond)
+  where
+    (cycleYears, cycleDays) = flip divMod daysPerCycle >>> first (* 400) $ days
+    (centuryYears, centuryDays) = flip divMod daysPerCentury >>> first (* 100) $ cycleDays
+    (fourYears, remaining) = flip divMod 1461 >>> first (* 4) $ centuryDays
+    (oneYears, yearDays) = remaining `divMod` 365
+    month = pred . fromMaybe 100 . findIndex (\ y -> yearDays < y) $ monthDayOffsets
+    (month', startDate) = if month > 10 then (month - 10, 2001) else (month + 2, 2000)
+    day = yearDays - monthDayOffsets !! month + 1
+    year = startDate + cycleYears + centuryYears + fourYears + oneYears
+    (hour, secs') = secs `divMod` secondsPerHour
+    (minute, sec) = secs' `divMod` minutesPerHour
+    nsecond = nsecs

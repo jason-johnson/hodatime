@@ -1,6 +1,8 @@
 module Data.HTime.Constants
 (
-   daysPerYear
+   daysPerCycle
+  ,daysPerCentury
+  ,daysPerYear
   ,monthsPerYear
   ,daysPerWeek
   ,hoursPerDay
@@ -17,6 +19,12 @@ module Data.HTime.Constants
 where
 
 -- Time constants
+
+daysPerCycle :: Num a => a      -- NOTE: A "cycle" is 400 years
+daysPerCycle = 146097
+
+daysPerCentury :: Num a => a
+daysPerCentury = 36524
 
 daysPerYear :: Num a => a
 daysPerYear = 365
