@@ -1,7 +1,7 @@
 module Data.HTime.CacheTable
 (
    DTCacheTable(..)
-  ,mkCacheTable
+  ,cacheTable
 )
 where
 
@@ -13,8 +13,8 @@ type DTCacheTableHoursEntry = Word16
 
 data DTCacheTable = DTCacheTable [DTCacheTableDaysEntry] [DTCacheTableDaysEntry] [DTCacheTableHoursEntry]
 
-mkCacheTable :: DTCacheTable
-mkCacheTable = DTCacheTable days negDays hours where
+cacheTable :: DTCacheTable
+cacheTable = DTCacheTable days negDays hours where
   days = firstYear ++ restYears
   firstYear = [ encodeDate 0 m d | m <- [3..12], d <- daysInMonth m 0]
   restYears = [ encodeDate y m d | y <- [1..127], m <- [1..12], d <- daysInMonth m y]
