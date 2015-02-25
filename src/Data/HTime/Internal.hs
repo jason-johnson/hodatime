@@ -82,8 +82,8 @@ toDateTime' year month day hour minute second = DateTime days secs
     yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
     days = yearDays + monthDayOffsets !! month' + day - 1
 
-decodeDate' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
-decodeDate' (DateTime days secs nsecs) = (year, fromInt month', day, hour, minute, sec, nsecond)
+decodeDateTime' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
+decodeDateTime' (DateTime days secs nsecs) = (year, fromInt month', day, hour, minute, sec, nsecond)
   where
     (cycleYears, cycleDays) = flip divMod daysPerCycle >>> first (* 400) $ days
     (centuryYears, centuryDays) = flip divMod daysPerCentury >>> first (* 100) $ cycleDays
