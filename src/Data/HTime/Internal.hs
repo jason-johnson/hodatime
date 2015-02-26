@@ -116,8 +116,8 @@ enumFromToDate d@(Date (DateTime days _ _)) d'@(Date (DateTime days' _ _)) = d :
 
 -- decoding
 
-daysToDate :: Int -> (Int, Month, Int, Bool)
-daysToDate days = (year, fromInt month'', day', isLeapDay)
+daysToDate :: Int -> (Int, Month, Int)
+daysToDate days = (year, fromInt month'', day')
   where
     (cycleYears, (cycleDays, isLeapDay)) = flip divMod daysPerCycle >>> (* 400) *** id &&& borders daysPerCycle $ days
     (centuryYears, centuryDays) = flip divMod daysPerCentury >>> first (* 100) $ cycleDays
@@ -130,13 +130,13 @@ daysToDate days = (year, fromInt month'', day', isLeapDay)
     year = startDate + cycleYears + centuryYears + fourYears + oneYears
     borders c x = x == c - 1
 
-decodeDate' :: Date -> (Int, Month, Int, Bool)
+decodeDate' :: Date -> (Int, Month, Int)
 decodeDate' (Date (DateTime days _ _)) = daysToDate days
 
 decodeDateTime' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
 decodeDateTime' (DateTime days secs nsecs) = (year, month, day, hour, minute, sec, nsecond)
   where
-    (year, month, day, _) = daysToDate days
+    (year, month, day) = daysToDate days
     (hour, secs') = secs `divMod` secondsPerHour
     (minute, sec) = secs' `divMod` minutesPerHour
     nsecond = nsecs
