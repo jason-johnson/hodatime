@@ -22,11 +22,11 @@ data DTCacheTable = DTCacheTable [DTCacheTableDaysEntry] [DTCacheTableDaysEntry]
 cacheTable :: DTCacheTable
 cacheTable = DTCacheTable days negDays hours where
   days = firstYear ++ restYears
-  firstYear = [ encodeDate 0 m d | m <- [3..12], d <- daysInMonth m 0]
-  restYears = [ encodeDate y m d | y <- [1..127], m <- [1..12], d <- daysInMonth m y]
+  firstYear = [ encodeDate 0 m d | m <- [2..11], d <- daysInMonth m 0]
+  restYears = [ encodeDate y m d | y <- [1..127], m <- [0..11], d <- daysInMonth m y]
   negDays = 0 : negFirstYear ++ restPrevYears                                                   -- TODO: instead of 0 it should be undefined, as this should never be accessed
-  negFirstYear = [ encodeDate 0 m d | m <- [2,1], d <- reverse . daysInMonth m $ 0]
-  restPrevYears = [ encodeDate y m d | y <- [1..127], m <- [12,11..1], d <- reverse . daysInMonth m $ - y]   -- NOTE: all that matters is the feb calculation which is fixed by negating the year
+  negFirstYear = [ encodeDate 0 m d | m <- [1,0], d <- reverse . daysInMonth m $ 0]
+  restPrevYears = [ encodeDate y m d | y <- [1..127], m <- [11,10..0], d <- reverse . daysInMonth m $ - y]   -- NOTE: all that matters is the feb calculation which is fixed by negating the year
   hours = [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
 
 -- encode
@@ -41,7 +41,7 @@ encodeDate :: Word16 -> Word16 -> Word16 -> Word16
 encodeDate y m d = shift y yearShift .|. shift m monthShift .|. d
 
 daysInMonth :: Word16 -> Word16 -> [Word16]
-daysInMonth 2 y
+daysInMonth 1 y
   | isLeap                                                               = [1..29]
   | otherwise                                                            = [1..28]
   where
@@ -50,7 +50,7 @@ daysInMonth 2 y
       | 0 == y' `mod` 100 = 0 == y' `mod` 400
       | otherwise    = 0 == y' `mod` 4
 daysInMonth n _
-  | n == 4 || n == 6 || n == 9 || n == 11                                = [1..30]
+  | n == 3 || n == 5 || n == 8 || n == 10                                = [1..30]
   | otherwise                                                            = [1..31]
 
 hourShift :: Num a => a
