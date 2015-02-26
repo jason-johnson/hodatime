@@ -6,6 +6,8 @@ module Data.HTime.Internal
   ,Date(..)
   ,toDateTime
   ,toDate
+  ,enumFromDate
+  ,enumFromToDate
 )
 where
 
@@ -99,15 +101,18 @@ toDateTime year month day hour minute second = DateTime days secs
 
 -- enumerating
 
-fromDate d@(Date (DateTime days _ _)) = d : ds
+enumFromDate :: Date -> [Date]
+enumFromDate d@(Date (DateTime days _ _)) = d : ds
   where
-    ds = fromDate . Date $ DateTime (succ days) 0 0
+    ds = enumFromDate . Date $ DateTime (succ days) 0 0
 
-fromToDate d@(Date (DateTime days _ _)) d'@(Date (DateTime days' _ _)) = d : ds
+enumFromToDate :: Date -> Date -> [Date]
+enumFromToDate d@(Date (DateTime days _ _)) d'@(Date (DateTime days' _ _)) = d : ds
   where
     ds
       | days == days' = []
-      | otherwise     = fromToDate (Date $ DateTime (succ days) 0 0) d'
+      | days > days'  = enumFromToDate (Date $ DateTime (pred days) 0 0) d'
+      | otherwise     = enumFromToDate (Date $ DateTime (succ days) 0 0) d'
 
 -- decoding
 
