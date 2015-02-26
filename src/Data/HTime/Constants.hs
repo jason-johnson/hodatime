@@ -2,6 +2,7 @@ module Data.HTime.Constants
 (
    daysPerCycle
   ,daysPerCentury
+  ,daysPerFourYears
   ,daysPerYear
   ,monthsPerYear
   ,daysPerWeek
@@ -25,6 +26,9 @@ daysPerCycle = 146097
 
 daysPerCentury :: Num a => a
 daysPerCentury = 36524
+
+daysPerFourYears :: Num a => a
+daysPerFourYears = 1461
 
 daysPerYear :: Num a => a
 daysPerYear = 365
