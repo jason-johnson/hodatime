@@ -14,7 +14,7 @@ import Data.HodaTime.Constants
 import Data.HodaTime.CacheTable
 import Data.Word (Word, Word16)
 import Control.Arrow ((>>>), (&&&), (***), first)
-import Data.List (findIndex)
+import Data.List (findIndex, group, foldl')
 import Data.Maybe (fromJust)
 
 data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
@@ -77,6 +77,10 @@ data DateTime = DateTime { dtDays :: Int, dtSecs :: Word, dtNsecs :: Word }
   deriving (Eq, Ord)
 
 newtype Date = Date DateTime
+
+instance Bounded Date where
+  minBound = toDate 1600 March 1
+  maxBound = toDate 9999 December 31
 
 -- smart constructors
 
@@ -166,3 +170,35 @@ decodeDateTime' (DateTime days secs nsecs) = (year, month, day, hour, minute, se
     (year, month, day) = daysToDate' days
     (hour, secs') = secs `divMod` secondsPerHour
     (minute, sec) = secs' `divMod` minutesPerHour
+
+testDaysImpl f = filter (\x -> length x /= 1) . group . map f $ enumFromToDate minBound maxBound
+testDays' = testDaysImpl decodeDate'
+testDays = testDaysImpl decodeDate
+
+testYear year = (((cyy,rs),(cy,rs2),(y,ds)), ((cyy',rs'),(cy',rs2'),(y',ds')))
+  where
+    secsM = dtDays $ toDateTime year March 1 0 0 0 0
+    secsF = dtDays $ toDateTime year February 29 0 0 0 0
+    [(cyy,rs),(cyy',rs')] = (flip divMod daysPerCycle >>> first (* 400)) `fmap` [secsM, secsF]
+    [(cy,rs2),(cy',rs2')] = (flip divMod daysPerCentury >>> first (* 100)) `fmap` [rs,rs']
+    [(y,ds),(y',ds')] = (flip divMod daysPerFourYears >>> first (*4)) `fmap` [rs2,rs2']
+
+testYears' = testYearsImpl decodeDate'
+testYears = testYearsImpl decodeDate
+testYearsImpl f = reverse . snd . foldl' g ((startYear,2,0),[]) . map f $ enumFromToDate minBound maxBound
+  where
+    startYear = 1600
+    g ((y',m',d'), errors) (y,m,d) = if nextDay == curr then (curr,errors) else (curr,((y',m',d'),nextDay,curr,(y,m,d)):errors)
+      where
+        curr = (y,toInt m,d)
+        nextDay
+          | d' < maxDays = (y',m',d'+1)
+          | m' < 11      = (y',m'+1,1)
+          | otherwise    = (y'+1,0,1)
+        months = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        isLeap
+          | 0 == y' `mod` 100 = 0 == y' `mod` 400
+          | otherwise         = 0 == y' `mod` 4
+        maxDays
+          | m' == 1 && isLeap = 29
+          | otherwise         = months !! m'
