@@ -42,7 +42,7 @@ instance IntConverter Day where
   fromInt 4 = Thursday
   fromInt 5 = Friday
   fromInt 6 = Saturday
-  fromInt n = error $ "invalid day int: " ++ show n 
+  fromInt n = error $ "invalid day: " ++ show n 
 
 instance IntConverter Month where
   toInt January = 0
@@ -69,7 +69,7 @@ instance IntConverter Month where
   fromInt 9 = October
   fromInt 10 = November
   fromInt 11 = December
-  fromInt n = error $ "invalid month in: " ++ show n
+  fromInt n = error $ "invalid month: " ++ show n
 
 -- types
 
