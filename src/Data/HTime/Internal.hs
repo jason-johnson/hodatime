@@ -11,9 +11,9 @@ where
 
 import Data.Word (Word)
 import Data.HTime.Constants
-import Control.Arrow ((>>>), first)
+import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.List (findIndex)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust)
 
 data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
   deriving (Show, Eq, Ord, Enum, Bounded)
@@ -69,10 +69,22 @@ instance IntConverter Month where
   fromInt 11 = December
   fromInt n = error $ "invalid month in: " ++ show n
 
+-- types
+
 data DateTime = DateTime { dtDays :: Int, dtSecs :: Word, dtNsecs :: Word }
   deriving (Eq, Ord)
 
 newtype Date = Date DateTime
+
+-- smart constructors
+
+dateToDays :: Int -> Int -> Int -> Int
+dateToDays year month day = days
+  where
+    month' = if month > 1 then month - 2 else month + 10
+    years = if month < 2 then year - 2001 else year - 2000
+    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
+    days = yearDays + monthDayOffsets !! month' + day - 1
 
 toDate :: Int -> Month -> Int -> Date
 toDate year month day = Date $ DateTime days 0 0
@@ -85,27 +97,41 @@ toDateTime year month day hour minute second = DateTime days secs
     days = dateToDays year (toInt month) day
     secs = hour * secondsPerHour + minute * minutesPerHour + second
 
-decodeDateTime' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
-decodeDateTime' (DateTime days secs nsecs) = (year, fromInt month', day, hour, minute, sec, nsecond)
+-- enumerating
+
+fromDate d@(Date (DateTime days _ _)) = d : ds
   where
-    (cycleYears, cycleDays) = flip divMod daysPerCycle >>> first (* 400) $ days
+    ds = fromDate . Date $ DateTime (succ days) 0 0
+
+fromToDate d@(Date (DateTime days _ _)) d'@(Date (DateTime days' _ _)) = d : ds
+  where
+    ds
+      | days == days' = []
+      | otherwise     = fromToDate (Date $ DateTime (succ days) 0 0) d'
+
+-- decoding
+
+daysToDate :: Int -> (Int, Month, Int, Bool)
+daysToDate days = (year, fromInt month'', day', isLeapDay)
+  where
+    (cycleYears, (cycleDays, isLeapDay)) = flip divMod daysPerCycle >>> (* 400) *** id &&& borders daysPerCycle $ days
     (centuryYears, centuryDays) = flip divMod daysPerCentury >>> first (* 100) $ cycleDays
-    (fourYears, remaining) = flip divMod daysPerFourYears >>> first (* 4) $ centuryDays
+    (fourYears, (remaining, isLeapDay')) = flip divMod daysPerFourYears >>> (* 4) *** id &&& borders daysPerFourYears $ centuryDays
     (oneYears, yearDays) = remaining `divMod` daysPerYear
-    month = pred . fromMaybe 100 . findIndex (\ y -> yearDays < y) $ monthDayOffsets
+    month = pred . fromJust . findIndex (\y -> yearDays < y) $ monthDayOffsets
     (month', startDate) = if month >= 10 then (month - 10, 2001) else (month + 2, 2000)
     day = yearDays - monthDayOffsets !! month + 1
+    (month'', day') = if isLeapDay || isLeapDay' then (1, 29) else (month', day)
     year = startDate + cycleYears + centuryYears + fourYears + oneYears
+    borders c x = x == c - 1
+
+decodeDate' :: Date -> (Int, Month, Int, Bool)
+decodeDate' (Date (DateTime days _ _)) = daysToDate days
+
+decodeDateTime' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
+decodeDateTime' (DateTime days secs nsecs) = (year, month, day, hour, minute, sec, nsecond)
+  where
+    (year, month, day, _) = daysToDate days
     (hour, secs') = secs `divMod` secondsPerHour
     (minute, sec) = secs' `divMod` minutesPerHour
     nsecond = nsecs
-
--- helper functions
-
-dateToDays :: Int -> Int -> Int -> Int
-dateToDays year month day = days
-  where
-    month' = if month > 1 then month - 2 else month + 10
-    years = if month < 2 then year - 2001 else year - 2000
-    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
-    days = yearDays + monthDayOffsets !! month' + day - 1
