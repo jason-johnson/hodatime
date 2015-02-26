@@ -3,7 +3,9 @@ module Data.HTime.Internal
    Day(..)
   ,Month(..)
   ,DateTime(..)
+  ,Date(..)
   ,toDateTime
+  ,toDate
 )
 where
 
@@ -70,17 +72,18 @@ instance IntConverter Month where
 data DateTime = DateTime { dtDays :: Int, dtSecs :: Word, dtNsecs :: Word }
   deriving (Eq, Ord)
 
-toDateTime :: Int -> Month -> Int -> Word -> Word -> Word -> Word -> DateTime
-toDateTime year month = toDateTime' year (toInt month)
+newtype Date = Date DateTime
 
-toDateTime' :: Int -> Int -> Int -> Word -> Word -> Word -> Word -> DateTime
-toDateTime' year month day hour minute second = DateTime days secs
+toDate :: Int -> Month -> Int -> Date
+toDate year month day = Date $ DateTime days 0 0
   where
-    month' = if month > 1 then month - 2 else month + 10
-    years = if month < 2 then year - 2001 else year - 2000
+    days = dateToDays year (toInt month) day
+
+toDateTime :: Int -> Month -> Int -> Word -> Word -> Word -> Word -> DateTime
+toDateTime year month day hour minute second = DateTime days secs
+  where
+    days = dateToDays year (toInt month) day
     secs = hour * secondsPerHour + minute * minutesPerHour + second
-    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
-    days = yearDays + monthDayOffsets !! month' + day - 1
 
 decodeDateTime' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
 decodeDateTime' (DateTime days secs nsecs) = (year, fromInt month', day, hour, minute, sec, nsecond)
@@ -96,3 +99,13 @@ decodeDateTime' (DateTime days secs nsecs) = (year, fromInt month', day, hour, m
     (hour, secs') = secs `divMod` secondsPerHour
     (minute, sec) = secs' `divMod` minutesPerHour
     nsecond = nsecs
+
+-- helper functions
+
+dateToDays :: Int -> Int -> Int -> Int
+dateToDays year month day = days
+  where
+    month' = if month > 1 then month - 2 else month + 10
+    years = if month < 2 then year - 2001 else year - 2000
+    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
+    days = yearDays + monthDayOffsets !! month' + day - 1
