@@ -2,6 +2,12 @@ module Data.HTime.CacheTable
 (
    DTCacheTable(..)
   ,cacheTable
+  ,decodeYear
+  ,decodeMonth
+  ,decodeDay
+  ,decodeHour
+  ,decodeMinute
+  ,decodeSecond
 )
 where
 
@@ -22,21 +28,6 @@ cacheTable = DTCacheTable days negDays hours where
   negFirstYear = [ encodeDate 0 m d | m <- [2,1], d <- reverse . daysInMonth m $ 0]
   restPrevYears = [ encodeDate y m d | y <- [1..127], m <- [12,11..1], d <- reverse . daysInMonth m $ - y]   -- NOTE: all that matters is the feb calculation which is fixed by negating the year
   hours = [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
-
-{-
-secondsInTwelveHours = 43199
-
-decodeFuture (DTCacheTable xs _ _) = map (\x -> (2000 + decodeYear x, decodeMonth x, decodeDay x)) xs
-decodePast   (DTCacheTable _ xs _) = map (\x -> (2000 + (- decodeYear x), decodeMonth x, decodeDay x)) xs
-decodeTime   (DTCacheTable _ _ xs) = map (\x -> (decodeHour x, decodeMinute x, decodeSecond x)) xs
-decodeTime' t secs
-  | secs > secondsInTwelveHours = adj . dt $ secs'
-  | otherwise    = dt secs
-  where
-      secs' = secs - secondsInTwelveHours
-      adj (h,m,s) = (12 + h,m,s)
-      dt = (!!) . decodeTime $ t
--}
 
 -- encode
 

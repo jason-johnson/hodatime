@@ -10,9 +10,9 @@ module Data.HTime.Internal
   ,enumFromToDate
 )
 where
-
-import Data.Word (Word)
 import Data.HTime.Constants
+import Data.HTime.CacheTable
+import Data.Word (Word, Word16)
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.List (findIndex)
 import Data.Maybe (fromJust)
@@ -116,27 +116,52 @@ enumFromToDate d@(Date (DateTime days _ _)) d'@(Date (DateTime days' _ _)) = d :
 
 -- decoding
 
-daysToDate :: Int -> (Int, Month, Int)
-daysToDate days = (year, fromInt month'', day')
+borders c x = x == c - 1
+
+centuryDaysToDate days = (year, centuryDays, isLeapDay)
   where
     (cycleYears, (cycleDays, isLeapDay)) = flip divMod daysPerCycle >>> (* 400) *** id &&& borders daysPerCycle $ days
     (centuryYears, centuryDays) = flip divMod daysPerCentury >>> first (* 100) $ cycleDays
+    year = cycleYears + centuryYears
+
+daysToDate' :: Int -> (Int, Month, Int)
+daysToDate' days = (year, fromInt month'', day')
+  where
+    (centuryYears, centuryDays, isLeapDay) = centuryDaysToDate days
     (fourYears, (remaining, isLeapDay')) = flip divMod daysPerFourYears >>> (* 4) *** id &&& borders daysPerFourYears $ centuryDays
     (oneYears, yearDays) = remaining `divMod` daysPerYear
     month = pred . fromJust . findIndex (\y -> yearDays < y) $ monthDayOffsets
     (month', startDate) = if month >= 10 then (month - 10, 2001) else (month + 2, 2000)
     day = yearDays - monthDayOffsets !! month + 1
     (month'', day') = if isLeapDay || isLeapDay' then (1, 29) else (month', day)
-    year = startDate + cycleYears + centuryYears + fourYears + oneYears
-    borders c x = x == c - 1
+    year = startDate + centuryYears + fourYears + oneYears
 
-decodeDate' :: Date -> (Int, Month, Int)
-decodeDate' (Date (DateTime days _ _)) = daysToDate days
+daysToDate :: Int -> (Int, Month, Int)
+daysToDate days = (y',m', fromIntegral d)
+  where
+    (centuryYears, centuryDays, isLeapDay) = centuryDaysToDate days
+    decodeEntry (DTCacheTable xs _ _) = (\x -> (decodeYear x, decodeMonth x, decodeDay x)) . (!!) xs
+    (y,m,d) = decodeEntry cacheTable centuryDays
+    (y',m') = (2000 + centuryYears + fromIntegral y, fromInt . fromIntegral $ m)
 
-decodeDateTime' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
-decodeDateTime' (DateTime days secs nsecs) = (year, month, day, hour, minute, sec, nsecond)
+decodeDate :: Date -> (Int, Month, Int)
+decodeDate (Date (DateTime days _ _)) = daysToDate days
+
+decodeDateTime :: DateTime -> (Int, Month, Int, Word16, Word16, Word16, Word)
+decodeDateTime (DateTime days secs nsecs) = (year, month, day, hour', minute, sec, nsecs)
   where
     (year, month, day) = daysToDate days
+    decodeEntry (DTCacheTable _ _ xs) = (\x -> (decodeHour x, decodeMinute x, decodeSecond x)) . (!!) xs
+    (secs', overTwelveHours) = if secs >= secondsInTwelveHours then (secs - secondsInTwelveHours, True) else (secs, False)
+    (hour, minute, sec) = decodeEntry cacheTable . fromIntegral $ secs'
+    hour' = if overTwelveHours then hour + 12 else hour   
+
+decodeDate' :: Date -> (Int, Month, Int)
+decodeDate' (Date (DateTime days _ _)) = daysToDate' days
+
+decodeDateTime' :: DateTime -> (Int, Month, Int, Word, Word, Word, Word)
+decodeDateTime' (DateTime days secs nsecs) = (year, month, day, hour, minute, sec, nsecs)
+  where
+    (year, month, day) = daysToDate' days
     (hour, secs') = secs `divMod` secondsPerHour
     (minute, sec) = secs' `divMod` minutesPerHour
-    nsecond = nsecs
