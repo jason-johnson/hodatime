@@ -61,7 +61,7 @@ usecsPerDay :: Num a => a
 usecsPerDay = 86400000000
 
 daysPerMonth :: Num a => [a]
-daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28]
+daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28]         -- NOTE: pre-rotated
 
 monthDayOffsets :: Num a => [a]
 monthDayOffsets = 0 : rest
