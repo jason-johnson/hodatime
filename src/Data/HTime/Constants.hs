@@ -10,6 +10,7 @@ module Data.HTime.Constants
   ,minutesPerDay
   ,minutesPerHour
   ,secondsPerDay
+  ,secondsInTwelveHours
   ,secondsPerHour
   ,secondsPerMinute
   ,usecsPerDay
@@ -50,6 +51,9 @@ minutesPerHour = 60
 
 secondsPerDay :: Num a => a
 secondsPerDay = 86400
+
+secondsInTwelveHours :: Num a => a
+secondsInTwelveHours = 43200
 
 secondsPerHour :: Num a => a
 secondsPerHour = 3600
