@@ -137,12 +137,13 @@ daysToDate' days = (year, fromInt month'', day')
     year = startDate + centuryYears + fourYears + oneYears
 
 daysToDate :: Int -> (Int, Month, Int)
-daysToDate days = (y',m', fromIntegral d)
+daysToDate days = (y',m'', fromIntegral d')
   where
     (centuryYears, centuryDays, isLeapDay) = centuryDaysToDate days
     decodeEntry (DTCacheTable xs _ _) = (\x -> (decodeYear x, decodeMonth x, decodeDay x)) . (!!) xs
     (y,m,d) = decodeEntry cacheTable centuryDays
-    (y',m') = (2000 + centuryYears + fromIntegral y, fromInt . fromIntegral $ m)
+    (m',d') = if isLeapDay then (1,29) else (m,d)
+    (y',m'') = (2000 + centuryYears + fromIntegral y, fromInt . fromIntegral $ m')
 
 decodeDate :: Date -> (Int, Month, Int)
 decodeDate (Date (DateTime days _ _)) = daysToDate days
