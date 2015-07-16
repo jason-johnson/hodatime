@@ -1,2 +1,2 @@
-# htime
-A haskell time library based on Erik Naggum's "Long painful history of time"
+# hodatime
+A haskell library inspired by NodaTime (which itself was inspired by JodaTime).
