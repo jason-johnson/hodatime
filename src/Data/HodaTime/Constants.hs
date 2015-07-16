@@ -1,4 +1,4 @@
-module Data.HTime.Constants
+module Data.HodaTime.Constants
 (
    daysPerCycle
   ,daysPerCentury

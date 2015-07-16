@@ -1,4 +1,4 @@
-module Data.HTime.CacheTable
+module Data.HodaTime.CacheTable
 (
    DTCacheTable(..)
   ,cacheTable

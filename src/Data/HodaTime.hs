@@ -1,4 +1,4 @@
-module Data.HTime
+module Data.HodaTime
 (
    DateTime
   ,Day(..)
@@ -7,4 +7,4 @@ module Data.HTime
 )
 where
 
-import Data.HTime.Internal
+import Data.HodaTime.Internal

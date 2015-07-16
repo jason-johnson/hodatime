@@ -1,4 +1,4 @@
-name:           htime
+name:           hodatime
 version:        0.1
 cabal-version:  >=1.2
 build-type:     Simple
@@ -8,9 +8,9 @@ library
   hs-source-dirs:  src
   build-depends:   base >= 4
   ghc-options:     -Wall
-  exposed-modules: Data.HTime
+  exposed-modules: Data.HodaTime
   other-modules:   
-                   Data.HTime.Internal,
-                   Data.HTime.Constants,
-                   Data.HTime.CacheTable
+                   Data.HodaTime.Internal,
+                   Data.HodaTime.Constants,
+                   Data.HodaTime.CacheTable
 

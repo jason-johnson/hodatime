@@ -1,4 +1,4 @@
-module Data.HTime.Internal
+module Data.HodaTime.Internal
 (
    Day(..)
   ,Month(..)
@@ -10,8 +10,8 @@ module Data.HTime.Internal
   ,enumFromToDate
 )
 where
-import Data.HTime.Constants
-import Data.HTime.CacheTable
+import Data.HodaTime.Constants
+import Data.HodaTime.CacheTable
 import Data.Word (Word, Word16)
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.List (findIndex)
