@@ -6,7 +6,6 @@ module Data.HodaTime.Types
   ,LocalDateTime(..)
   ,OffsetDateTime(..)
   ,ZonedDateTime(..)
-  ,IntConverter(..)
 )
 where
 
@@ -50,7 +49,3 @@ data TimeZone = TimeZone { }
 
 -- | A LocalDateTime in a specific time zone. A ZonedDateTime is global and maps directly to a single Instant.
 data ZonedDateTime = ZonedDateTime { zdtOffsetDateTime :: OffsetDateTime, zdtTimeZone :: TimeZone }
-
-class IntConverter a where
-  toInt :: a -> Int
-  fromInt :: Int -> a

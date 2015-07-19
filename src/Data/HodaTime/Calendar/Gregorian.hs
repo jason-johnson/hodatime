@@ -7,7 +7,8 @@ module Data.HodaTime.Calendar.Gregorian
 where
 
 import Data.HodaTime.Constants
-import Data.HodaTime.Types (IntConverter(..), LocalDate(..))
+import Data.HodaTime.Calendar (Calendar(..))
+import Data.HodaTime.Types (LocalDate(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Maybe (fromJust)
 import Data.List (findIndex)
@@ -19,50 +20,6 @@ data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
 
 data Month = January | February | March | April | May | June | July | August | September | October | November | December
   deriving (Show, Eq, Ord, Enum, Bounded)
-
-instance IntConverter Day where
-  toInt Sunday = 0
-  toInt Monday = 1
-  toInt Tuesday = 2
-  toInt Wednesday = 3
-  toInt Thursday = 4
-  toInt Friday = 5
-  toInt Saturday = 6
-  fromInt 0 = Sunday
-  fromInt 1 = Monday
-  fromInt 2 = Tuesday
-  fromInt 3 = Wednesday
-  fromInt 4 = Thursday
-  fromInt 5 = Friday
-  fromInt 6 = Saturday
-  fromInt n = error $ "invalid day: " ++ show n 
-
-instance IntConverter Month where
-  toInt January = 0
-  toInt February = 1
-  toInt March = 2
-  toInt April = 3
-  toInt May = 4
-  toInt June = 5
-  toInt July = 6
-  toInt August = 7
-  toInt September = 8
-  toInt October = 9
-  toInt November = 10
-  toInt December = 11
-  fromInt 0 = January
-  fromInt 1 = February
-  fromInt 2 = March
-  fromInt 3 = April
-  fromInt 4 = May
-  fromInt 5 = June
-  fromInt 6 = July
-  fromInt 7 = August
-  fromInt 8 = September
-  fromInt 9 = October
-  fromInt 10 = November
-  fromInt 11 = December
-  fromInt n = error $ "invalid month: " ++ show n
 
 localDate :: Int16 -> Month -> Int8 -> LocalDate
 localDate year month day = undefined
@@ -92,7 +49,7 @@ calculateCenturyDays days = (year, centuryDays, isExtraCycleDay)
     year = cycleYears + centuryYears
 
 daysToYearMonthDay' :: Int32 -> (Int32, Month, Int32)
-daysToYearMonthDay' days = (year, fromInt month'', day')
+daysToYearMonthDay' days = (year, toEnum month'', day')
   where
     (centuryYears, centuryDays, isExtraCycleDay) = calculateCenturyDays days
     (fourYears, (remaining, isLeapDay)) = flip divMod daysPerFourYears >>> (* 4) *** id &&& borders daysPerFourYears $ centuryDays
@@ -110,4 +67,4 @@ daysToYearMonthDay days = (y',m'', fromIntegral d')
     decodeEntry (DTCacheTable xs _ _) = (\x -> (decodeYear x, decodeMonth x, decodeDay x)) . (!!) xs
     (y,m,d) = decodeEntry cacheTable . fromIntegral $ centuryDays
     (m',d') = if isExtraCycleDay then (1,29) else (m,d)
-    (y',m'') = (2000 + centuryYears + fromIntegral y, fromInt . fromIntegral $ m')
+    (y',m'') = (2000 + centuryYears + fromIntegral y, toEnum . fromIntegral $ m')
