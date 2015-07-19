@@ -13,7 +13,7 @@ import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Maybe (fromJust)
 import Data.List (findIndex)
 import Data.HodaTime.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
-import Data.Int (Int32, Int16, Int8)
+import Data.Int (Int32)
 
 data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
   deriving (Show, Eq, Ord, Enum, Bounded)
@@ -21,8 +21,8 @@ data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
 data Month = January | February | March | April | May | June | July | August | September | October | November | December
   deriving (Show, Eq, Ord, Enum, Bounded)
 
-localDate :: Int16 -> Month -> Int8 -> LocalDate
-localDate year month day = undefined
+localDate :: Int -> Month -> Int -> LocalDate
+localDate year month day = LocalDate (fromIntegral year) (fromIntegral . fromEnum $ month) (fromIntegral day) Gregorian
 
 yearMonthDayToDays :: Int -> Int -> Int -> Int32
 yearMonthDayToDays year month day = fromIntegral days
