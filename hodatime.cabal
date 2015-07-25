@@ -11,6 +11,7 @@ library
   exposed-modules: 
                    Data.HodaTime,
                    Data.HodaTime.Instant,
+                   Data.HodaTime.Duration
   other-modules:   
                    Data.HodaTime.Internal,
                    Data.HodaTime.Constants,
