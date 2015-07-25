@@ -1,6 +1,8 @@
 module Data.HodaTime.Types
 (
-   LocalTime(..)
+   Instant(..)
+  ,Duration(..)
+  ,LocalTime(..)
   ,LocalDate(..)
   ,LocalDateTime(..)
   ,OffsetDateTime(..)
@@ -10,9 +12,20 @@ where
 
 import Data.HodaTime.Calendar (Calendar(..))
 import Data.Word (Word32, Word16)
-import Data.Int (Int8, Int16)
+import Data.Int (Int8, Int16, Int32)
 import Data.Ord (comparing)
 import Data.Monoid ((<>))
+
+-- | Represents a point on a global time line.  An Instant has no concept of time zone or
+--   calendar.  It is nothing more than the number of nanoseconds since epoch (1.March.2000)
+data Instant = Instant { iDays :: Int32, iSecs :: Word32, iNsecs :: Word32 }                -- TODO: Would this be better with only days and Word64 Nanos?  See if the math is easier
+    deriving (Eq, Ord, Show)    -- TODO: Remove Show
+
+-- | Represents a duration of time between instants.  It can be from days to nanoseconds,
+--   but anything longer is not representable by a duration because e.g. Months are calendar
+--   specific concepts.
+newtype Duration = Duration { getInstant :: Instant }
+    deriving (Show)             -- TODO: Remove Show
 
 -- | Represents a specific time of day with no reference to any calendar, date or time zone.
 data LocalTime = LocalTime { ltSecs :: Word16, ltNsecs :: Word32 }

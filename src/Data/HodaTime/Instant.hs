@@ -2,32 +2,19 @@
 
 module Data.HodaTime.Instant
 (
-   Instant(..)
-  ,Duration(..)  
+   add
+  ,difference
+  ,minus
 )
 where
 
 import Prelude hiding ((+), (-))
 import qualified Prelude as P
-import Data.Word (Word32, Word16)
-import Data.Int (Int32)
 import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond)
+import Data.HodaTime.Types (Instant(..), Duration(..))
 
--- | Represents a point on a global time line.  An Instant has no concept of time zone or
---   calendar.  It is nothing more than the number of nanoseconds since epoch (1.March.2000)
-data Instant = Instant { iDays :: Int32, iSecs :: Word16, iNsecs :: Word32 }                -- TODO: Would this be better with only days and Word64 Nanos?  See if the math is easier
-    deriving (Eq, Ord, Show)    -- TODO: Remove Show
-
-newtype Duration = Duration Instant
-    deriving (Show)             -- TODO: Remove Show
-
-class Torsor a where
-    type Diff a
-    (+) :: a -> Diff a -> a
-    (-) :: a -> a -> Diff a
-
-addDuration :: Instant -> Duration -> Instant
-addDuration (Instant ldays lsecs lnsecs) (Duration (Instant rdays rsecs rnsecs)) = Instant days' secs'' nsecs'
+add :: Instant -> Duration -> Instant
+add (Instant ldays lsecs lnsecs) (Duration (Instant rdays rsecs rnsecs)) = Instant days' secs'' nsecs'
     where
         days = ldays P.+ rdays
         secs = lsecs P.+ rsecs
@@ -38,8 +25,8 @@ addDuration (Instant ldays lsecs lnsecs) (Duration (Instant rdays rsecs rnsecs))
             | small >= size = (succ big, small P.- size)
             | otherwise = (big, small)
 
-diffInstance :: Instant -> Instant -> Duration
-diffInstance (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration $ Instant days' secs' nsecs
+difference :: Instant -> Instant -> Duration
+difference (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration $ Instant days' secs' nsecs
     where
         days = ldays P.- rdays
         (days', secs) = safeMinus lsecs rsecs secondsPerDay days
@@ -48,12 +35,5 @@ diffInstance (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duratio
             | r > l = (pred big, l P.+ size P.- r)
             | otherwise = (big, l P.- r)
 
-instance Torsor Instant where
-    type Diff Instant = Duration
-    (+) = addDuration
-    (-) = diffInstance
-
-instance Torsor Duration where
-    type Diff Duration = Duration
-    (+) (Duration instant) = Duration . addDuration instant
-    (Duration linstant) - (Duration rinstant) = diffInstance linstant rinstant
+minus :: Instant -> Duration -> Instant
+minus linstant (Duration rinstant) = getInstant $ difference linstant rinstant
