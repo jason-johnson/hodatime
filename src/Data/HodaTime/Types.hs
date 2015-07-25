@@ -1,7 +1,6 @@
 module Data.HodaTime.Types
 (
-   Instant(..)
-  ,LocalTime(..)
+   LocalTime(..)
   ,LocalDate(..)
   ,LocalDateTime(..)
   ,OffsetDateTime(..)
@@ -11,14 +10,9 @@ where
 
 import Data.HodaTime.Calendar (Calendar(..))
 import Data.Word (Word32, Word16)
-import Data.Int (Int32, Int8, Int16)
+import Data.Int (Int8, Int16)
 import Data.Ord (comparing)
 import Data.Monoid ((<>))
-
--- | Represents a point on a global time line.  An Instant has no concept of time zone or
---   calendar.  It is nothing more than the number of nanoseconds since epoch (1.March.2000)
-data Instant = Instant { iDays :: Int32, iSecs :: Word16, iNsecs :: Word32 }
-    deriving (Eq, Ord)
 
 -- | Represents a specific time of day with no reference to any calendar, date or time zone.
 data LocalTime = LocalTime { ltSecs :: Word16, ltNsecs :: Word32 }

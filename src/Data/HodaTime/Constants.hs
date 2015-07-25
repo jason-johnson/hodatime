@@ -14,6 +14,7 @@ module Data.HodaTime.Constants
   ,secondsPerHour
   ,secondsPerMinute
   ,usecsPerDay
+  ,nsecsPerSecond
   ,daysPerMonth
   ,monthDayOffsets
   ,unixDaysOffset
@@ -60,6 +61,9 @@ secondsPerHour = 3600
 
 secondsPerMinute :: Num a => a
 secondsPerMinute = 60
+
+nsecsPerSecond :: Num a => a
+nsecsPerSecond = 1000000000
 
 usecsPerDay :: Num a => a
 usecsPerDay = 86400000000
