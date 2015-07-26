@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
-
 module Data.HodaTime.Instant
 (
    add
