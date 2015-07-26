@@ -13,7 +13,6 @@ module Data.HodaTime.Constants
   ,secondsInTwelveHours
   ,secondsPerHour
   ,secondsPerMinute
-  ,usecsPerDay
   ,millisecondsPerSecond
   ,microsecondsPerSecond
   ,nsecsPerSecond
@@ -72,9 +71,6 @@ microsecondsPerSecond = 1000000
 
 nsecsPerSecond :: Num a => a
 nsecsPerSecond = 1000000000
-
-usecsPerDay :: Num a => a
-usecsPerDay = 86400000000
 
 daysPerMonth :: Num a => [a]
 daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28]         -- NOTE: pre-rotated
