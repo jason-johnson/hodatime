@@ -8,6 +8,7 @@ module Data.HodaTime.Types
   ,LocalDateTime(..)
   ,OffsetDateTime(..)
   ,ZonedDateTime(..)
+  ,Offset(..)
 )
 where
 
