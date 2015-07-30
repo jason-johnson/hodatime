@@ -12,12 +12,12 @@ library
                    Data.HodaTime,
                    Data.HodaTime.Instant,
                    Data.HodaTime.Duration
-  other-modules:   
                    Data.HodaTime.Internal,
                    Data.HodaTime.Constants,
                    Data.HodaTime.CacheTable,
                    Data.HodaTime.Types,
                    Data.HodaTime.Calendar.Gregorian,
-                   Data.HodaTime.Calendar
+                   Data.HodaTime.Calendar,
+                   Data.HodaTime.Calendar.Iso,
                    Data.HodaTime.Offset
 
