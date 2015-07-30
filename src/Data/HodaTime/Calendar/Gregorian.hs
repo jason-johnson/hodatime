@@ -1,6 +1,6 @@
 module Data.HodaTime.Calendar.Gregorian
 (
-   Day(..)
+   WeekDay(..)
   ,Month(..)
   ,localDate
 )
@@ -15,7 +15,7 @@ import Data.List (findIndex)
 import Data.HodaTime.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.Int (Int32)
 
-data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
+data WeekDay = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
   deriving (Show, Eq, Ord, Enum, Bounded)
 
 data Month = January | February | March | April | May | June | July | August | September | October | November | December
