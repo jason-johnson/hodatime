@@ -2,6 +2,7 @@ module Data.HodaTime.Types
 (
    Instant(..)
   ,Duration(..)
+  ,Calendar(..)
   ,LocalTime(..)
   ,LocalDate(..)
   ,LocalDateTime(..)
@@ -10,7 +11,6 @@ module Data.HodaTime.Types
 )
 where
 
-import Data.HodaTime.Calendar (Calendar(..))
 import Data.Word (Word32, Word16)
 import Data.Int (Int8, Int16, Int32)
 import Data.Ord (comparing)
@@ -30,6 +30,11 @@ newtype Duration = Duration { getInstant :: Instant }
 -- | Represents a specific time of day with no reference to any calendar, date or time zone.
 data LocalTime = LocalTime { ltSecs :: Word16, ltNsecs :: Word32 }
     deriving (Eq, Ord)
+
+data Calendar =
+      Iso
+    | Gregorian
+        deriving (Eq, Show)
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
 data LocalDate = LocalDate { ldYear :: Int16, ldMonth :: Int8, ldDay :: Int8, ldCalendar :: Calendar }
