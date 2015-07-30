@@ -18,12 +18,12 @@ library
                    Data.HodaTime.LocalTime,
                    Data.HodaTime.LocalDate
   other-modules:   
-                   Data.HodaTime.CacheTable,
                    Data.HodaTime.Calendar,
                    Data.HodaTime.Constants,
                    Data.HodaTime.Internal,
                    Data.HodaTime.Types,
                    Data.HodaTime.Duration.Internal,
                    Data.HodaTime.LocalTime.Internal,
-                   Data.HodaTime.Calendar.Gregorian.Internal
+                   Data.HodaTime.Calendar.Gregorian.Internal,
+                   Data.HodaTime.Calendar.Gregorian.CacheTable
 
