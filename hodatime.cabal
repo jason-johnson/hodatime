@@ -14,12 +14,14 @@ library
                    Data.HodaTime.Calendar.Iso,
                    Data.HodaTime.Duration,
                    Data.HodaTime.Instant,
-                   Data.HodaTime.Offset
+                   Data.HodaTime.Offset,
+                   Data.HodaTime.LocalTime,
   other-modules:   
                    Data.HodaTime.CacheTable,
                    Data.HodaTime.Calendar,
                    Data.HodaTime.Constants,
                    Data.HodaTime.Internal,
                    Data.HodaTime.Types,
-                   Data.HodaTime.Duration.Internal
+                   Data.HodaTime.Duration.Internal,
+                   Data.HodaTime.LocalTime.Internal,
 
