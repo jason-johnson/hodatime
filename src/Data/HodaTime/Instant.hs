@@ -3,11 +3,15 @@ module Data.HodaTime.Instant
    add
   ,difference
   ,minus
+  ,withOffset
 )
 where
 
 import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond)
-import Data.HodaTime.Types (Instant(..), Duration(..), Calendar(..), OffsetDateTime, Offset(..))
+import Data.HodaTime.Types (Instant(..), Duration(..), Calendar(..), LocalDateTime(..), OffsetDateTime(..), Offset(..))
+import qualified Data.HodaTime.Duration.Internal as D
+import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
+import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstant)
 
 -- Math
 
@@ -40,3 +44,15 @@ difference (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration 
 -- | Subtract a 'Duration' from an 'Instant' to get an 'Instant' in the past.  NOTE: does not handle negative durations, use 'add'
 minus :: Instant -> Duration -> Instant
 minus linstant (Duration rinstant) = getInstant $ difference linstant rinstant
+
+-- Conversion
+
+withOffset :: Instant -> Offset -> Calendar -> OffsetDateTime
+withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) offset
+    where
+        instant' = instant `add` (D.seconds . fromIntegral . offsetSeconds $ offset)
+        time = LTI.fromInstant instant'
+        date
+            | calendar == Gregorian = GI.fromInstant instant'
+            | calendar == Iso       = GI.fromInstant instant'
+            | otherwise             = undefined     -- TODO: Why does compiler think the first this isn't total without the otherwise?
