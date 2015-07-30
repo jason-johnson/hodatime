@@ -10,14 +10,15 @@ library
   ghc-options:     -Wall
   exposed-modules: 
                    Data.HodaTime,
-                   Data.HodaTime.Instant,
-                   Data.HodaTime.Duration
-                   Data.HodaTime.Internal,
-                   Data.HodaTime.Constants,
-                   Data.HodaTime.CacheTable,
-                   Data.HodaTime.Types,
                    Data.HodaTime.Calendar.Gregorian,
-                   Data.HodaTime.Calendar,
                    Data.HodaTime.Calendar.Iso,
+                   Data.HodaTime.Duration,
+                   Data.HodaTime.Instant,
                    Data.HodaTime.Offset
+  other-modules:   
+                   Data.HodaTime.CacheTable,
+                   Data.HodaTime.Calendar,
+                   Data.HodaTime.Constants,
+                   Data.HodaTime.Internal,
+                   Data.HodaTime.Types
 
