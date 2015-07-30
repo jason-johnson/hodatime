@@ -47,7 +47,8 @@ data LocalDateTime = LocalDateTime { ldtDate :: LocalDate, ldtTime :: LocalTime 
     deriving (Eq, Ord)
 
 -- | An Offset from UTC in seconds.
-newtype Offset = Offset { offsetSeconds :: Word32 }        -- TODO: Do we need this?  If OffsetDateTime is all that uses it, then we probably don't
+newtype Offset = Offset { offsetSeconds :: Int32 }        -- TODO: Do we need this?  If OffsetDateTime is all that uses it, then we probably don't
+    deriving (Eq, Ord, Show)     -- TODO: Remove Show
 
 -- | A LocalDateTime with a UTC offset.  This is the format used by e.g. HTTP.
 data OffsetDateTime = OffsetDateTime { osdtDateTime :: LocalDateTime, osdtOffset :: Offset }
