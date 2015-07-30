@@ -16,6 +16,7 @@ library
                    Data.HodaTime.Instant,
                    Data.HodaTime.Offset,
                    Data.HodaTime.LocalTime,
+                   Data.HodaTime.LocalDate
   other-modules:   
                    Data.HodaTime.CacheTable,
                    Data.HodaTime.Calendar,
