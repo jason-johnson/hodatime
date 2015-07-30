@@ -25,4 +25,5 @@ library
                    Data.HodaTime.Types,
                    Data.HodaTime.Duration.Internal,
                    Data.HodaTime.LocalTime.Internal,
+                   Data.HodaTime.Calendar.Gregorian.Internal
 
