@@ -20,5 +20,6 @@ library
                    Data.HodaTime.Calendar,
                    Data.HodaTime.Constants,
                    Data.HodaTime.Internal,
-                   Data.HodaTime.Types
+                   Data.HodaTime.Types,
+                   Data.HodaTime.Duration.Internal
 
