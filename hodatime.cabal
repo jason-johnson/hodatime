@@ -19,4 +19,5 @@ library
                    Data.HodaTime.Types,
                    Data.HodaTime.Calendar.Gregorian,
                    Data.HodaTime.Calendar
+                   Data.HodaTime.Offset
 
