@@ -29,7 +29,7 @@ newtype Duration = Duration { getInstant :: Instant }
     deriving (Show)             -- TODO: Remove Show
 
 -- | Represents a specific time of day with no reference to any calendar, date or time zone.
-data LocalTime = LocalTime { ltSecs :: Word16, ltNsecs :: Word32 }
+data LocalTime = LocalTime { ltSecs :: Word32, ltNsecs :: Word32 }
     deriving (Eq, Ord)
 
 data Calendar =
