@@ -7,12 +7,13 @@ module Data.HodaTime.Types
   ,LocalDate(..)
   ,LocalDateTime(..)
   ,OffsetDateTime(..)
+  ,TimeZone(..)
   ,ZonedDateTime(..)
   ,Offset(..)
 )
 where
 
-import Data.Word (Word32, Word16)
+import Data.Word (Word32)
 import Data.Int (Int8, Int16, Int32)
 import Data.Ord (comparing)
 import Data.Monoid ((<>))

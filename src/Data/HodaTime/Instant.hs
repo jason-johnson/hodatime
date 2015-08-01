@@ -3,15 +3,20 @@ module Data.HodaTime.Instant
    add
   ,difference
   ,minus
+  ,now
   ,withOffset
+  ,inZone
+  ,fromSecondsSinceUnixEpoch
 )
 where
 
-import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond)
-import Data.HodaTime.Types (Instant(..), Duration(..), Calendar(..), LocalDateTime(..), OffsetDateTime(..), Offset(..))
+import Data.HodaTime.Instant.Internal
+import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond, unixDaysOffset)
+import Data.HodaTime.Types (Instant(..), Duration(..), Calendar(..), LocalDateTime(..), OffsetDateTime(..), Offset(..), TimeZone, ZonedDateTime(..))
 import qualified Data.HodaTime.Duration.Internal as D
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstant)
+import Control.Arrow ((>>>), first)
 
 -- Math
 
@@ -53,6 +58,16 @@ withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) of
         instant' = instant `add` (D.seconds . fromIntegral . offsetSeconds $ offset)
         time = LTI.fromInstant instant'
         date
-            | calendar == Gregorian = GI.fromInstant instant'
-            | calendar == Iso       = GI.fromInstant instant'
-            | otherwise             = undefined     -- TODO: Why does compiler think the first this isn't total without the otherwise?
+            | calendar == Gregorian || calendar == Iso  = GI.fromInstant instant' calendar
+            | otherwise                                 = undefined     -- TODO: Why does compiler think the first this isn't total without the otherwise?
+
+fromSecondsSinceUnixEpoch :: Int -> Instant
+fromSecondsSinceUnixEpoch s = Instant days (fromIntegral secs) 0
+    where
+        (days, secs) = flip divMod secondsPerDay >>> first (fromIntegral . (subtract unixDaysOffset)) $ s
+
+inZone :: Instant -> TimeZone -> Calendar -> ZonedDateTime
+inZone instant tz calendar = ZonedDateTime odt tz
+    where
+        odt = withOffset instant offset calendar
+        offset = undefined                              -- TODO: When TimeZone module is implemented we can finish this (look at the olson time zone series from hackage, but we can't use it all)
