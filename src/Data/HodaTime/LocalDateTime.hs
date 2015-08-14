@@ -1,10 +1,10 @@
-module Data.HodaTime.LocalDate
+module Data.HodaTime.LocalDateTime
 (
   on
 )
 where
 
-import Data.HodaTime.Types (LocalTime, LocalDate, LocalDateTime(..))
+import Data.HodaTime.LocalDateTime.Internal
 
 on :: LocalTime  -> LocalDate -> LocalDateTime
 on time date = LocalDateTime date time

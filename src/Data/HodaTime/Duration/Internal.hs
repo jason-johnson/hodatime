@@ -1,13 +1,20 @@
 module Data.HodaTime.Duration.Internal
 (
-   normalize
+   Duration(..)
+  ,normalize
   ,seconds
 )
 where
 
-import Data.HodaTime.Types (Duration(..), Instant(..))
+import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (***))
 import Data.HodaTime.Constants (secondsPerDay)
+
+-- | Represents a duration of time between instants.  It can be from days to nanoseconds,
+--   but anything longer is not representable by a duration because e.g. Months are calendar
+--   specific concepts.
+newtype Duration = Duration { getInstant :: Instant }
+    deriving (Show)             -- TODO: Remove Show
 
 normalize :: (Num c, Integral a) => a -> a -> (a -> b) -> (c, b)
 normalize x size f

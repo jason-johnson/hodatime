@@ -11,11 +11,12 @@ module Data.HodaTime.Internal
 )
 where
 import Data.HodaTime.Constants
-import Data.HodaTime.CacheTable
-import Data.Word (Word, Word16)
+import Data.HodaTime.Calendar.Gregorian.CacheTable
+import Data.Word (Word, Word16, Word32)
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.List (findIndex)
 import Data.Maybe (fromJust)
+import Data.Int (Int32)
 
 data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
   deriving (Show, Eq, Ord, Enum, Bounded)

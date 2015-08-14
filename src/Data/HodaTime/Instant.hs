@@ -12,7 +12,11 @@ where
 
 import Data.HodaTime.Instant.Internal
 import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond, unixDaysOffset)
-import Data.HodaTime.Types (Instant(..), Duration(..), Calendar(..), LocalDateTime(..), OffsetDateTime(..), Offset(..), TimeZone, ZonedDateTime(..))
+import Data.HodaTime.Duration.Internal (Duration(..))
+import Data.HodaTime.OffsetDateTime.Internal(Offset(..), OffsetDateTime(..))
+import Data.HodaTime.LocalDateTime.Internal (LocalDateTime(..))
+import Data.HodaTime.Calendar (Calendar(..))
+import Data.HodaTime.ZonedDateTime.Internal (TimeZone(..), ZonedDateTime(..))
 import qualified Data.HodaTime.Duration.Internal as D
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstant)

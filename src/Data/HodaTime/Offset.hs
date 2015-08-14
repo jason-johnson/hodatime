@@ -8,7 +8,7 @@ module Data.HodaTime.Offset
 )
 where
 
-import Data.HodaTime.Types (Offset(..))
+import Data.HodaTime.OffsetDateTime.Internal
 import Data.HodaTime.Constants (secondsPerHour)
 
 -- Offset specific constants

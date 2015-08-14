@@ -13,7 +13,7 @@ module Data.HodaTime.Duration
 where
 
 import Data.HodaTime.Duration.Internal
-import Data.HodaTime.Types (Duration(..), Instant(..))
+import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Instant (difference)
 import qualified Data.HodaTime.Instant as I (add)
 import Data.HodaTime.Constants (minutesPerDay, millisecondsPerSecond, secondsPerDay, microsecondsPerSecond, nsecsPerSecond)

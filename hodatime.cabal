@@ -15,15 +15,19 @@ library
                    Data.HodaTime.Duration,
                    Data.HodaTime.Instant,
                    Data.HodaTime.Offset,
-                   Data.HodaTime.LocalTime,
-                   Data.HodaTime.LocalDate
+                   Data.HodaTime.LocalDateTime,
+                   Data.HodaTime.OffsetDateTime,
+                   Data.HodaTime.ZonedDateTime
   other-modules:   
                    Data.HodaTime.Calendar,
                    Data.HodaTime.Constants,
                    Data.HodaTime.Internal,
-                   Data.HodaTime.Types,
                    Data.HodaTime.Duration.Internal,
                    Data.HodaTime.LocalTime.Internal,
                    Data.HodaTime.Calendar.Gregorian.Internal,
-                   Data.HodaTime.Calendar.Gregorian.CacheTable
+                   Data.HodaTime.Calendar.Gregorian.CacheTable,
+                   Data.HodaTime.Instant.Internal,
+                   Data.HodaTime.LocalDateTime.Internal,
+                   Data.HodaTime.OffsetDateTime.Internal,
+                   Data.HodaTime.ZonedDateTime.Internal
 
