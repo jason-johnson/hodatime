@@ -19,12 +19,10 @@ import System.FilePath ((</>))
 
 testIt = testIt' "/etc/localtime"
 
-testIt' path = fmap (go . runGetOrFail getTransitions) $ L.readFile path
-    where
-        go (Left (_, _, msg)) = (msg, undefined)
-        go (Right (_, _, x)) = ("ok", x)
+testIt' :: FilePath -> IO [Transition]
+testIt' path = fmap (either (const []) id . getTransitions) $ L.readFile path
 
-testAll = fmap (map snd) $ mapDir testIt' "/usr/share/zoneinfo"
+--testAll = fmap (map snd) $ mapDir testIt' "/usr/share/zoneinfo"
 
 
 mapDir :: (FilePath -> IO (String, t)) -> FilePath -> IO [(String, t)]
@@ -37,23 +35,26 @@ mapDir proc fp = go'
                 then proc fp >>= return . (: xs)    -- process the file
                 else getDirectoryContents fp >>= liftM concat . mapM (mapDir proc . (fp </>)) . filter (`notElem` [".", ".."])
 
---getTransitions :: Get (Word8, [Integer], [Int], [(Integer, Int)], [TransitionType])
-getTransitions :: Get [Transition]
-getTransitions = do
-    magic <- fmap (toASCII . B.unpack) $ getByteString 4
-    unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
-    _version <- getWord8
-    replicateM_ 15 getWord8 -- skip reserved section
-    [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
-    transitions <- replicateM transcnt get32bitInt      -- TODO: Times are offset from Jan 1 1970, most likely
-    indexes <- replicateM transcnt get8bitInt
-    ttypes <- replicateM ttypecnt $ (,,) <$> get32bitInt <*> getBool <*> get8bitInt
-    abbrs <- fmap (toASCII . B.unpack) $ getByteString abbrlen
-    _leaps <- replicateM leapcnt getLeapInfo
-    ttisstds <- replicateM ttisstdcnt getBool
-    ttisgmts <- replicateM ttisgmtcnt getBool
---    return (version, (take 3 transitions), (nub indexes), leaps, zipTransitionTypes abbrs ttypes ttisstds ttisgmts)
-    return $ zipTransitions (zipTransitionTypes abbrs ttypes ttisstds ttisgmts) transitions indexes
+getTransitions :: L.ByteString -> Either String [Transition]
+getTransitions bs = case runGetOrFail getTransitions' bs of
+    Left (_, _, msg) -> Left msg
+    Right (_, _, xs) -> Right xs
+    where
+        getTransitions' = do
+            magic <- fmap (toASCII . B.unpack) $ getByteString 4
+            unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
+            _version <- getWord8
+            replicateM_ 15 getWord8 -- skip reserved section
+            [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
+            transitions <- replicateM transcnt get32bitInt      -- TODO: Times are offset from Jan 1 1970, most likely
+            indexes <- replicateM transcnt get8bitInt
+            ttypes <- replicateM ttypecnt $ (,,) <$> get32bitInt <*> getBool <*> get8bitInt
+            abbrs <- fmap (toASCII . B.unpack) $ getByteString abbrlen
+            _leaps <- replicateM leapcnt getLeapInfo
+            ttisstds <- replicateM ttisstdcnt getBool
+            ttisgmts <- replicateM ttisgmtcnt getBool
+--            return (version, (take 3 transitions), (nub indexes), leaps, zipTransitionTypes abbrs ttypes ttisstds ttisgmts)
+            return $ zipTransitions (zipTransitionTypes abbrs ttypes ttisstds ttisgmts) transitions indexes
 
 zipTransitionTypes :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [TransitionType]
 zipTransitionTypes abbrs = zip3With $ toTT
