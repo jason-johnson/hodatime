@@ -29,5 +29,6 @@ library
                    Data.HodaTime.Instant.Internal,
                    Data.HodaTime.LocalDateTime.Internal,
                    Data.HodaTime.OffsetDateTime.Internal,
-                   Data.HodaTime.ZonedDateTime.Internal
+                   Data.HodaTime.ZonedDateTime.Internal,
+                   Data.HodaTime.ZonedDateTime.Olson
 
