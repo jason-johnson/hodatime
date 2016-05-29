@@ -17,6 +17,7 @@ library
                    Data.HodaTime.Duration,
                    Data.HodaTime.Instant,
                    Data.HodaTime.Offset,
+                   Data.HodaTime.LocalTime,
                    Data.HodaTime.LocalDateTime,
                    Data.HodaTime.OffsetDateTime,
                    Data.HodaTime.ZonedDateTime
