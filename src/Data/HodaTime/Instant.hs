@@ -19,7 +19,7 @@ import Data.HodaTime.Calendar (Calendar(..))
 import Data.HodaTime.ZonedDateTime.Internal (TimeZone(..), ZonedDateTime(..))
 import qualified Data.HodaTime.Duration.Internal as D
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
-import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstant)
+import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstantInCalendar)
 import Control.Arrow ((>>>), first)
 
 -- Math
@@ -62,8 +62,8 @@ withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) of
         instant' = instant `add` (D.seconds . fromIntegral . offsetSeconds $ offset)
         time = LTI.fromInstant instant'
         date
-            | calendar == Gregorian || calendar == Iso  = GI.fromInstant instant' calendar
-            | otherwise                                 = undefined     -- TODO: Why does compiler think the first this isn't total without the otherwise?
+            | calendar == Gregorian || calendar == Iso  = GI.fromInstantInCalendar instant' calendar
+            | otherwise                                 = undefined     -- TODO: Why does compiler think this isn't total without the otherwise?
 
 fromSecondsSinceUnixEpoch :: Int -> Instant
 fromSecondsSinceUnixEpoch s = Instant days (fromIntegral secs) 0

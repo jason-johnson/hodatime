@@ -1,6 +1,6 @@
 module Data.HodaTime.Calendar.Gregorian.Internal
 (
-  fromInstant
+  fromInstantInCalendar
 )
 where
 
@@ -15,8 +15,8 @@ import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMont
 import Data.Int (Int32, Int8, Int16)
 
 -- | Internal helper method to convert into a Gregorian compatible LocalDate
-fromInstant :: Instant -> Calendar -> LocalDate
-fromInstant (Instant days _ _) = LocalDate year month day
+fromInstantInCalendar :: Instant -> Calendar -> LocalDate
+fromInstantInCalendar (Instant days _ _) = LocalDate year month day
     where
         (year, month, day) = daysToYearMonthDay days
 

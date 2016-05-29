@@ -3,6 +3,7 @@ module Data.HodaTime.Calendar.Gregorian
    WeekDay(..)
   ,Month(..)
   ,localDate
+  ,fromInstant
 )
 where
 
@@ -11,6 +12,7 @@ import Data.HodaTime.Calendar(Calendar(..))
 import Data.HodaTime.Constants (daysPerYear, monthDayOffsets)
 import Data.HodaTime.LocalDateTime.Internal (LocalDate(..))
 import Data.Int (Int32)
+import Data.HodaTime.Instant.Internal (Instant(..))
 
 -- types
 
@@ -30,6 +32,9 @@ localDate year month day
         dateIsValid = True              -- TODO: Implement this
 
 -- helper functions
+
+fromInstant :: Instant -> LocalDate
+fromInstant = flip fromInstantInCalendar Gregorian
 
 yearMonthDayToDays :: Int -> Int -> Int -> Int32
 yearMonthDayToDays year month day = fromIntegral days
