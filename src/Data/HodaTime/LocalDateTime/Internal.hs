@@ -11,6 +11,7 @@ import Data.HodaTime.Calendar(Calendar)
 import Data.Ord (comparing)
 import Data.Monoid ((<>))
 import Data.HodaTime.LocalTime.Internal (LocalTime(..))
+import Data.HodaTime.Instant.Internal (Instant(..))
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
 data LocalDate = LocalDate { ldYear :: Int16, ldMonth :: Int8, ldDay :: Int8, ldCalendar :: Calendar }

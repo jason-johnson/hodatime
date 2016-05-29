@@ -16,7 +16,7 @@ import Data.HodaTime.Duration.Internal (Duration(..))
 import Data.HodaTime.OffsetDateTime.Internal(Offset(..), OffsetDateTime(..))
 import Data.HodaTime.LocalDateTime.Internal (LocalDateTime(..))
 import Data.HodaTime.Calendar (Calendar(..))
-import Data.HodaTime.ZonedDateTime.Internal (TimeZone(..), ZonedDateTime(..))
+import Data.HodaTime.ZonedDateTime.Internal (TimeZoneName(..), TimeZone(..), ZonedDateTime(..))
 import qualified Data.HodaTime.Duration.Internal as D
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstantInCalendar)
@@ -46,7 +46,7 @@ difference (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration 
         days = ldays - rdays
         (days', secs) = safeMinus lsecs rsecs secondsPerDay days
         (secs', nsecs) = safeMinus lnsecs rnsecs nsecsPerSecond secs
-        safeMinus l r size big 
+        safeMinus l r size big
             | r > l = (pred big, l + size - r)
             | otherwise = (big, l - r)
 
@@ -71,7 +71,14 @@ fromSecondsSinceUnixEpoch s = Instant days (fromIntegral secs) 0
         (days, secs) = flip divMod secondsPerDay >>> first (fromIntegral . (subtract unixDaysOffset)) $ s
 
 inZone :: Instant -> TimeZone -> Calendar -> ZonedDateTime
-inZone instant tz calendar = ZonedDateTime odt tz
+inZone instant tzi@(TimeZone { tzZone = tz }) calendar = ZonedDateTime odt tzi
     where
         odt = withOffset instant offset calendar
-        offset = undefined                              -- TODO: When TimeZone module is implemented we can finish this (look at the olson time zone series from hackage, but we can't use it all)
+        offset
+            | tzi == UTCzone = undefined
+            | otherwise = undefined       -- TODO: When TimeZone module is implemented we can finish this (look at the olson time zone series from hackage, but we can't use it all)
+
+now :: Monad m => m Instant -> m Instant
+now getCurrentInstant = do
+    time <- getCurrentInstant
+    return time

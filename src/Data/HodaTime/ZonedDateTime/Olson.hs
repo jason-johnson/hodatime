@@ -24,11 +24,10 @@ testIt' path = fmap (either (const []) id . getTransitions) $ L.readFile path
 
 --testAll = fmap (map snd) $ mapDir testIt' "/usr/share/zoneinfo"
 
-
 mapDir :: (FilePath -> IO (String, t)) -> FilePath -> IO [(String, t)]
 mapDir proc fp = go'
     where
-        go' = go [] >>= return . filter (\(token, _) -> "unknown magic" /= (take 13 token))
+        go' = go [] >>= return . filter (\(token, _) -> "unknown magic" /= take 13 token)
         go xs = do
             isFile <- doesFileExist fp
             if isFile
@@ -41,23 +40,22 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
     Right (_, _, xs) -> Right xs
     where
         getTransitions' = do
-            magic <- fmap (toASCII . B.unpack) $ getByteString 4
-            unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
+            magic <- (toASCII . B.unpack) <$> getByteString 4
+            unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)            -- We could consider creating an error type for this
             _version <- getWord8
             replicateM_ 15 getWord8 -- skip reserved section
             [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
             transitions <- replicateM transcnt get32bitInt      -- TODO: Times are offset from Jan 1 1970, most likely
             indexes <- replicateM transcnt get8bitInt
             ttypes <- replicateM ttypecnt $ (,,) <$> get32bitInt <*> getBool <*> get8bitInt
-            abbrs <- fmap (toASCII . B.unpack) $ getByteString abbrlen
+            abbrs <- (toASCII . B.unpack) <$> getByteString abbrlen
             _leaps <- replicateM leapcnt getLeapInfo
             ttisstds <- replicateM ttisstdcnt getBool
             ttisgmts <- replicateM ttisgmtcnt getBool
---            return (version, (take 3 transitions), (nub indexes), leaps, zipTransitionTypes abbrs ttypes ttisstds ttisgmts)
             return $ zipTransitions (zipTransitionTypes abbrs ttypes ttisstds ttisgmts) transitions indexes
 
 zipTransitionTypes :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [TransitionType]
-zipTransitionTypes abbrs = zip3With $ toTT
+zipTransitionTypes abbrs = zip3With toTT
     where
         toTT (gmt, isdst, offset) = TransitionType gmt isdst (getAbbr offset abbrs)
         getAbbr offset = takeWhile (/= '\NUL') . drop offset
@@ -78,7 +76,7 @@ getLeapInfo = do
 
 getBool :: Get Bool
 getBool = fmap (/= 0) getWord8
-    
+
 get8bitInt :: Get Int
 get8bitInt = fmap fromIntegral getWord8
 

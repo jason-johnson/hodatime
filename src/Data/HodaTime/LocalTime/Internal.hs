@@ -12,5 +12,5 @@ import Data.Word (Word32)
 data LocalTime = LocalTime { ltSecs :: Word32, ltNsecs :: Word32 }
     deriving (Eq, Ord, Show)    -- TODO: Remove Show
 
-fromInstant :: Instant -> LocalTime                             -- TODO: Move this to top level LocalTime, I don't think we need an Internal for this small type
+fromInstant :: Instant -> LocalTime                             -- NOTE: This should never go to top level as Instant -> LocalTime is not supported, you must go through a ZonedDateTime
 fromInstant (Instant _ secs nsecs) = LocalTime secs nsecs

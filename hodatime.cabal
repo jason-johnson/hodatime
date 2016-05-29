@@ -10,7 +10,7 @@ library
   hs-source-dirs:  src
   build-depends:   base >= 4
   ghc-options:     -Wall
-  exposed-modules: 
+  exposed-modules:
                    Data.HodaTime,
                    Data.HodaTime.Calendar.Gregorian,
                    Data.HodaTime.Calendar.Iso,
@@ -20,7 +20,7 @@ library
                    Data.HodaTime.LocalDateTime,
                    Data.HodaTime.OffsetDateTime,
                    Data.HodaTime.ZonedDateTime
-  other-modules:   
+  other-modules:
                    Data.HodaTime.Calendar,
                    Data.HodaTime.Constants,
                    Data.HodaTime.Internal,

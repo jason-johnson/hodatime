@@ -1,8 +1,11 @@
 module Data.HodaTime
 (
+  -- * Types
    DateTime
   ,Day(..)
   ,Month(..)
+  -- * Functions
+  -- ** Constructors
   ,toDateTime
 )
 where
