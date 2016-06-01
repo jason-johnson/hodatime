@@ -68,7 +68,7 @@ withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) of
 fromSecondsSinceUnixEpoch :: Int -> Instant
 fromSecondsSinceUnixEpoch s = Instant days (fromIntegral secs) 0
     where
-        (days, secs) = flip divMod secondsPerDay >>> first (fromIntegral . (subtract unixDaysOffset)) $ s
+        (days, secs) = flip divMod secondsPerDay >>> first (fromIntegral . subtract unixDaysOffset) $ s
 
 inZone :: Instant -> TimeZone -> Calendar -> ZonedDateTime
 inZone instant tzi@(TimeZone { tzZone = tz }) calendar = ZonedDateTime odt tzi
