@@ -13,8 +13,9 @@ where
 
 import Data.HodaTime.OffsetDateTime.Internal (OffsetDateTime)
 import Data.Maybe (fromMaybe)
-import Data.IntMap.Strict (IntMap)
-import qualified Data.IntMap.Strict as IM
+import Data.HodaTime.Instant.Internal (Instant)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 
 type TZIdentifier = String
 
@@ -31,16 +32,16 @@ data TransitionInfo = TransitionInfo {
     ,ttIsStd :: Bool
     ,ttIsGmt :: Bool } deriving (Eq, Show)
 
-type Transitions = IntMap TransitionInfo
+type Transitions = Map Instant TransitionInfo
 
 mkTransitions :: Transitions
-mkTransitions = IM.empty
+mkTransitions = Map.empty
 
-addTransitionInfo :: TransitionInfo -> Int -> Transitions -> Transitions
-addTransitionInfo ti t = IM.insert t ti
+addTransitionInfo :: Instant -> TransitionInfo -> Transitions -> Transitions
+addTransitionInfo = Map.insert
 
-transitionInfoAt :: Int -> Transitions -> (Int, TransitionInfo)
-transitionInfoAt t ts = fromMaybe (IM.findMin ts) $ IM.lookupLE t ts
+transitionInfoAt :: Instant -> Transitions -> (Instant, TransitionInfo)
+transitionInfoAt t ts = fromMaybe (Map.findMin ts) $ Map.lookupLE t ts
 
 data TimeZone =
       UTCzone

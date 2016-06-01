@@ -45,7 +45,7 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
             _version <- getWord8
             replicateM_ 15 getWord8 -- skip reserved section
             [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
-            transitions <- replicateM transcnt get32bitInt      -- TODO: Times are offset from Jan 1 1970, most likely
+            transitions <- replicateM transcnt $ fromSecondsSinceUnixEpoch <$> get32bitInt
             indexes <- replicateM transcnt get8bitInt
             ttypes <- replicateM ttypecnt $ (,,) <$> get32bitInt <*> getBool <*> get8bitInt
             abbrs <- (toASCII . B.unpack) <$> getByteString abbrlen
@@ -55,13 +55,13 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
             return $ zipTransitions (zipTransitionTypes abbrs ttypes ttisstds ttisgmts) transitions indexes
 
 zipTransitionTypes :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [TransitionInfo]
-zipTransitionTypes abbrs = zip3With toTT
+zipTransitionTypes abbrs = zip3With toTI
     where
-        toTT (gmt, isdst, offset) = TransitionInfo gmt isdst (getAbbr offset abbrs)
+        toTI (gmt, isdst, offset) = TransitionInfo gmt isdst (getAbbr offset abbrs)
         getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
-zipTransitions :: [TransitionInfo] -> [Int] -> [Int] -> Transitions
-zipTransitions tts trans = foldr (\(t, idx) im -> addTransitionInfo (tts !! idx) t im) mkTransitions . zip trans
+zipTransitions :: [TransitionInfo] -> [Instant] -> [Int] -> Transitions
+zipTransitions tis trans = foldr (\(i, idx) im -> addTransitionInfo i (tis !! idx) im) mkTransitions . zip trans
 
 zip3With :: (a3 -> a2 -> a1 -> a) -> [a3] -> [a2] -> [a1] -> [a]                  -- TODO: Can we use base zipWith3 here?
 zip3With f xs ys zs = getZipList $ f <$> ZipList xs <*> ZipList ys <*> ZipList zs
