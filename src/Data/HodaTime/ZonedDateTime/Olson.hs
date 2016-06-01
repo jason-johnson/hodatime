@@ -55,16 +55,13 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
             return $ zipTransitions (zipTransitionTypes abbrs ttypes ttisstds ttisgmts) transitions indexes
 
 zipTransitionTypes :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [TransitionInfo]
-zipTransitionTypes abbrs = zip3With toTI
+zipTransitionTypes abbrs = zipWith3 toTI
     where
         toTI (gmt, isdst, offset) = TransitionInfo gmt isdst (getAbbr offset abbrs)
         getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
 zipTransitions :: [TransitionInfo] -> [Instant] -> [Int] -> Transitions
 zipTransitions tis trans = foldr (\(i, idx) im -> addTransitionInfo i (tis !! idx) im) mkTransitions . zip trans
-
-zip3With :: (a3 -> a2 -> a1 -> a) -> [a3] -> [a2] -> [a1] -> [a]                  -- TODO: Can we use base zipWith3 here?
-zip3With f xs ys zs = getZipList $ f <$> ZipList xs <*> ZipList ys <*> ZipList zs
 
 getLeapInfo :: Get (Integer, Int)
 getLeapInfo = do
