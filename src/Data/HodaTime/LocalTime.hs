@@ -1,7 +1,6 @@
 module Data.HodaTime.LocalTime
 (
-   fromHoursAndMinutes
-  ,fromHMS
+   fromTime
   ,hour
   ,minute
   ,second
@@ -20,14 +19,8 @@ secsFromMinutes = (* 60) . fromIntegral
 
 -- Construction
 
-fromHoursAndMinutes :: Int -> Int -> LocalTime
-fromHoursAndMinutes h m = LocalTime (h' + m') 0
-  where
-    h' = secsFromHours h
-    m' = secsFromMinutes m
-
-fromHMS :: Int -> Int -> Int -> LocalTime
-fromHMS h m s = LocalTime (h' + m' + fromIntegral s) 0
+fromTime :: Int -> Int -> Int -> LocalTime
+fromTime h m s = LocalTime (h' + m' + fromIntegral s) 0
   where
     h' = secsFromHours h
     m' = secsFromMinutes m
