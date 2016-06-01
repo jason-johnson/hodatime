@@ -34,7 +34,7 @@ mapDir proc fp = go'
                 then proc fp >>= return . (: xs)    -- process the file
                 else getDirectoryContents fp >>= liftM concat . mapM (mapDir proc . (fp </>)) . filter (`notElem` [".", ".."])
 
-getTransitions :: L.ByteString -> Either String [Transition]
+getTransitions :: L.ByteString -> Either String Transitions
 getTransitions bs = case runGetOrFail getTransitions' bs of
     Left (_, _, msg) -> Left msg
     Right (_, _, xs) -> Right xs
@@ -54,18 +54,16 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
             ttisgmts <- replicateM ttisgmtcnt getBool
             return $ zipTransitions (zipTransitionTypes abbrs ttypes ttisstds ttisgmts) transitions indexes
 
-zipTransitionTypes :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [TransitionType]
+zipTransitionTypes :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [TransitionInfo]
 zipTransitionTypes abbrs = zip3With toTT
     where
-        toTT (gmt, isdst, offset) = TransitionType gmt isdst (getAbbr offset abbrs)
+        toTT (gmt, isdst, offset) = TransitionInfo gmt isdst (getAbbr offset abbrs)
         getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
-zipTransitions :: [TransitionType] -> [Int] -> [Int] -> [Transition]
-zipTransitions tts = zipWith toTrans
-    where
-        toTrans trans index = Transition trans $ tts !! index
+zipTransitions :: [TransitionInfo] -> [Int] -> [Int] -> Transitions
+zipTransitions tts trans = foldr (\(t, idx) im -> addTransitionInfo (tts !! idx) t im) mkTransitions . zip trans
 
-zip3With :: (a3 -> a2 -> a1 -> a) -> [a3] -> [a2] -> [a1] -> [a]
+zip3With :: (a3 -> a2 -> a1 -> a) -> [a3] -> [a2] -> [a1] -> [a]                  -- TODO: Can we use base zipWith3 here?
 zip3With f xs ys zs = getZipList $ f <$> ZipList xs <*> ZipList ys <*> ZipList zs
 
 getLeapInfo :: Get (Integer, Int)
