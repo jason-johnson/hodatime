@@ -6,6 +6,7 @@ module Data.HodaTime.ZonedDateTime.Internal
   ,mkTransitions
   ,addTransitionInfo
   ,transitionInfoAt
+  ,transitionInfoAfter
   ,TimeZone(..)
   ,ZonedDateTime(..)
 )
@@ -42,6 +43,9 @@ addTransitionInfo = Map.insert
 
 transitionInfoAt :: Instant -> Transitions -> (Instant, TransitionInfo)
 transitionInfoAt t ts = fromMaybe (Map.findMin ts) $ Map.lookupLE t ts
+
+transitionInfoAfter :: Instant -> Transitions -> (Instant, TransitionInfo)
+transitionInfoAfter t ts = fromMaybe (Map.findMax ts) $ Map.lookupGT t ts
 
 data TimeZone =
       UTCzone
