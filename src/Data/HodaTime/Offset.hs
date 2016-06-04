@@ -32,7 +32,7 @@ minOffsetMinutes :: Num a => a
 minOffsetMinutes = negate maxOffsetMinutes
 
 offsetError :: Show a => a -> t
-offsetError i = error $ (show i) ++ " is outside of valid offset range"
+offsetError i = error $ show i ++ " is outside of valid offset range"           -- TODO: I don't like this because it will lead to runtime errors.  Better would be clamping I think, or Maybe
 
 -- public interface
 
@@ -57,7 +57,7 @@ hours h
 -- math
 
 add :: Offset -> Offset -> Offset
-add (Offset lsecs) (Offset rsecs) = seconds . fromIntegral $ lsecs + rsecs
+add (Offset lsecs) (Offset rsecs) = seconds . fromIntegral $ lsecs + rsecs    -- TODO: This is the real problem stated above: very likely to create a runtime error.
 
 minus :: Offset -> Offset -> Offset
 minus (Offset lsecs) (Offset rsecs) = seconds . fromIntegral $ lsecs - rsecs
