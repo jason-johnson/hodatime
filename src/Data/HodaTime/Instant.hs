@@ -6,6 +6,7 @@ module Data.HodaTime.Instant
   ,now
   ,withOffset
   ,inZone
+  ,inUtc
   ,fromSecondsSinceUnixEpoch
 )
 where
@@ -15,8 +16,9 @@ import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond, unixDaysOffset)
 import Data.HodaTime.Duration.Internal (Duration(..))
 import Data.HodaTime.OffsetDateTime.Internal(Offset(..), OffsetDateTime(..))
 import Data.HodaTime.LocalDateTime.Internal (LocalDateTime(..))
-import Data.HodaTime.Calendar (Calendar(..))
 import Data.HodaTime.ZonedDateTime.Internal (TimeZoneName(..), TimeZone(..), ZonedDateTime(..))
+import Data.HodaTime.Calendar (Calendar(..))
+import qualified Data.HodaTime.OffsetDateTime.Internal as Offset (empty)
 import qualified Data.HodaTime.Duration.Internal as D
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstantInCalendar)
@@ -56,8 +58,9 @@ minus linstant (Duration rinstant) = getInstant $ difference linstant rinstant
 
 -- Conversion
 
+-- | Create an 'OffsetDateTime' from this Instant and an Offset
 withOffset :: Instant -> Offset -> Calendar -> OffsetDateTime
-withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) offset
+withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) offset          -- TODO: I'm not sure I like applying the offset on construction.  See if we can defer it
     where
         instant' = instant `add` (D.seconds . fromIntegral . offsetSeconds $ offset)
         time = LTI.fromInstant instant'
@@ -71,12 +74,17 @@ fromSecondsSinceUnixEpoch s = Instant days (fromIntegral secs) 0
         (days, secs) = flip divMod secondsPerDay >>> first (fromIntegral . subtract unixDaysOffset) $ s
 
 inZone :: Instant -> TimeZone -> Calendar -> ZonedDateTime
-inZone instant tzi@(TimeZone { tzZone = tz }) calendar = ZonedDateTime odt tzi
+inZone instant UTCzone calendar = ZonedDateTime odt UTCzone
+  where
+    odt = withOffset instant Offset.empty calendar
+inZone instant tzi@TimeZone { } calendar = ZonedDateTime odt tzi
     where
         odt = withOffset instant offset calendar
         offset
-            | tzi == UTCzone = undefined
             | otherwise = undefined       -- TODO: When TimeZone module is implemented we can finish this (look at the olson time zone series from hackage, but we can't use it all)
+
+inUtc :: Instant -> ZonedDateTime
+inUtc instant = undefined
 
 now :: Monad m => m Instant -> m Instant
 now getCurrentInstant = do
