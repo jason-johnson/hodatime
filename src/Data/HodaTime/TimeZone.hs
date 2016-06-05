@@ -6,6 +6,8 @@ module Data.HodaTime.TimeZone
   ,atLeniently
   ,atStartOfDay
   ,atStrictly
+  ,atAll
+  ,resolve
   ,getUtcOffset
   ,maxOffset
   ,minOffset
@@ -14,13 +16,13 @@ where
 
 import Data.HodaTime.TimeZone.Internal
 import Data.HodaTime.LocalDateTime.Internal (LocalDateTime, LocalDate)
-import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime)
-
-timeZoneAt :: TZIdentifier -> Maybe TimeZone
-timeZoneAt = undefined
+import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime, ZoneLocalResult(..))
 
 utc :: TimeZone
 utc = UTCzone
+
+timeZoneAt :: TZIdentifier -> Maybe TimeZone
+timeZoneAt = undefined
 
 local :: TimeZone
 local = undefined
@@ -34,6 +36,19 @@ atStartOfDay = undefined
 atStrictly :: LocalDateTime -> TimeZone -> Maybe ZonedDateTime
 atStrictly ldt UTCzone = Just $ atLeniently ldt UTCzone
 atStrictly _ldt _tz = undefined
+
+-- | Return all 'ZonedDateTime' entries for a specific 'LocalDateTime' in a 'TimeZone'. Normally this would be one, but in the case that a time occurs twice in a zone (i.e. due to daylight savings time change)
+-- | both would be returned.  Also, if the time does not occur at all, 'Nothing' will be returned.  This method allows the user to choose exactly what to do in the case of ambigiuty.
+atAll :: LocalDateTime -> TimeZone -> Maybe ZoneLocalResult
+atAll ldt UTCzone = Just . ZLSingle $ atLeniently ldt UTCzone
+atAll _ldt _tz = undefined
+
+-- | Takes two functions to determine how to resolve a 'LocalDateTime' to a 'ZonedDateTime' in the case of ambiguity or skipped times.  The first function is for the ambigous case and is past the first
+-- | matching 'ZonedDateTime', followed by the second match. The second function is for the case that the 'LocalDateTime' doesn't exist in the 'TimeZone' (e.g. in a spring-forward situation, there will
+-- | be a missing hour), the first 'ZonedDateTime' will be the the last time before the gap and the second will be the first time after the gap.
+resolve :: LocalDateTime -> TimeZone -> (ZonedDateTime -> ZonedDateTime -> Maybe ZonedDateTime) -> (ZonedDateTime -> ZonedDateTime -> Maybe ZonedDateTime) -> Maybe ZonedDateTime
+resolve ldt UTCzone _ _ = Just $ atLeniently ldt UTCzone
+resolve _ldt _tz _am _sk = undefined
 
 getUtcOffset :: TimeZone -> Int
 getUtcOffset UTCzone = 0
