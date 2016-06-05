@@ -1,6 +1,7 @@
 module Data.HodaTime.Duration
 (
-   days
+   weeks
+  ,days
   ,hours
   ,minutes
   ,seconds
@@ -18,7 +19,11 @@ import Data.HodaTime.Instant (difference)
 import qualified Data.HodaTime.Instant as I (add)
 import Data.HodaTime.Constants (minutesPerDay, millisecondsPerSecond, secondsPerDay, microsecondsPerSecond, nsecsPerSecond)
 
--- | Duration of d days
+-- | Duration of w weeks (a week is assumed to be exactly 7 24 hour days)
+weeks :: Int -> Duration
+weeks w = days $ w * 7
+
+-- | Duration of d days (a day is assumed to be exactly 24 hours)
 days :: Int -> Duration
 days d = Duration $ Instant (fromIntegral d) 0 0
 
