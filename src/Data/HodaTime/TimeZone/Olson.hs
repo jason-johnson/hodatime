@@ -1,10 +1,10 @@
-module Data.HodaTime.ZonedDateTime.Olson
+module Data.HodaTime.TimeZone.Olson
 (
   getTransitions
 )
 where
 
-import Data.HodaTime.ZonedDateTime.Internal
+import Data.HodaTime.TimeZone.Internal
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
@@ -16,23 +16,8 @@ import Control.Applicative ((<$>), (<*>), ZipList(..))
 import Data.List (nub)
 import System.Directory (doesFileExist, getDirectoryContents)
 import System.FilePath ((</>))
-
-testIt = testIt' "/etc/localtime"
-
-testIt' :: FilePath -> IO [Transition]
-testIt' path = fmap (either (const []) id . getTransitions) $ L.readFile path
-
---testAll = fmap (map snd) $ mapDir testIt' "/usr/share/zoneinfo"
-
-mapDir :: (FilePath -> IO (String, t)) -> FilePath -> IO [(String, t)]
-mapDir proc fp = go'
-    where
-        go' = go [] >>= return . filter (\(token, _) -> "unknown magic" /= take 13 token)
-        go xs = do
-            isFile <- doesFileExist fp
-            if isFile
-                then proc fp >>= return . (: xs)    -- process the file
-                else getDirectoryContents fp >>= liftM concat . mapM (mapDir proc . (fp </>)) . filter (`notElem` [".", ".."])
+import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
+import Data.HodaTime.Instant.Internal (Instant)
 
 getTransitions :: L.ByteString -> Either String Transitions
 getTransitions bs = case runGetOrFail getTransitions' bs of

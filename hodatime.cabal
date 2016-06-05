@@ -27,6 +27,7 @@ library
                    Data.HodaTime.LocalTime,
                    Data.HodaTime.LocalDateTime,
                    Data.HodaTime.OffsetDateTime,
+                   Data.HodaTime.TimeZone
                    Data.HodaTime.ZonedDateTime
   other-modules:
                    Data.HodaTime.Calendar,
@@ -40,8 +41,9 @@ library
                    Data.HodaTime.Instant.Internal,
                    Data.HodaTime.LocalDateTime.Internal,
                    Data.HodaTime.OffsetDateTime.Internal,
-                   Data.HodaTime.ZonedDateTime.Internal,
-                   Data.HodaTime.ZonedDateTime.Olson
+                   Data.HodaTime.TimeZone.Internal,
+                   Data.HodaTime.TimeZone.Olson,
+                   Data.HodaTime.ZonedDateTime.Internal
 
 test-suite test
   default-language:
