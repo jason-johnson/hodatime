@@ -10,6 +10,7 @@ module Data.HodaTime.Duration
   ,nanoseconds
   ,add
   ,minus
+  ,Duration
 )
 where
 

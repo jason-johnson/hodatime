@@ -8,6 +8,7 @@ module Data.HodaTime.Instant
   ,inZone
   ,inUtc
   ,fromSecondsSinceUnixEpoch
+  ,Instant
 )
 where
 
