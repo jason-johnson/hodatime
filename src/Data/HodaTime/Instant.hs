@@ -44,14 +44,16 @@ add (Instant ldays lsecs lnsecs) (Duration (Instant rdays rsecs rnsecs)) = Insta
 
 -- | Get the difference between two instances
 difference :: Instant -> Instant -> Duration
-difference (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration $ Instant days' secs' nsecs
+difference (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration $ Instant days' (fromIntegral secs'') (fromIntegral nsecs')
     where
         days = ldays - rdays
-        (days', secs) = safeMinus lsecs rsecs secondsPerDay days
-        (secs', nsecs) = safeMinus lnsecs rnsecs nsecsPerSecond secs
-        safeMinus l r size big
-            | r > l = (pred big, l + size - r)
-            | otherwise = (big, l - r)
+        secs = (fromIntegral lsecs - fromIntegral rsecs) :: Int                   -- TODO: We should specify exactly what sizes we need here.  Keep in mind we can depend that secs and nsecs are never negative so
+        nsecs = (fromIntegral lnsecs - fromIntegral rnsecs) :: Int                -- TODO: there is no worry that we get e.g. (-nsecsPerSecond - -nsecsPerSecond) causing us to have more than nsecsPerSecond.
+        (secs', nsecs') = normalize nsecs secs nsecsPerSecond
+        (days', secs'') = normalize secs' days secondsPerDay
+        normalize x bigger size
+            | x < 0 = (pred bigger, x + size)
+            | otherwise = (bigger, x)
 
 -- | Subtract a 'Duration' from an 'Instant' to get an 'Instant' in the past.  NOTE: does not handle negative durations, use 'add'
 minus :: Instant -> Duration -> Instant
