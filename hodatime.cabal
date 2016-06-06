@@ -23,6 +23,7 @@ library
                    Data.HodaTime.Calendar.Iso,
                    Data.HodaTime.Duration,
                    Data.HodaTime.Instant,
+                   Data.HodaTime.Interval,
                    Data.HodaTime.Offset,
                    Data.HodaTime.LocalTime,
                    Data.HodaTime.LocalDateTime,
