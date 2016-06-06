@@ -16,6 +16,7 @@ module Data.HodaTime.Constants
   ,millisecondsPerSecond
   ,microsecondsPerSecond
   ,nsecsPerSecond
+  ,nsecsPerMicrosecond
   ,daysPerMonth
   ,monthDayOffsets
   ,unixDaysOffset
@@ -71,6 +72,9 @@ microsecondsPerSecond = 1000000
 
 nsecsPerSecond :: Num a => a
 nsecsPerSecond = 1000000000
+
+nsecsPerMicrosecond :: Num a => a
+nsecsPerMicrosecond = 1000
 
 daysPerMonth :: Num a => [a]
 daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28]         -- NOTE: pre-rotated

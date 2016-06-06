@@ -39,6 +39,7 @@ library
                    Data.HodaTime.Calendar.Gregorian.Internal,
                    Data.HodaTime.Calendar.Gregorian.CacheTable,
                    Data.HodaTime.Instant.Internal,
+                   Data.HodaTime.Instant.Clock,
                    Data.HodaTime.LocalDateTime.Internal,
                    Data.HodaTime.OffsetDateTime.Internal,
                    Data.HodaTime.TimeZone.Internal,

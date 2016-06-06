@@ -12,7 +12,8 @@ module Data.HodaTime.Instant
 where
 
 import Data.HodaTime.Instant.Internal
-import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond, unixDaysOffset)
+import Data.HodaTime.Instant.Clock (now)
+import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond)
 import Data.HodaTime.Duration.Internal (Duration(..))
 import Data.HodaTime.OffsetDateTime.Internal(Offset(..), OffsetDateTime(..))
 import Data.HodaTime.LocalDateTime.Internal (LocalDateTime(..))
@@ -23,7 +24,6 @@ import qualified Data.HodaTime.OffsetDateTime.Internal as Offset (empty)
 import qualified Data.HodaTime.Duration.Internal as D
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstantInCalendar)
-import Control.Arrow ((>>>), first)
 
 -- Math
 
@@ -70,9 +70,7 @@ withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) of
             | otherwise                                 = undefined     -- TODO: Why does compiler think this isn't total without the otherwise?
 
 fromSecondsSinceUnixEpoch :: Int -> Instant
-fromSecondsSinceUnixEpoch s = Instant days (fromIntegral secs) 0
-    where
-        (days, secs) = flip divMod secondsPerDay >>> first (fromIntegral . subtract unixDaysOffset) $ s
+fromSecondsSinceUnixEpoch s = fromUnixGetTimeOfDay s 0
 
 inZone :: Instant -> TimeZone -> Calendar -> ZonedDateTime
 inZone instant UTCzone calendar = ZonedDateTime odt UTCzone
@@ -86,8 +84,3 @@ inZone instant tzi@TimeZone { } calendar = ZonedDateTime odt tzi
 
 inUtc :: Instant -> ZonedDateTime
 inUtc instant = undefined
-
-now :: Monad m => m Instant -> m Instant
-now getCurrentInstant = do
-    time <- getCurrentInstant
-    return time
