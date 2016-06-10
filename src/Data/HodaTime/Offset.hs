@@ -19,6 +19,10 @@ module Data.HodaTime.Offset
    fromSeconds
   ,fromMinutes
   ,fromHours
+  -- * Lenses
+  ,seconds
+  ,minutes
+  ,hours
   -- * Math
   ,add
   ,minus
@@ -63,6 +67,29 @@ fromMinutes = Offset . fromIntegral . (*60) . clamp minOffsetMinutes maxOffsetMi
 fromHours :: Int -> Offset
 fromHours = Offset . fromIntegral . (*secondsPerHour) . clamp minOffsetHours maxOffsetHours
 
+-- | Lens for the seconds component of the 'Offset'
+seconds :: Functor f => (Int -> f Int) -> Offset -> f Offset
+seconds f (Offset secs) = Offset . (r+) . fromIntegral <$> f (fromIntegral s)
+  where
+    s = secs `mod` 60
+    r = secs - s
+{-# INLINE seconds #-}
+
+-- | Lens for the minutes component of the 'Offset'
+minutes :: Functor f => (Int -> f Int) -> Offset -> f Offset
+minutes f (Offset secs) = Offset . (r+) . (*60) . fromIntegral <$> f (fromIntegral m)
+  where
+    m = secs `mod` secondsPerHour `div` 60
+    r = secs - (m*60)
+{-# INLINE minutes #-}
+
+-- | Lens for the hours component of the 'Offset'
+hours :: Functor f => (Int -> f Int) -> Offset -> f Offset
+hours f (Offset secs) = Offset . (r+) . (*secondsPerHour) . fromIntegral <$> f (fromIntegral h)
+  where
+    h = secs `div` secondsPerHour
+    r = secs - (h*secondsPerHour)
+{-# INLINE hours #-}
 
 -- | Add one 'Offset' to another  NOTE: if the result of the addition is outside the accepted range it will be clamped
 add :: Offset -> Offset -> Offset
