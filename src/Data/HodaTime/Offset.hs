@@ -56,20 +56,20 @@ clamp :: Ord a => a -> a -> a -> a
 clamp small big = min big . max small
 
 -- | Create an 'Offset' of (clamped) s seconds.
-fromSeconds :: Int -> Offset
+fromSeconds :: Integral a => a -> Offset
 fromSeconds = Offset . fromIntegral . clamp minOffsetSeconds maxOffsetSeconds
 
 -- | Create an 'Offset' of (clamped) m minutes.
-fromMinutes :: Int -> Offset
+fromMinutes :: Integral a => a -> Offset
 fromMinutes = Offset . fromIntegral . (*60) . clamp minOffsetMinutes maxOffsetMinutes
 
 -- | Create an 'Offset' of (clamped) h hours.
-fromHours :: Int -> Offset
+fromHours :: Integral a => a -> Offset
 fromHours = Offset . fromIntegral . (*secondsPerHour) . clamp minOffsetHours maxOffsetHours
 
 -- | Lens for the seconds component of the 'Offset'
 seconds :: Functor f => (Int -> f Int) -> Offset -> f Offset
-seconds f (Offset secs) = Offset . (r+) . fromIntegral <$> f (fromIntegral s)
+seconds f (Offset secs) = fromSeconds . (r+) . fromIntegral <$> f (fromIntegral s)
   where
     s = secs `mod` 60
     r = secs - s
@@ -77,7 +77,7 @@ seconds f (Offset secs) = Offset . (r+) . fromIntegral <$> f (fromIntegral s)
 
 -- | Lens for the minutes component of the 'Offset'
 minutes :: Functor f => (Int -> f Int) -> Offset -> f Offset
-minutes f (Offset secs) = Offset . (r+) . (*60) . fromIntegral <$> f (fromIntegral m)
+minutes f (Offset secs) = fromSeconds . (r+) . (*60) . fromIntegral <$> f (fromIntegral m)
   where
     m = secs `mod` secondsPerHour `div` 60
     r = secs - (m*60)
@@ -85,7 +85,7 @@ minutes f (Offset secs) = Offset . (r+) . (*60) . fromIntegral <$> f (fromIntegr
 
 -- | Lens for the hours component of the 'Offset'
 hours :: Functor f => (Int -> f Int) -> Offset -> f Offset
-hours f (Offset secs) = Offset . (r+) . (*secondsPerHour) . fromIntegral <$> f (fromIntegral h)
+hours f (Offset secs) = fromSeconds . (r+) . (*secondsPerHour) . fromIntegral <$> f (fromIntegral h)
   where
     h = secs `div` secondsPerHour
     r = secs - (h*secondsPerHour)
