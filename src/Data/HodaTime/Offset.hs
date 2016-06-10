@@ -15,9 +15,11 @@
 ----------------------------------------------------------------------------
 module Data.HodaTime.Offset
 (
-   seconds
-  ,minutes
-  ,hours
+  -- * Constructors
+   fromSeconds
+  ,fromMinutes
+  ,fromHours
+  -- * Math
   ,add
   ,minus
 )
@@ -49,26 +51,23 @@ minOffsetMinutes = negate maxOffsetMinutes
 clamp :: Ord a => a -> a -> a -> a
 clamp small big = min big . max small
 
--- public interface
-
 -- | Create an 'Offset' of (clamped) s seconds.
-seconds :: Int -> Offset
-seconds = Offset . fromIntegral . clamp minOffsetSeconds maxOffsetSeconds
+fromSeconds :: Int -> Offset
+fromSeconds = Offset . fromIntegral . clamp minOffsetSeconds maxOffsetSeconds
 
 -- | Create an 'Offset' of (clamped) m minutes.
-minutes :: Int -> Offset
-minutes = Offset . fromIntegral . (*60) . clamp minOffsetMinutes maxOffsetMinutes
+fromMinutes :: Int -> Offset
+fromMinutes = Offset . fromIntegral . (*60) . clamp minOffsetMinutes maxOffsetMinutes
 
 -- | Create an 'Offset' of (clamped) h hours.
-hours :: Int -> Offset
-hours = Offset . fromIntegral . (*secondsPerHour) . clamp minOffsetHours maxOffsetHours
+fromHours :: Int -> Offset
+fromHours = Offset . fromIntegral . (*secondsPerHour) . clamp minOffsetHours maxOffsetHours
 
--- math
 
 -- | Add one 'Offset' to another  NOTE: if the result of the addition is outside the accepted range it will be clamped
 add :: Offset -> Offset -> Offset
-add (Offset lsecs) (Offset rsecs) = seconds . fromIntegral $ lsecs + rsecs
+add (Offset lsecs) (Offset rsecs) = fromSeconds . fromIntegral $ lsecs + rsecs
 
 -- | Subtract one 'Offset' to another.  /NOTE: See 'add' above/
 minus :: Offset -> Offset -> Offset
-minus (Offset lsecs) (Offset rsecs) = seconds . fromIntegral $ lsecs - rsecs
+minus (Offset lsecs) (Offset rsecs) = fromSeconds . fromIntegral $ lsecs - rsecs
