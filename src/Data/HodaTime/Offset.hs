@@ -1,3 +1,18 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Offset
+-- Copyright   :  (C) 2016 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  TBD
+--
+-- An 'Offset' is a period of time offset from UTC time.  This module contains constructors and functions for working with 'Offsets'.
+--
+-- === Clamping
+--
+-- An offset must be between 18 hours and -18 hours (inclusive).  If you go outside this range the functions will clamp to the nearest value.
+----------------------------------------------------------------------------
 module Data.HodaTime.Offset
 (
    seconds
@@ -31,33 +46,29 @@ maxOffsetMinutes = maxOffsetHours * 60
 minOffsetMinutes :: Num a => a
 minOffsetMinutes = negate maxOffsetMinutes
 
-offsetError :: Show a => a -> t
-offsetError i = error $ show i ++ " is outside of valid offset range"           -- TODO: I don't like this because it will lead to runtime errors.  Better would be clamping I think, or Maybe
+clamp :: Ord a => a -> a -> a -> a
+clamp small big = min big . max small
 
 -- public interface
 
--- | Create an 'Offset' of s seconds
+-- | Create an 'Offset' of (clamped) s seconds.
 seconds :: Int -> Offset
-seconds s
-    | s <= maxOffsetSeconds && s >= minOffsetSeconds = Offset . fromIntegral $ s
-    | otherwise = offsetError s
+seconds = Offset . fromIntegral . clamp minOffsetSeconds maxOffsetSeconds
 
--- | Create an 'Offset' of m minutes
+-- | Create an 'Offset' of (clamped) m minutes.
 minutes :: Int -> Offset
-minutes m
-    | m <= maxOffsetMinutes && m >= minOffsetMinutes = Offset . fromIntegral $ m * 60
-    | otherwise = offsetError m
+minutes = Offset . fromIntegral . (*60) . clamp minOffsetMinutes maxOffsetMinutes
 
--- | Create an 'Offset' of h hours
+-- | Create an 'Offset' of (clamped) h hours.
 hours :: Int -> Offset
-hours h
-    | h <= maxOffsetHours && h >= minOffsetHours = Offset . fromIntegral $ h * secondsPerHour
-    | otherwise = offsetError h
+hours = Offset . fromIntegral . (*secondsPerHour) . clamp minOffsetHours maxOffsetHours
 
 -- math
 
+-- | Add one 'Offset' to another  NOTE: if the result of the addition is outside the accepted range it will be clamped
 add :: Offset -> Offset -> Offset
-add (Offset lsecs) (Offset rsecs) = seconds . fromIntegral $ lsecs + rsecs    -- TODO: This is the real problem stated above: very likely to create a runtime error.
+add (Offset lsecs) (Offset rsecs) = seconds . fromIntegral $ lsecs + rsecs
 
+-- | Subtract one 'Offset' to another.  /NOTE: See 'add' above/
 minus :: Offset -> Offset -> Offset
 minus (Offset lsecs) (Offset rsecs) = seconds . fromIntegral $ lsecs - rsecs
