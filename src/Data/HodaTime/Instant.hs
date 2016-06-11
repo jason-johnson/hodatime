@@ -41,7 +41,9 @@ import qualified Data.HodaTime.Duration.Internal as D
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstantInCalendar)
 
--- Math
+-- | Create an 'Instant' from an 'Int' that represents a Unix Epoch
+fromSecondsSinceUnixEpoch :: Int -> Instant
+fromSecondsSinceUnixEpoch s = fromUnixGetTimeOfDay s 0
 
 -- | Add a 'Duration' to an 'Instant' to get a future 'Instant'. /NOTE: does not handle all negative durations, use 'minus'/
 add :: Instant -> Duration -> Instant
@@ -84,10 +86,6 @@ withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) of
         date
             | calendar == Gregorian || calendar == Iso  = GI.fromInstantInCalendar instant' calendar
             | otherwise                                 = undefined     -- TODO: Why does compiler think this isn't total without the otherwise?
-
--- | Create an 'Instant' from an 'Int' that represents a Unix Epoch
-fromSecondsSinceUnixEpoch :: Int -> Instant
-fromSecondsSinceUnixEpoch s = fromUnixGetTimeOfDay s 0
 
 -- | Convert 'Instant' Into a 'ZonedDateTime' based on the supplied 'TimeZone' and 'Calendar'
 inZone :: Instant -> TimeZone -> Calendar -> ZonedDateTime
