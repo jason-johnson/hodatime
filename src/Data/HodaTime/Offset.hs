@@ -93,8 +93,8 @@ hours f (Offset secs) = fromSeconds . (r+) . (*secondsPerHour) . fromIntegral <$
 
 -- | Add one 'Offset' to another  NOTE: if the result of the addition is outside the accepted range it will be clamped
 add :: Offset -> Offset -> Offset
-add (Offset lsecs) (Offset rsecs) = fromSeconds . fromIntegral $ lsecs + rsecs
+add (Offset lsecs) (Offset rsecs) = fromSeconds $ lsecs + rsecs
 
 -- | Subtract one 'Offset' to another.  /NOTE: See 'add' above/
 minus :: Offset -> Offset -> Offset
-minus (Offset lsecs) (Offset rsecs) = fromSeconds . fromIntegral $ lsecs - rsecs
+minus (Offset lsecs) (Offset rsecs) = fromSeconds $ lsecs - rsecs
