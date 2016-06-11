@@ -6,12 +6,12 @@ import Test.Tasty.HUnit
 import Data.List
 import Data.Ord
 import HodaTime.InstantTest
-import HodaTime.ZonedDateTime.OlsonTest
+import HodaTime.DurationTest
 
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [olsonTests, instantTests, properties, unitTests]
+tests = testGroup "Tests" [instantTests, durationTests, properties, unitTests]
 
 properties :: TestTree
 properties = testGroup "Properties" [scProps, qcProps]

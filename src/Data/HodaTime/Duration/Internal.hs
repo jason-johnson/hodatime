@@ -14,7 +14,7 @@ import Data.HodaTime.Constants (secondsPerDay)
 --   but anything longer is not representable by a duration because e.g. Months are calendar
 --   specific concepts.
 newtype Duration = Duration { getInstant :: Instant }
-    deriving (Show)             -- TODO: Remove Show
+    deriving (Eq, Show)             -- TODO: Remove Show
 
 normalize :: (Num b, Integral a) => a -> a -> (b, a)
 normalize x size
