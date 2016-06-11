@@ -28,6 +28,7 @@ now :: IO Instant
 
 #else
 
+-- | Create an 'Instant' from the current system time
 now = allocaBytes #{size struct timeval} $ \ ptv -> do
   throwErrnoIfMinus1_ "gettimeofday" $ gettimeofday ptv nullPtr
   CTime sec <- #{peek struct timeval, tv_sec} ptv

@@ -1,14 +1,29 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Instant
+-- Copyright   :  (C) 2016 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  TBD
+--
+-- An 'Instant' is universal fixed moment in time.
+----------------------------------------------------------------------------
 module Data.HodaTime.Instant
 (
-   add
+  -- * Types
+   Instant
+  -- * Constructors
+  ,fromSecondsSinceUnixEpoch
+  ,now
+  -- * Math
+  ,add
   ,difference
   ,minus
-  ,now
+  -- * Conversion
   ,withOffset
   ,inZone
   ,inUtc
-  ,fromSecondsSinceUnixEpoch
-  ,Instant
 )
 where
 
@@ -28,9 +43,7 @@ import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstantInC
 
 -- Math
 
--- TODO: Do we want to keep add and minus or just make it possible to add negative durations?
-
--- | Add a 'Duration' to an 'Instant' to get a future 'Instant'. NOTE: does not handle all negative durations, use 'minus'
+-- | Add a 'Duration' to an 'Instant' to get a future 'Instant'. /NOTE: does not handle all negative durations, use 'minus'/
 add :: Instant -> Duration -> Instant
 add (Instant ldays lsecs lnsecs) (Duration (Instant rdays rsecs rnsecs)) = Instant days' secs'' nsecs'
     where
@@ -56,7 +69,7 @@ difference (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration 
             | x < 0 = (pred bigger, x + size)
             | otherwise = (bigger, x)
 
--- | Subtract a 'Duration' from an 'Instant' to get an 'Instant' in the past.  NOTE: does not handle negative durations, use 'add'
+-- | Subtract a 'Duration' from an 'Instant' to get an 'Instant' in the past.  /NOTE: does not handle negative durations, use 'add'/
 minus :: Instant -> Duration -> Instant
 minus linstant (Duration rinstant) = getInstant $ difference linstant rinstant
 
@@ -72,9 +85,11 @@ withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) of
             | calendar == Gregorian || calendar == Iso  = GI.fromInstantInCalendar instant' calendar
             | otherwise                                 = undefined     -- TODO: Why does compiler think this isn't total without the otherwise?
 
+-- | Create an 'Instant' from an 'Int' that represents a Unix Epoch
 fromSecondsSinceUnixEpoch :: Int -> Instant
 fromSecondsSinceUnixEpoch s = fromUnixGetTimeOfDay s 0
 
+-- | Convert 'Instant' Into a 'ZonedDateTime' based on the supplied 'TimeZone' and 'Calendar'
 inZone :: Instant -> TimeZone -> Calendar -> ZonedDateTime
 inZone instant UTCzone calendar = ZonedDateTime odt UTCzone
   where
@@ -85,5 +100,6 @@ inZone instant tzi@TimeZone { } calendar = ZonedDateTime odt tzi
         offset
             | otherwise = undefined       -- TODO: When TimeZone module is implemented we can finish this (look at the olson time zone series from hackage, but we can't use it all)
 
+-- | Convert 'Instant' to a 'ZonedDateTime' in the UTC time zone, ISO calendar
 inUtc :: Instant -> ZonedDateTime
 inUtc instant = undefined
