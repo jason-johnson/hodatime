@@ -93,7 +93,7 @@ hours f (Offset secs) = fromSeconds . (r+) . (*secondsPerHour) . fromIntegral <$
     r = secs - (h*secondsPerHour)
 {-# INLINE hours #-}
 
--- | Add one 'Offset' to another  NOTE: if the result of the addition is outside the accepted range it will be clamped
+-- | Add one 'Offset' to another  /NOTE: if the result of the addition is outside the accepted range it will be clamped/
 add :: Offset -> Offset -> Offset
 add (Offset lsecs) (Offset rsecs) = fromSeconds $ lsecs + rsecs
 
