@@ -32,52 +32,38 @@ import Data.HodaTime.Duration.Internal
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Instant (difference)
 import qualified Data.HodaTime.Instant as I (add)
-import Data.HodaTime.Constants (minutesPerDay, millisecondsPerSecond, secondsPerDay, microsecondsPerSecond, nsecsPerSecond)
+import Data.HodaTime.Constants (secondsPerDay, secondsPerHour, nsecsPerSecond)
 
--- | Duration of w standard weeks (a standard week is assumed to be exactly 7 24 hour days)
+-- | Duration of standard weeks (a standard week is assumed to be exactly 7 24 hour days)
 fromStandardWeeks :: Int -> Duration
 fromStandardWeeks w = fromStandardDays $ w * 7
 
--- | Duration of d standard days (a standard day is assumed to be exactly 24 hours)
+-- | Duration of standard days (a standard day is assumed to be exactly 24 hours)
 fromStandardDays :: Int -> Duration
 fromStandardDays d = Duration $ Instant (fromIntegral d) 0 0
 
--- | Duration of h hours
+-- | Duration of hours
 fromHours :: Int -> Duration
-fromHours h = Duration $ Instant d h' 0
-    where
-        toSeconds x = fromIntegral $ x * 60 * 60
-        (d, h') = normalize h 24 toSeconds
+fromHours = fromSeconds . (* secondsPerHour)
 
--- | Duration of m minutes
+-- | Duration of minutes
 fromMinutes :: Int -> Duration
-fromMinutes m = Duration $ Instant d m' 0
-    where
-        toSeconds x = fromIntegral $ x * 60
-        (d, m') = normalize m minutesPerDay toSeconds
+fromMinutes = fromSeconds . (* 60)
 
--- | Duration of ms milliseconds
+-- | Duration of milliseconds
 fromMilliseconds :: Int -> Duration
-fromMilliseconds ms = Duration $ Instant d s' ns     -- TODO: Can day be affected here?  If so maybe there should be a check in the pattern below
-    where
-        toNanoseconds x = fromIntegral $ x * 1000000
-        (s, ns) = normalize ms millisecondsPerSecond toNanoseconds
-        (d, s') = normalize s secondsPerDay id
+fromMilliseconds = fromNanoseconds . (* 1000000)
 
--- | Duration of ms microseconds
+-- | Duration of microseconds
 fromMicroseconds :: Int -> Duration
-fromMicroseconds ms = Duration $ Instant d s' ns
-    where
-        toNanoseconds x = fromIntegral $ x * 1000
-        (s, ns) = normalize ms microsecondsPerSecond toNanoseconds
-        (d, s') = normalize s secondsPerDay id
+fromMicroseconds = fromNanoseconds . (* 1000)
 
--- | Duration of ns nanoseconds
+-- | Duration of nanoseconds
 fromNanoseconds :: Int -> Duration
 fromNanoseconds ns = Duration $ Instant d s' (fromIntegral ns')
     where
-        (s, ns') = normalize ns nsecsPerSecond id
-        (d, s') = normalize s secondsPerDay id
+        (s, ns') = normalize ns nsecsPerSecond
+        (d, s') = normalize s secondsPerDay
 
 -- | Add two durations together
 add :: Duration -> Duration -> Duration

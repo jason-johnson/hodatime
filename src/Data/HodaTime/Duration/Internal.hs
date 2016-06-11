@@ -7,7 +7,7 @@ module Data.HodaTime.Duration.Internal
 where
 
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Control.Arrow ((>>>), (***))
+import Control.Arrow ((>>>), (***), first)
 import Data.HodaTime.Constants (secondsPerDay)
 
 -- | Represents a duration of time between instants.  It can be from days to nanoseconds,
@@ -16,18 +16,18 @@ import Data.HodaTime.Constants (secondsPerDay)
 newtype Duration = Duration { getInstant :: Instant }
     deriving (Show)             -- TODO: Remove Show
 
-normalize :: (Num c, Integral a) => a -> a -> (a -> b) -> (c, b)
-normalize x size f
+normalize :: (Num b, Integral a) => a -> a -> (b, a)
+normalize x size
     | x >= size = pos x
     | x < 0 = neg x
-    | otherwise = (0, f x)
+    | otherwise = (0, x)
     where
-        pos = flip divMod size >>> fromIntegral *** f
+        pos = flip divMod size >>> first fromIntegral
         neg = negArrow . abs
-        negArrow = flip divMod size >>> fromIntegral . negate . succ *** f . (+ size) . negate
+        negArrow = flip divMod size >>> fromIntegral . negate . succ *** (+ size) . negate
 
--- | Duration of s seconds
+-- | Duration of seconds
 fromSeconds :: Int -> Duration
 fromSeconds s = Duration $ Instant d (fromIntegral s') 0
     where
-        (d, s') = normalize s secondsPerDay id
+        (d, s') = normalize s secondsPerDay
