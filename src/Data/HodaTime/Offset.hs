@@ -15,8 +15,10 @@
 ----------------------------------------------------------------------------
 module Data.HodaTime.Offset
 (
+  -- * Types
+   Offset
   -- * Constructors
-   fromSeconds
+  ,fromSeconds
   ,fromMinutes
   ,fromHours
   -- * Lenses
