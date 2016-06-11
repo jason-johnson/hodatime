@@ -2,7 +2,7 @@ module Data.HodaTime.Duration.Internal
 (
    Duration(..)
   ,normalize
-  ,seconds
+  ,fromSeconds
 )
 where
 
@@ -27,7 +27,7 @@ normalize x size f
         negArrow = flip divMod size >>> fromIntegral . negate . succ *** f . (+ size) . negate
 
 -- | Duration of s seconds
-seconds :: Int -> Duration
-seconds s = Duration $ Instant d (fromIntegral s') 0
+fromSeconds :: Int -> Duration
+fromSeconds s = Duration $ Instant d (fromIntegral s') 0
     where
         (d, s') = normalize s secondsPerDay id

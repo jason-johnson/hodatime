@@ -79,7 +79,7 @@ minus linstant (Duration rinstant) = getInstant $ difference linstant rinstant
 withOffset :: Instant -> Offset -> Calendar -> OffsetDateTime
 withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) offset          -- TODO: I'm not sure I like applying the offset on construction.  See if we can defer it
     where
-        instant' = instant `add` (D.seconds . fromIntegral . offsetSeconds $ offset)
+        instant' = instant `add` (D.fromSeconds . fromIntegral . offsetSeconds $ offset)
         time = LTI.fromInstant instant'
         date
             | calendar == Gregorian || calendar == Iso  = GI.fromInstantInCalendar instant' calendar
