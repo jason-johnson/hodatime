@@ -59,7 +59,8 @@ test-suite test
   other-modules:
                    HodaTime.InstantTest,
                    HodaTime.LocalTimeTest,
-                   HodaTime.DurationTest
+                   HodaTime.DurationTest,
+                   HodaTime.OffsetTest
   build-depends:
                    base >= 4 && < 5,
                    tasty >= 0.11,

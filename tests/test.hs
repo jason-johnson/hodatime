@@ -12,7 +12,7 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [instantTests, durationTests, localTimeTests, properties, unitTests]
+tests = testGroup "Tests" [instantTests, durationTests, offsetTests, localTimeTests, properties, unitTests]
 
 properties :: TestTree
 properties = testGroup "Properties" [scProps, qcProps]
