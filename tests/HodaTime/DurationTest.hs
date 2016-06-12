@@ -5,51 +5,73 @@ module HodaTime.DurationTest
 where
 
 import Test.Tasty
-import Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
 import Data.HodaTime.Duration
 
-durationTests :: TestTree
-durationTests = testGroup "Duration Tests" [scProps, qcProps, unitTests]
+-- Tests
 
-scProps :: TestTree
-scProps = testGroup "(checked by SmallCheck)"
-  [
-  ]
+durationTests :: TestTree
+durationTests = testGroup "Duration Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by SmallCheck)"
-  [
-  ]
+qcProps = testGroup "(checked by QuickCheck)" [nanoSecProps, secondProps, dayProps, mathProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
   [
-     testCase "test_NanosecondDuration" test_MicrosecondDuration
-    ,testCase "test_MillisecondDuration" test_MillisecondDuration
-    ,testCase "test_NanosToSecondDuration" test_NanosToSecondDuration
   ]
 
-test_MicrosecondDuration :: Assertion
-test_MicrosecondDuration = do
-  let
-    ns = fromNanoseconds 1000
-    ms = fromMicroseconds 1
-  assertEqual "micro seconds: " ns ms
+-- Properties
 
-test_MillisecondDuration :: Assertion
-test_MillisecondDuration = do
-  let
-    ns = fromNanoseconds 1000000
-    ms = fromMilliseconds 1
-  assertEqual "milli seconds: " ns ms
+nanoSecProps :: TestTree
+nanoSecProps = testGroup "Nanoseconds conversion"
+  [
+     QC.testProperty "fromNanoseconds (x * 1000) == fromMicroseconds x" $ test fromMicroseconds micro
+    ,QC.testProperty "fromNanoseconds (x * 1000 * 1000) == fromMilliseconds x" $ test fromMilliseconds milli
+    ,QC.testProperty "fromNanoseconds (x * 1000 * 1000 * 1000) == fromSeconds x" $ test fromSeconds sec
+  ]
+  where
+    test = test_from fromNanoseconds
+    micro = 1000
+    milli = micro*1000
+    sec = milli*1000
 
--- NOTE: Here the nano seconds entry will be empty, both will convert to seconds
-test_NanosToSecondDuration :: Assertion
-test_NanosToSecondDuration = do
-  let
-    ns = fromNanoseconds 1000000000
-    ms = fromSeconds 1
-  assertEqual "seconds: " ns ms
+secondProps :: TestTree
+secondProps = testGroup "Seconds conversion"
+  [
+     QC.testProperty "fromSeconds (x * 60) == fromMinutes x" $ test fromMinutes mins
+    ,QC.testProperty "fromSeconds (x * 60 * 60) == fromHours x" $ test fromHours hours
+    ,QC.testProperty "fromSeconds (x * 60 * 60 * 24) == fromStandardDays x" $ test fromStandardDays sdays
+    ,QC.testProperty "fromSeconds (x * 60 * 60 * 24 * 7) == fromStandardWeeks x" $ test fromStandardWeeks sweeks
+  ]
+  where
+    test = test_from fromSeconds
+    mins = 60
+    hours = mins*60
+    sdays = hours*24
+    sweeks = sdays*7
+
+dayProps :: TestTree
+dayProps = testGroup "Days conversion"
+  [
+    QC.testProperty "fromStandardDays (x * 7) == fromStandardWeeks x" $ test fromStandardWeeks sweeks
+  ]
+  where
+    test = test_from fromStandardDays
+    sweeks = 7
+
+mathProps :: TestTree
+mathProps = testGroup "Math"
+  [
+     QC.testProperty "fromNanoseconds x `add` fromNanoseconds y == fromNanoseconds (x+y)" $ test add (+)
+    ,QC.testProperty "fromNanoseconds x `minus` fromNanoseconds y == fromNanoseconds (x-y)" $ test minus (-)
+  ]
+  where
+    test f g (Positive x) (Positive y) = fromNanoseconds x `f` fromNanoseconds y == fromNanoseconds (g x y)
+
+-- helper functions
+
+test_from :: (Int -> Duration) -> (Int -> Duration) -> Int -> Int -> Bool
+test_from g f y x = f x == g (y*x)
