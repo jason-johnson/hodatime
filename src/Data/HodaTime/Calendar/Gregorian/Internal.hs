@@ -26,6 +26,9 @@ fromInstantInCalendar (Instant days _ _) = LocalDate year month day
 borders :: (Num a, Eq a) => a -> a -> Bool
 borders c x = x == c - 1
 
+-- | Count up centuries, plus remaining days and determine if this is a special extra cycle day.  NOTE: This
+--   function would be more accurate if it only took absolute values, but it does end up coming up with the correct answer even on negatives.  It just
+--   ends up doing extra calculations with negatives (e.g. year comes back as -100 and entry is +100, which ends up being right but it could have been 0 and the +0 entry)
 calculateCenturyDays :: Int32 -> (Int32, Int32, Bool)
 calculateCenturyDays days = (year, centuryDays, isExtraCycleDay)
   where
