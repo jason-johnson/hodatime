@@ -3,29 +3,27 @@ import Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
-import Data.List
-import Data.Ord
 import HodaTime.InstantTest
 import HodaTime.DurationTest
+import HodaTime.OffsetTest
+import HodaTime.LocalTimeTest
 
+main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [instantTests, durationTests, properties, unitTests]
+tests = testGroup "Tests" [instantTests, durationTests, localTimeTests, properties, unitTests]
 
 properties :: TestTree
 properties = testGroup "Properties" [scProps, qcProps]
 
-scProps = testGroup "(checked by SmallCheck)"
-  [ SC.testProperty "sort == sort . reverse" $
-      \list -> sort (list :: [Int]) == sort (reverse list)
-  ]
+scProps :: TestTree
+scProps = testGroup "(checked by SmallCheck)" []
 
-qcProps = testGroup "(checked by QuickCheck)"
-  [ QC.testProperty "sort == sort . reverse" $
-      \list -> sort (list :: [Int]) == sort (reverse list)
-  ]
+qcProps :: TestTree
+qcProps = testGroup "(checked by QuickCheck)" []
 
+unitTests :: TestTree
 unitTests = testGroup "Unit tests"
   [ testCase "List comparison (different length)" $
       [1, 2, 3] `compare` [1,2] @?= GT
