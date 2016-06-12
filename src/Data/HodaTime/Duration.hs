@@ -60,7 +60,7 @@ fromMicroseconds = fromNanoseconds . (* 1000)
 
 -- | Duration of nanoseconds
 fromNanoseconds :: Int -> Duration
-fromNanoseconds ns = Duration $ Instant d s' (fromIntegral ns')
+fromNanoseconds ns = Duration $ Instant (fromIntegral d) (fromIntegral s') (fromIntegral ns')
     where
         (s, ns') = normalize ns nsecsPerSecond
         (d, s') = normalize s secondsPerDay
