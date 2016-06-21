@@ -70,3 +70,23 @@ test-suite test
                    time,
                    bytestring,
                    hodatime
+
+benchmark bench
+  default-language:
+                   Haskell2010
+  type:
+                   exitcode-stdio-1.0
+  hs-source-dirs:
+                   src,
+                   bench
+  main-is:
+                   bench.hs
+  other-modules:
+                   HodaTime.OffsetBench
+  build-depends:
+                   base > 4,
+                   criterion,
+                   random
+  ghc-options:
+                   -Wall
+                   -O2
