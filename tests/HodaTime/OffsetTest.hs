@@ -20,7 +20,7 @@ scProps :: TestTree
 scProps = testGroup "(checked by SmallCheck)" [mathPropSC]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [mathProps]
+qcProps = testGroup "(checked by QuickCheck)" [secondProps, mathProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
@@ -32,28 +32,34 @@ unitTests = testGroup "Unit tests"
 mathPropSC :: TestTree
 mathPropSC = localOption (SmallCheckDepth 18) $ testGroup "Math"  -- NOTE: Max offset size is 18/-18 so we set the depth to make sure everything in that range is tested
   [
-     SC.testProperty "fromHours x `add` fromHours y == fromHours (x+y)" $ test fromHours add plus
-    ,SC.testProperty "fromHours x `minus` fromHours y == fromHours (x-y)" $ test fromHours minus subtr
+     SC.testProperty "fromHours x `add` fromHours y == fromHours (x+y)" $ test fromHours add (+)
+    ,SC.testProperty "fromHours x `minus` fromHours y == fromHours (x-y)" $ test fromHours minus (-)
+  ]
+
+secondProps :: TestTree
+secondProps = testGroup "Seconds conversion"
+  [
+     QC.testProperty "fromSeconds (x * 60) == fromMinutes x" $ testS fromMinutes mins
+    ,QC.testProperty "fromSeconds (x * 60 * 60) == fromHours x" $ testS fromHours hrs
   ]
   where
-    test f g h x y = f x `g` f y == f (h x y)   -- TODO: move this to top level and fix the times.  This lets us get rid of plus and subtr
+    testS = test_from fromSeconds
+    mins = 60
+    hrs = mins*60
 
 mathProps :: TestTree
 mathProps = testGroup "Math"
   [
-     QC.testProperty "fromSeconds x `add` fromSeconds y == fromSeconds (x+y)" $ test fromSeconds add plus
-    ,QC.testProperty "fromSeconds x `minus` fromSeconds y == fromSeconds (x-y)" $ test fromSeconds minus subtr
-    ,QC.testProperty "fromMinutes x `add` fromMinutes y == fromMinutes (x+y)" $ test fromMinutes add plus
-    ,QC.testProperty "fromMinutes x `minus` fromMinutes y == fromMinutes (x-y)" $ test fromMinutes minus subtr
+     QC.testProperty "fromSeconds x `add` fromSeconds y == fromSeconds (x+y)" $ test fromSeconds add (+)
+    ,QC.testProperty "fromSeconds x `minus` fromSeconds y == fromSeconds (x-y)" $ test fromSeconds minus (-)
+    ,QC.testProperty "fromMinutes x `add` fromMinutes y == fromMinutes (x+y)" $ test fromMinutes add (+)
+    ,QC.testProperty "fromMinutes x `minus` fromMinutes y == fromMinutes (x-y)" $ test fromMinutes minus (-)
   ]
-  where
-    test f g h x y = f x `g` f y == f (h x y)       -- we could also give this function a signature and get rid of the 2 below
 
 -- helper functions
 
--- NOTE: The following 2 functions only exist to lock in the type so the QC tests can work
-plus :: Int -> Int -> Int
-plus = (+)
+test :: (Int -> Offset) -> (Offset -> Offset -> Offset) -> (Int -> Int -> Int) -> Int -> Int -> Bool
+test f g h x y = f x `g` f y == f (h x y)
 
-subtr :: Int -> Int -> Int
-subtr = (-)
+test_from :: (Int -> Offset) -> (Int -> Offset) -> Int -> Int -> Bool
+test_from g f y x = f x == g (y*x)
