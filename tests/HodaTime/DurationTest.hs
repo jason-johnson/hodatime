@@ -6,22 +6,17 @@ where
 
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC
-import Test.Tasty.HUnit
 
 import Data.HodaTime.Duration
 
 -- Tests
 
 durationTests :: TestTree
-durationTests = testGroup "Duration Tests" [qcProps, unitTests]
+durationTests = testGroup "Duration Tests" [qcProps]
 
 qcProps :: TestTree
 qcProps = testGroup "(checked by QuickCheck)" [nanoSecProps, secondProps, dayProps, mathProps]
 
-unitTests :: TestTree
-unitTests = testGroup "Unit tests"
-  [
-  ]
 
 -- Properties
 
