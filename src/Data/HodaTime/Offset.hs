@@ -33,7 +33,7 @@ where
 
 import Data.HodaTime.OffsetDateTime.Internal
 import Data.HodaTime.Constants (secondsPerHour)
-import Data.HodaTime.Internal (secondsFromSeconds, secondsFromMinutes, secondsFromHours, clamp)
+import Data.HodaTime.Internal (secondsFromSeconds, secondsFromMinutes, secondsFromHours, clamp, hoursFromSecs, minutesFromSecs, secondsFromSecs)
 
 -- Offset specific constants
 
@@ -69,26 +69,17 @@ fromHours = Offset . secondsFromHours . clamp minOffsetHours maxOffsetHours
 
 -- | Lens for the seconds component of the 'Offset'
 seconds :: Functor f => (Int -> f Int) -> Offset -> f Offset
-seconds f (Offset secs) = fromSeconds . (r+) . fromIntegral <$> f (fromIntegral s)
-  where
-    s = secs `mod` 60
-    r = secs - s
+seconds f (Offset secs) = secondsFromSecs fromSeconds f secs
 {-# INLINE seconds #-}
 
 -- | Lens for the minutes component of the 'Offset'
 minutes :: Functor f => (Int -> f Int) -> Offset -> f Offset
-minutes f (Offset secs) = fromSeconds . (r+) . (*60) . fromIntegral <$> f (fromIntegral m)
-  where
-    m = secs `mod` secondsPerHour `div` 60
-    r = secs - (m*60)
+minutes f (Offset secs) = minutesFromSecs fromSeconds f secs
 {-# INLINE minutes #-}
 
 -- | Lens for the hours component of the 'Offset'
 hours :: Functor f => (Int -> f Int) -> Offset -> f Offset
-hours f (Offset secs) = fromSeconds . (r+) . (*secondsPerHour) . fromIntegral <$> f (fromIntegral h)
-  where
-    h = secs `div` secondsPerHour
-    r = secs - (h*secondsPerHour)
+hours f (Offset secs) = hoursFromSecs fromSeconds f secs
 {-# INLINE hours #-}
 
 -- | Add one 'Offset' to another  /NOTE: if the result of the addition is outside the accepted range it will be clamped/
