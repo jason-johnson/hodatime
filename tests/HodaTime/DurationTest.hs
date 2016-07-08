@@ -17,7 +17,6 @@ durationTests = testGroup "Duration Tests" [qcProps]
 qcProps :: TestTree
 qcProps = testGroup "(checked by QuickCheck)" [nanoSecProps, secondProps, dayProps, mathProps]
 
-
 -- Properties
 
 nanoSecProps :: TestTree
