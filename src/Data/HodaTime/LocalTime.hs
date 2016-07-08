@@ -25,16 +25,8 @@ module Data.HodaTime.LocalTime
 where
 
 import Data.HodaTime.LocalTime.Internal
-import Data.HodaTime.Constants (secondsPerHour)
-import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs)
-import Data.Word (Word32)
+import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs, secondsFromHours, secondsFromMinutes)
 import Control.Monad (guard)
-
-secsFromHours :: Int -> Word32
-secsFromHours = (* secondsPerHour) . fromIntegral
-
-secsFromMinutes :: Int -> Word32
-secsFromMinutes = (* 60) . fromIntegral
 
 -- Construction
 
@@ -47,8 +39,8 @@ fromTime h m s ns = do
   guard $ ns >= 0
   return $ LocalTime (h' + m' + fromIntegral s) (fromIntegral ns)
   where
-    h' = secsFromHours h
-    m' = secsFromMinutes m
+    h' = secondsFromHours h
+    m' = secondsFromMinutes m
 
 -- Accessors
 
