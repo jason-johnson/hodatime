@@ -15,8 +15,8 @@
 ----------------------------------------------------------------------------
 module Data.HodaTime.LocalTime
 (
-   fromTime
-  ,fromTime'
+   LocalTime
+  ,fromTime
   ,hours
   ,minutes
   ,seconds
@@ -28,6 +28,7 @@ import Data.HodaTime.LocalTime.Internal
 import Data.HodaTime.Constants (secondsPerHour)
 import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs)
 import Data.Word (Word32)
+import Control.Monad (guard)
 
 secsFromHours :: Int -> Word32
 secsFromHours = (* secondsPerHour) . fromIntegral
@@ -37,15 +38,14 @@ secsFromMinutes = (* 60) . fromIntegral
 
 -- Construction
 
--- | Create a new 'LocalTime' from an hour, minute and second
-fromTime :: Int -> Int -> Int -> LocalTime
-fromTime h m s = LocalTime (h' + m' + fromIntegral s) 0
-  where
-    h' = secsFromHours h
-    m' = secsFromMinutes m
-
-fromTime' :: Int -> Int -> Int -> Int -> LocalTime
-fromTime' h m s ns = LocalTime (h' + m' + fromIntegral s) (fromIntegral ns)
+-- | Create a new 'LocalTime' from an hour, minute, second and nanosecond if values are valid, nothing otherwise
+fromTime :: Int -> Int -> Int -> Int -> Maybe LocalTime
+fromTime h m s ns = do
+  guard $ h < 24 && h >= 0
+  guard $ m < 60 && m >= 0
+  guard $ s < 60 && m >= 0
+  guard $ ns >= 0
+  return $ LocalTime (h' + m' + fromIntegral s) (fromIntegral ns)
   where
     h' = secsFromHours h
     m' = secsFromMinutes m

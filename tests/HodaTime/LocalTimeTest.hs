@@ -10,6 +10,7 @@ import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
+import Data.Maybe (fromJust)
 
 import Data.HodaTime.LocalTime (hours, minutes, seconds, fromTime)
 
@@ -34,6 +35,7 @@ lensProps = testGroup "Lens"
     ,QC.testProperty "set hours offset" $ testF setL hours _3 const 5
   ]
   where
+    mkTime h m s = fromJust . fromTime h m s $ 0    -- We are already controlling that only valid values will be passed in
     offsetEq (s, m, h) off = get seconds off == s && get minutes off == m && get hours off == h
     _1 f (a,b,c) = (\a' -> (a',b,c)) <$> f a
     _2 f (a,b,c) = (\b' -> (a,b',c)) <$> f b
@@ -41,7 +43,7 @@ lensProps = testGroup "Lens"
     get l = getConst . l Const
     modify f l = runIdentity . l (Identity . f)
     setL v = modify (const v)
-    testGet l l' (Positive s, Positive m, Positive h) = h < 23 && s < 60 && m < 60 QC.==> get l (fromTime h m s) == get l' (s, m, h)      -- TODO: Why no negative?
-    testF f l l' g n (Positive s, Positive m, Positive h) = h < 23 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (fromTime h m s)
+    testGet l l' (Positive s, Positive m, Positive h) = h < 23 && s < 60 && m < 60 QC.==> get l (mkTime h m s) == get l' (s, m, h)
+    testF f l l' g n (Positive s, Positive m, Positive h) = h < 23 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (mkTime h m s)
 
 unitTests = testGroup "Unit tests" []
