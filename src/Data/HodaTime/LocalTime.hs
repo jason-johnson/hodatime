@@ -35,6 +35,7 @@ secsFromMinutes = (* 60) . fromIntegral
 
 -- Construction
 
+-- | Create a new 'LocalTime' from an hour, minute and second
 fromTime :: Int -> Int -> Int -> LocalTime
 fromTime h m s = LocalTime (h' + m' + fromIntegral s) 0
   where
