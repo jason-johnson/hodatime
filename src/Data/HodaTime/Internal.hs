@@ -1,18 +1,21 @@
 module Data.HodaTime.Internal
 (
-   fromSeconds
-  ,fromMinutes
-  ,fromHours
+   secondsFromSeconds
+  ,secondsFromMinutes
+  ,secondsFromHours
 )
 where
 
 import Data.HodaTime.Constants (secondsPerHour, secondsPerMinute)
 
-fromSeconds :: (Integral a, Num b) => a -> b
-fromSeconds = fromIntegral
+secondsFromSeconds :: (Integral a, Num b) => a -> b
+secondsFromSeconds = fromIntegral
+{-# INLINE secondsFromSeconds #-}
 
-fromMinutes :: (Integral a, Num b) => a -> b
-fromMinutes = fromIntegral . (*secondsPerMinute)
+secondsFromMinutes :: (Integral a, Num b) => a -> b
+secondsFromMinutes = fromIntegral . (*secondsPerMinute)
+{-# INLINE secondsFromMinutes #-}
 
-fromHours :: (Integral a, Num b) => a -> b
-fromHours = fromIntegral . (*secondsPerHour)
+secondsFromHours :: (Integral a, Num b) => a -> b
+secondsFromHours = fromIntegral . (*secondsPerHour)
+{-# INLINE secondsFromHours #-}

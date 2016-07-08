@@ -33,6 +33,7 @@ where
 
 import Data.HodaTime.OffsetDateTime.Internal
 import Data.HodaTime.Constants (secondsPerHour)
+import qualified Data.HodaTime.Internal  as I (secondsFromSeconds, secondsFromMinutes, secondsFromHours)
 
 -- Offset specific constants
 
@@ -59,15 +60,15 @@ clamp small big = min big . max small
 
 -- | Create an 'Offset' of (clamped) s seconds.
 fromSeconds :: Integral a => a -> Offset
-fromSeconds = Offset . fromIntegral . clamp minOffsetSeconds maxOffsetSeconds
+fromSeconds = Offset . I.secondsFromSeconds . clamp minOffsetSeconds maxOffsetSeconds
 
 -- | Create an 'Offset' of (clamped) m minutes.
 fromMinutes :: Integral a => a -> Offset
-fromMinutes = Offset . fromIntegral . (*60) . clamp minOffsetMinutes maxOffsetMinutes
+fromMinutes = Offset . I.secondsFromMinutes . clamp minOffsetMinutes maxOffsetMinutes
 
 -- | Create an 'Offset' of (clamped) h hours.
 fromHours :: Integral a => a -> Offset
-fromHours = Offset . fromIntegral . (*secondsPerHour) . clamp minOffsetHours maxOffsetHours
+fromHours = Offset . I.secondsFromHours . clamp minOffsetHours maxOffsetHours
 
 -- | Lens for the seconds component of the 'Offset'
 seconds :: Functor f => (Int -> f Int) -> Offset -> f Offset
