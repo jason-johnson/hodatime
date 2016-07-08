@@ -7,7 +7,8 @@
 -- Stability   :  experimental
 -- Portability :  TBD
 --
--- An 'LocalTime' represents a local clock time.  This module contains constructors and functions for working with 'LocalTime'.
+-- An 'LocalTime' represents a time of day, with no reference to a particular calendar, time zone or date.
+-- This module contains constructors and functions for working with 'LocalTime'.
 --
 -- === Normalization
 --
@@ -31,7 +32,11 @@ import Control.Monad (guard)
 -- Construction
 
 -- | Create a new 'LocalTime' from an hour, minute, second and nanosecond if values are valid, nothing otherwise
-fromTime :: Int -> Int -> Int -> Int -> Maybe LocalTime
+fromTime :: Int   -- ^ hour
+         -> Int   -- ^ minute
+         -> Int   -- ^ second
+         -> Int   -- ^ nanoseconds
+         -> Maybe LocalTime
 fromTime h m s ns = do
   guard $ h < 24 && h >= 0
   guard $ m < 60 && m >= 0
