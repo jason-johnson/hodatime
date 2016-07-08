@@ -17,14 +17,16 @@ module Data.HodaTime.LocalTime
 (
    fromTime
   ,fromTime'
-  ,hour
-  ,minute
-  ,second
+  ,hours
+  ,minutes
+  ,seconds
+  ,nanoseconds
 )
 where
 
 import Data.HodaTime.LocalTime.Internal
 import Data.HodaTime.Constants (secondsPerHour)
+import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs)
 import Data.Word (Word32)
 
 secsFromHours :: Int -> Word32
@@ -50,19 +52,30 @@ fromTime' h m s ns = LocalTime (h' + m' + fromIntegral s) (fromIntegral ns)
 
 -- Accessors
 
-hour :: LocalTime -> Int
-hour (LocalTime secs _) = fromIntegral h
+-- | Lens for the hours component of the 'LocalTime'
+hours :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
+hours f (LocalTime secs nsecs) = hoursFromSecs to f' secs
   where
-    h = secs `div` secondsPerHour
+    to = flip LocalTime nsecs
+    normalize x = if x > 23 then x - 24 else x
+    f' x = normalize <$> f x
+{-# INLINE hours #-}
 
-minute :: LocalTime -> Int
-minute (LocalTime secs _) = fromIntegral m
+-- | Lens for the minutes component of the 'LocalTime'
+minutes :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
+minutes f (LocalTime secs nsecs) = minutesFromSecs to f secs
   where
-    s = secs `mod` secondsPerHour
-    m = s `div` 60
+    to = flip LocalTime nsecs
+{-# INLINE minutes #-}
 
-second :: LocalTime -> Int
-second (LocalTime secs _) = fromIntegral s'
+-- | Lens for the seconds component of the 'LocalTime'
+seconds :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
+seconds f (LocalTime secs nsecs) = secondsFromSecs to f secs
   where
-    s = secs `mod` secondsPerHour
-    s' = s `mod` 60
+    to = flip LocalTime nsecs
+{-# INLINE seconds #-}
+
+-- | Lens for the nanoseconds component of the 'LocalTime'.  NOTE: no effort is made to detect nano overflow.  They will simply roll over on overflow without affecting the rest of the time.
+nanoseconds :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
+nanoseconds f (LocalTime secs nsecs) = LocalTime secs . fromIntegral <$> (f . fromIntegral) nsecs
+{-# INLINE nanoseconds #-}
