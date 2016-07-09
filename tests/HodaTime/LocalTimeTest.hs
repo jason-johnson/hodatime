@@ -5,7 +5,6 @@ module HodaTime.LocalTimeTest
 where
 
 import Test.Tasty
-import Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 import Control.Applicative (Const(..))
@@ -15,11 +14,15 @@ import Data.Maybe (fromJust)
 import Data.HodaTime.LocalTime (hours, minutes, seconds, fromTime)
 
 localTimeTests :: TestTree
-localTimeTests = testGroup "LocalTime Tests" [scProps, qcProps, unitTests]
+localTimeTests = testGroup "LocalTime Tests" [qcProps, unitTests]
 
-scProps = testGroup "(checked by SmallCheck)" []
-
+qcProps :: TestTree
 qcProps = testGroup "(checked by QuickCheck)" [lensProps]
+
+unitTests :: TestTree
+unitTests = testGroup "Unit tests" [rolloverUnits]
+
+-- properties
 
 lensProps :: TestTree
 lensProps = testGroup "Lens"
@@ -30,9 +33,9 @@ lensProps = testGroup "Lens"
     ,QC.testProperty "modify seconds offset" $ testF (modify . (+)) seconds _1 (+) 5
     ,QC.testProperty "modify minutes offset" $ testF (modify . (+)) minutes _2 (+) 5
     ,QC.testProperty "modify hours offset" $ testF (modify . (+)) hours _3 (+) 5
-    ,QC.testProperty "set seconds offset" $ testF setL seconds _1 const 5
-    ,QC.testProperty "set minutes offset" $ testF setL minutes _2 const 5
-    ,QC.testProperty "set hours offset" $ testF setL hours _3 const 5
+    ,QC.testProperty "set seconds offset" $ testF set seconds _1 const 5
+    ,QC.testProperty "set minutes offset" $ testF set minutes _2 const 5
+    ,QC.testProperty "set hours offset" $ testF set hours _3 const 5
   ]
   where
     mkTime h m s = fromJust . fromTime h m s $ 0    -- We are already controlling that only valid values will be passed in
@@ -40,10 +43,31 @@ lensProps = testGroup "Lens"
     _1 f (a,b,c) = (\a' -> (a',b,c)) <$> f a
     _2 f (a,b,c) = (\b' -> (a,b',c)) <$> f b
     _3 f (a,b,c) = (\c' -> (a,b,c')) <$> f c
-    get l = getConst . l Const
-    modify f l = runIdentity . l (Identity . f)
-    setL v = modify (const v)
     testGet l l' (Positive s, Positive m, Positive h) = h < 23 && s < 60 && m < 60 QC.==> get l (mkTime h m s) == get l' (s, m, h)
     testF f l l' g n (Positive s, Positive m, Positive h) = h < 23 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (mkTime h m s)
 
-unitTests = testGroup "Unit tests" []
+rolloverUnits :: TestTree
+rolloverUnits = testGroup "Rollover"
+  [
+     testCase "22:57:57 + 2s == 22:57:59" $ modify (+2) seconds <$> time @?= fromTime 22 57 59 0
+    ,testCase "22:57:57 + 5s == 22:58:02" $ modify (+5) seconds <$> time @?= fromTime 22 58 2 0
+    ,testCase "22:57:57 + 2m == 22:59:57" $ modify (+2) minutes <$> time @?= fromTime 22 59 57 0
+    ,testCase "22:57:57 + 5m == 23:02:57" $ modify (+5) minutes <$> time @?= fromTime 23 02 57 0
+    ,testCase "22:57:57 + 1h == 23:57:57" $ modify (+1) hours <$> time @?= fromTime 23 57 57 0
+    ,testCase "22:57:57 + 3h == 01:57:57" $ modify (+3) hours <$> time @?= fromTime 1 57 57 0
+    ,testCase "22:57:57 + 3723s == 00:00:00" $ modify (+3723) seconds <$> time @?= fromTime 0 0 0 0
+    ,testCase "22:57:57 + 3725s == 00:00:02" $ modify (+3725) seconds <$> time @?= fromTime 0 0 2 0
+  ]
+  where
+    time = fromTime 22 57 57 0
+
+-- utility
+
+get :: ((s -> Const s c) -> a -> Const t b) -> a -> t
+get l = getConst . l Const
+
+modify :: (s -> b) -> ((s -> Identity b) -> a -> Identity t) -> a -> t
+modify f l = runIdentity . l (Identity . f)
+
+set :: s -> ((b -> Identity s) -> a -> Identity t) -> a -> t
+set v = modify (const v)

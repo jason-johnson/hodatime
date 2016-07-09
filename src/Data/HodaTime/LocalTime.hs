@@ -51,25 +51,23 @@ fromTime h m s ns = do
 
 -- | Lens for the hours component of the 'LocalTime'
 hours :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
-hours f (LocalTime secs nsecs) = hoursFromSecs to f' secs
+hours f (LocalTime secs nsecs) = hoursFromSecs to f secs
   where
-    to = flip LocalTime nsecs
-    normalize x = if x > 23 then x - 24 else x
-    f' x = normalize <$> f x
+    to = fromSecondsNormalized nsecs
 {-# INLINE hours #-}
 
 -- | Lens for the minutes component of the 'LocalTime'
 minutes :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
 minutes f (LocalTime secs nsecs) = minutesFromSecs to f secs
   where
-    to = flip LocalTime nsecs
+    to = fromSecondsNormalized nsecs
 {-# INLINE minutes #-}
 
 -- | Lens for the seconds component of the 'LocalTime'
 seconds :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
 seconds f (LocalTime secs nsecs) = secondsFromSecs to f secs
   where
-    to = flip LocalTime nsecs
+    to = fromSecondsNormalized nsecs
 {-# INLINE seconds #-}
 
 -- | Lens for the nanoseconds component of the 'LocalTime'.  NOTE: no effort is made to detect nano overflow.  They will simply roll over on overflow without affecting the rest of the time.
