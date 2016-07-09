@@ -59,5 +59,14 @@ class IsCalendar cal where
   data Month cal
   next' :: DayOfWeek cal -> CalendarDate (Month cal) cal -> CalendarDate (Month cal) cal
 
+class HasDate d where
+  type Input d
+  next :: Input d -> d -> d
 
+instance (IsCalendar cal, m ~ Month cal) => HasDate (CalendarDate m cal) where
+  type Input (CalendarDate m cal) = DayOfWeek cal
+  next = next'
 
+instance (IsCalendar cal, m ~ Month cal) => HasDate (CalendarDateTime m cal) where
+  type Input (CalendarDateTime m cal) = DayOfWeek cal
+  next dow (CalendarDateTime cd h m s) = CalendarDateTime (next dow cd) h m s
