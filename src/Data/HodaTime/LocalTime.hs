@@ -17,7 +17,7 @@
 module Data.HodaTime.LocalTime
 (
    LocalTime
-  ,fromTime
+  ,localTime
   ,hours
   ,minutes
   ,seconds
@@ -32,12 +32,12 @@ import Control.Monad (guard)
 -- Construction
 
 -- | Create a new 'LocalTime' from an hour, minute, second and nanosecond if values are valid, nothing otherwise
-fromTime :: Int   -- ^ hour
+localTime :: Int   -- ^ hour
          -> Int   -- ^ minute
          -> Int   -- ^ second
          -> Int   -- ^ nanoseconds
          -> Maybe LocalTime
-fromTime h m s ns = do
+localTime h m s ns = do
   guard $ h < 24 && h >= 0
   guard $ m < 60 && m >= 0
   guard $ s < 60 && m >= 0
