@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, KindSignatures, TypeFamilies #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Data.HodaTime.Calendar.Internal
 (
@@ -13,6 +13,8 @@ module Data.HodaTime.Calendar.Internal
 where
 
 import Data.Int (Int8, Int16)
+import Data.Ord (comparing)
+import Data.Monoid ((<>))
 
 data IslamicLeapYearPattern =
     ILYPBase15
@@ -40,13 +42,16 @@ data Calendar =
   | Islamic IslamicLeapYearPattern IslamicEpoch
     deriving (Eq, Show)
 
-data CalDateTime m c = CalDateTime (LocalDate m c) Int Int Int
+data CalDateTime m calendar = CalDateTime (LocalDate m calendar) Int Int Int
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
-data LocalDate m (c :: Calendar) = LocalDate Int16 m Int8
+data LocalDate m calendar = LocalDate { ldYear :: Int16, ldMonth :: m, ldDay :: Int8 }
     deriving (Eq, Show)
 
-class IsCalendar (cal :: Calendar) where
+instance Ord m => Ord (LocalDate m c) where
+  compare a b = comparing ldYear a b <> comparing ldMonth a b <> comparing ldDay a b
+
+class IsCalendar cal where
   type CalendarDate cal
   data DayOfWeek cal
   data Month cal
@@ -60,12 +65,3 @@ instance IsCalendar cal => HasDate (LocalDate m cal) where
 
 instance IsCalendar cal => HasDate (CalDateTime m cal) where
   next i (CalDateTime cd h m s) = CalDateTime (next i cd) h m s
-
-instance IsCalendar 'Gregorian where
-  type CalendarDate 'Gregorian = LocalDate (Month 'Gregorian) 'Gregorian
-  data DayOfWeek 'Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
-    deriving (Show, Eq, Ord, Enum, Bounded)
-  data Month 'Gregorian = January | February | March | April | May | June | July | August | September | October | November | December
-    deriving (Show, Eq, Ord, Enum, Bounded)
-
-  next' = undefined
