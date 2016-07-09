@@ -6,7 +6,8 @@ module Data.HodaTime.Calendar.Internal
   ,IslamicEpoch(..)
   ,HebrewMonthNumbering(..)
   ,Calendar(..)
-  ,LocalDate(..)
+  ,CalendarDate(..)
+  ,CalendarDateTime(..)
   ,IsCalendar(..)
   ,HasDate(..)
 )
@@ -42,26 +43,21 @@ data Calendar =
   | Islamic IslamicLeapYearPattern IslamicEpoch
     deriving (Eq, Show)
 
-data CalDateTime m calendar = CalDateTime (LocalDate m calendar) Int Int Int
+data CalendarDateTime m calendar = CalendarDateTime (CalendarDate m calendar) Int Int Int
+  deriving (Eq, Show)
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
-data LocalDate m calendar = LocalDate { ldYear :: Int16, ldMonth :: m, ldDay :: Int8 }
-    deriving (Eq, Show)
+data CalendarDate m calendar = CalendarDate { ldYear :: Int16, ldMonth :: m, ldDay :: Int8 }
+  deriving (Eq, Show)
 
-instance Ord m => Ord (LocalDate m c) where
+instance Ord m => Ord (CalendarDate m c) where
   compare a b = comparing ldYear a b <> comparing ldMonth a b <> comparing ldDay a b
 
 class IsCalendar cal where
-  type CalendarDate cal
+  type Date cal
   data DayOfWeek cal
   data Month cal
-  next' :: DayOfWeek cal -> CalendarDate cal -> CalendarDate cal
+  next' :: DayOfWeek cal -> CalendarDate (Month cal) cal -> CalendarDate (Month cal) cal
 
-class HasDate dt where
-  next :: a -> dt -> dt
 
-instance IsCalendar cal => HasDate (LocalDate m cal) where
-  next = undefined
 
-instance IsCalendar cal => HasDate (CalDateTime m cal) where
-  next i (CalDateTime cd h m s) = CalDateTime (next i cd) h m s
