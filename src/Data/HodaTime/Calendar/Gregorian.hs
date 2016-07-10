@@ -16,7 +16,7 @@ import Data.Int (Int32)
 import Control.Monad (guard)
 
 minDate :: Int
-minDate = 1400
+minDate = 1582
 
 -- types
 
