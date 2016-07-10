@@ -31,8 +31,9 @@ instance IsCalendar Gregorian where
 
   next' = undefined
 
-calendarDate :: Int -> Month Gregorian -> Int -> Int -> Maybe (Date Gregorian)
-calendarDate d m y minFirstWeekDays = do
+-- | Smart constuctor for Gregorian calendar date.  Minimum first week days is the first argument to allow for easier defaulting
+calendarDate :: Int -> Int -> Month Gregorian -> Int -> Maybe (Date Gregorian)
+calendarDate minFirstWeekDays d m y = do
   guard $ y > minDate
   guard $ d > 0 && d <= maxDaysInMonth (fromEnum m) y
   return $ CalendarDate (fromIntegral y) m (fromIntegral d) minFirstWeekDays
