@@ -50,6 +50,7 @@ data CalendarDateTime m o calendar = CalendarDateTime (CalendarDate m o calendar
 data CalendarDate m o calendar = CalendarDate { ldYear :: Int16, ldMonth :: m, ldDay :: Int8, ldOptions :: o }
   deriving (Eq, Show)
 
+-- TODO: Why is the Eq o constraint required here?
 instance (Ord m, Eq o) => Ord (CalendarDate m o c) where
   compare a b = comparing ldYear a b <> comparing ldMonth a b <> comparing ldDay a b
 
@@ -58,13 +59,13 @@ class IsCalendar cal where
   data DayOfWeek cal
   data Month cal
   type CalendarOptions cal
-  next' :: DayOfWeek cal -> CalendarDate (Month cal) (CalendarOptions cal) cal -> CalendarDate (Month cal) (CalendarOptions cal) cal
-  previous' :: DayOfWeek cal -> CalendarDate (Month cal) (CalendarOptions cal) cal -> CalendarDate (Month cal) (CalendarOptions cal) cal
+  next' :: Int -> DayOfWeek cal -> CalendarDate (Month cal) (CalendarOptions cal) cal -> CalendarDate (Month cal) (CalendarOptions cal) cal
+  previous' :: Int -> DayOfWeek cal -> CalendarDate (Month cal) (CalendarOptions cal) cal -> CalendarDate (Month cal) (CalendarOptions cal) cal
 
 class HasDate d where
   type DoW d
-  next :: DoW d -> d -> d
-  previous :: DoW d -> d -> d
+  next :: Int -> DoW d -> d -> d
+  previous :: Int -> DoW d -> d -> d
 
 instance (IsCalendar cal, m ~ Month cal, o ~ CalendarOptions cal) => HasDate (CalendarDate m o cal) where
   type DoW (CalendarDate m o cal) = DayOfWeek cal
@@ -73,5 +74,5 @@ instance (IsCalendar cal, m ~ Month cal, o ~ CalendarOptions cal) => HasDate (Ca
 
 instance (IsCalendar cal, m ~ Month cal, o ~ CalendarOptions cal) => HasDate (CalendarDateTime m o cal) where
   type DoW (CalendarDateTime m o cal) = DayOfWeek cal
-  next dow (CalendarDateTime cd h m s) = CalendarDateTime (next dow cd) h m s
-  previous dow (CalendarDateTime cd h m s) = CalendarDateTime (previous dow cd) h m s
+  next i dow (CalendarDateTime cd h m s) = CalendarDateTime (next i dow cd) h m s
+  previous i dow (CalendarDateTime cd h m s) = CalendarDateTime (previous i dow cd) h m s
