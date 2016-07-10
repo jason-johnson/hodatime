@@ -43,30 +43,35 @@ data Calendar =
   | Islamic IslamicLeapYearPattern IslamicEpoch
     deriving (Eq, Show)
 
-data CalendarDateTime m calendar = CalendarDateTime (CalendarDate m calendar) Int Int Int
+data CalendarDateTime m o calendar = CalendarDateTime (CalendarDate m o calendar) Int Int Int
   deriving (Eq, Show)
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
-data CalendarDate m calendar = CalendarDate { ldYear :: Int16, ldMonth :: m, ldDay :: Int8 }
+data CalendarDate m o calendar = CalendarDate { ldYear :: Int16, ldMonth :: m, ldDay :: Int8, ldOptions :: o }
   deriving (Eq, Show)
 
-instance Ord m => Ord (CalendarDate m c) where
+instance (Ord m, Eq o) => Ord (CalendarDate m o c) where
   compare a b = comparing ldYear a b <> comparing ldMonth a b <> comparing ldDay a b
 
 class IsCalendar cal where
   type Date cal
   data DayOfWeek cal
   data Month cal
-  next' :: DayOfWeek cal -> CalendarDate (Month cal) cal -> CalendarDate (Month cal) cal
+  type CalendarOptions cal
+  next' :: DayOfWeek cal -> CalendarDate (Month cal) (CalendarOptions cal) cal -> CalendarDate (Month cal) (CalendarOptions cal) cal
+  previous' :: DayOfWeek cal -> CalendarDate (Month cal) (CalendarOptions cal) cal -> CalendarDate (Month cal) (CalendarOptions cal) cal
 
 class HasDate d where
-  type Input d
-  next :: Input d -> d -> d
+  type DoW d
+  next :: DoW d -> d -> d
+  previous :: DoW d -> d -> d
 
-instance (IsCalendar cal, m ~ Month cal) => HasDate (CalendarDate m cal) where
-  type Input (CalendarDate m cal) = DayOfWeek cal
+instance (IsCalendar cal, m ~ Month cal, o ~ CalendarOptions cal) => HasDate (CalendarDate m o cal) where
+  type DoW (CalendarDate m o cal) = DayOfWeek cal
   next = next'
+  previous = previous'
 
-instance (IsCalendar cal, m ~ Month cal) => HasDate (CalendarDateTime m cal) where
-  type Input (CalendarDateTime m cal) = DayOfWeek cal
+instance (IsCalendar cal, m ~ Month cal, o ~ CalendarOptions cal) => HasDate (CalendarDateTime m o cal) where
+  type DoW (CalendarDateTime m o cal) = DayOfWeek cal
   next dow (CalendarDateTime cd h m s) = CalendarDateTime (next dow cd) h m s
+  previous dow (CalendarDateTime cd h m s) = CalendarDateTime (previous dow cd) h m s

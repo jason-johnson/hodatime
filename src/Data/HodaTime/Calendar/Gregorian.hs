@@ -11,7 +11,6 @@ where
 import Data.HodaTime.Calendar.Gregorian.Internal
 import Data.HodaTime.Calendar.Internal
 import Data.HodaTime.Constants (daysPerYear, monthDayOffsets)
-import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.Int (Int32)
 import Control.Monad (guard)
 
@@ -23,28 +22,40 @@ minDate = 1582
 data Gregorian
 
 instance IsCalendar Gregorian where
-  type Date Gregorian = CalendarDate (Month Gregorian) Gregorian
+  type Date Gregorian = CalendarDate (Month Gregorian) Int Gregorian
   data DayOfWeek Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Eq, Ord, Enum, Bounded)
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December
     deriving (Show, Eq, Ord, Enum, Bounded)
+  type CalendarOptions Gregorian = Int
 
   next' = undefined
 
-calendarDate :: Int -> Month Gregorian -> Int -> Maybe (Date Gregorian)
-calendarDate d m y = do
+calendarDate :: Int -> Month Gregorian -> Int -> Int -> Maybe (Date Gregorian)
+calendarDate d m y minFirstWeekDays = do
   guard $ y > minDate
-  guard $ validDay d m y
-  return $ CalendarDate (fromIntegral y) m (fromIntegral d)
-
-validDay _ _ _ = True
+  guard $ d > 0 && d <= maxDaysInMonth (fromEnum m) y
+  return $ CalendarDate (fromIntegral y) m (fromIntegral d) minFirstWeekDays
 
 -- helper functions
 
-yearMonthDayToDays :: Int -> Int -> Int -> Int32
+maxDaysInMonth :: Int -> Int -> Int
+maxDaysInMonth 1 y
+  | isLeap                                = 29
+  | otherwise                             = 28
+  where
+    isLeap
+      | 0 == y `mod` 100                  = 0 == y `mod` 400
+      | otherwise                         = 0 == y `mod` 4
+maxDaysInMonth n _
+  | n == 3 || n == 5 || n == 8 || n == 10 = 30
+  | otherwise                             = 31
+
+yearMonthDayToDays :: Int -> Month Gregorian -> Int -> Int32
 yearMonthDayToDays year month day = fromIntegral days
   where
-    month' = if month > 1 then month - 2 else month + 10
-    years = if month < 2 then year - 2001 else year - 2000
+    m = fromEnum month
+    month' = if m > 1 then m - 2 else m + 10
+    years = if m < 2 then year - 2001 else year - 2000
     yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
     days = yearDays + monthDayOffsets !! month' + day - 1
