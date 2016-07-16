@@ -3,6 +3,7 @@
 module Data.HodaTime.Calendar.Gregorian
 (
    calendarDate
+  ,fromNthDay
   ,Month(..)
   ,DayOfWeek(..)
 )
@@ -39,6 +40,25 @@ calendarDate minFirstWeekDays d m y = do
   guard $ d > 0 && d <= maxDaysInMonth (fromEnum m) y
   let days = yearMonthDayToDays y m d
   return $ CalendarDate days minFirstWeekDays
+
+fromNthDay :: Int -> DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Int -> Maybe (Date Gregorian)
+fromNthDay minFirstWeekDays nth dow m y = flip CalendarDate minFirstWeekDays <$> days
+  where
+    mdim = maxDaysInMonth (fromEnum m) y
+    fomDays = yearMonthDayToDays y m 1
+    fdow = fomDays `mod` 7 + fromEnum' Wednesday
+    fdow' = if fdow > 6 then fdow - 7 else fdow
+    tdow = fromEnum' dow
+    tdow' = if tdow >= fdow' then tdow else 7 + tdow
+    dom = tdow' - fdow'
+    adj First = dom
+    adj Second = dom + 7
+    adj Third = dom + 14
+    adj Fourth = dom + 21
+    adj Fifth = dom + 28
+    dom' = adj nth
+    days = if dom' < fromIntegral mdim then Just (fomDays + dom') else Nothing    -- NOTE: we have to use < not <= because we're adding to first of the month
+    fromEnum' = fromIntegral . fromEnum
 
 -- helper functions
 

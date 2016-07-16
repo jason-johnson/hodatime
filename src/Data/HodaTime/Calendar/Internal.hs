@@ -6,6 +6,7 @@ module Data.HodaTime.Calendar.Internal
   ,IslamicEpoch(..)
   ,HebrewMonthNumbering(..)
   ,Calendar(..)
+  ,DayNth(..)
   ,CalendarDate(..)
   ,CalendarDateTime(..)
   ,IsCalendar(..)
@@ -42,6 +43,17 @@ data Calendar =
   | Islamic IslamicLeapYearPattern IslamicEpoch
     deriving (Eq, Show)
 
+data DayNth =
+    First
+  | Second
+  | Third
+  | Fourth
+  | Fifth
+  | Last
+  | SecondToLast
+  | ThirdToLast
+  | FourthToLast
+    deriving (Eq, Show)
 
 data CalendarDateTime o calendar = CalendarDateTime (CalendarDate o calendar) LocalTime
   deriving (Eq, Show, Ord)
