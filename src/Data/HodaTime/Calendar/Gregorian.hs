@@ -22,7 +22,7 @@ minDate = 1582
 data Gregorian
 
 instance IsCalendar Gregorian where
-  type Date Gregorian = CalendarDate (Month Gregorian) Int Gregorian
+  type Date Gregorian = CalendarDate Int Gregorian
   data DayOfWeek Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Eq, Ord, Enum, Bounded)
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December
@@ -30,13 +30,15 @@ instance IsCalendar Gregorian where
   type CalendarOptions Gregorian = Int
 
   next' = undefined
+  previous' = undefined
 
 -- | Smart constuctor for Gregorian calendar date.  Minimum first week days is the first argument to allow for easier defaulting
 calendarDate :: Int -> Int -> Month Gregorian -> Int -> Maybe (Date Gregorian)
 calendarDate minFirstWeekDays d m y = do
   guard $ y > minDate
   guard $ d > 0 && d <= maxDaysInMonth (fromEnum m) y
-  return $ CalendarDate (fromIntegral y) m (fromIntegral d) minFirstWeekDays
+  let days = yearMonthDayToDays y m d
+  return $ CalendarDate days minFirstWeekDays
 
 -- helper functions
 
