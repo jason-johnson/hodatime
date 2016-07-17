@@ -42,23 +42,32 @@ calendarDate minFirstWeekDays d m y = do
   return $ CalendarDate days minFirstWeekDays
 
 fromNthDay :: Int -> DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Int -> Maybe (Date Gregorian)
-fromNthDay minFirstWeekDays nth dow m y = flip CalendarDate minFirstWeekDays <$> days
+fromNthDay minFirstWeekDays nth dow m y = flip CalendarDate minFirstWeekDays <$> go (fromEnum' nth)
   where
+    go d
+      | d < 5     = forward d
+      | otherwise = backward (d - 5)
+    fromEnum' :: Enum n => n -> Int32
+    fromEnum' = fromIntegral . fromEnum
     mdim = maxDaysInMonth (fromEnum m) y
     fomDays = yearMonthDayToDays y m 1
-    fdow = fomDays `mod` 7 + fromEnum' Wednesday
-    fdow' = if fdow > 6 then fdow - 7 else fdow
-    tdow = fromEnum' dow
-    tdow' = if tdow >= fdow' then tdow else 7 + tdow
-    dom = tdow' - fdow'
-    adj First = dom
-    adj Second = dom + 7
-    adj Third = dom + 14
-    adj Fourth = dom + 21
-    adj Fifth = dom + 28
-    dom' = adj nth
-    days = if dom' < fromIntegral mdim then Just (fomDays + dom') else Nothing    -- NOTE: we have to use < not <= because we're adding to first of the month
-    fromEnum' = fromIntegral . fromEnum
+    eomDays = yearMonthDayToDays y m mdim
+    normalizeDow d = if d >= 7 then d - 7 else d
+    toDow = normalizeDow . (fromEnum' Wednesday +) . flip mod 7
+    normDow x d = if d >= x then d else d + 7
+    toDays days normalize subtr f multiple =
+      let
+        startDow = toDow days
+        --targetDow = normTDow startDow (fromEnum' dow)
+        targetDow = fromEnum' dow
+        (startDow', targetDow') = normalize startDow targetDow
+        adjustment = (targetDow' `subtr` startDow') + 7 * multiple
+        days' = days `f` adjustment
+        in do
+          guard $ adjustment < fromIntegral mdim           -- NOTE: we have to use < not <= because we're adding to first of the month or subtracting from the end of the month
+          return days'
+    forward = toDays fomDays (\s t -> (s, normDow s t)) (-) (+)
+    backward = toDays eomDays (\s t -> (normDow t s, t)) (flip (-)) (-)
 
 -- helper functions
 

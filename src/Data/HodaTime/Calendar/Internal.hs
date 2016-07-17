@@ -53,7 +53,7 @@ data DayNth =
   | SecondToLast
   | ThirdToLast
   | FourthToLast
-    deriving (Eq, Show)
+    deriving (Eq, Show, Enum)
 
 data CalendarDateTime o calendar = CalendarDateTime (CalendarDate o calendar) LocalTime
   deriving (Eq, Show, Ord)
