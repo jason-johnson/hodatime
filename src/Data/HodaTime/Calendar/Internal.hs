@@ -67,20 +67,24 @@ class IsCalendar cal where
   data DayOfWeek cal
   data Month cal
   type CalendarOptions cal
+  dayOfWeek' :: CalendarDate (CalendarOptions cal) cal -> DayOfWeek cal
   next' :: Int -> DayOfWeek cal -> CalendarDate (CalendarOptions cal) cal -> CalendarDate (CalendarOptions cal) cal
   previous' :: Int -> DayOfWeek cal -> CalendarDate (CalendarOptions cal) cal -> CalendarDate (CalendarOptions cal) cal
 
 class HasDate d where
   type DoW d
+  dayOfWeek :: d -> DoW d
   next :: Int -> DoW d -> d -> d
   previous :: Int -> DoW d -> d -> d
 
 instance (IsCalendar cal, o ~ CalendarOptions cal) => HasDate (CalendarDate o cal) where
   type DoW (CalendarDate o cal) = DayOfWeek cal
+  dayOfWeek = dayOfWeek'
   next = next'
   previous = previous'
 
 instance (IsCalendar cal, o ~ CalendarOptions cal) => HasDate (CalendarDateTime o cal) where
   type DoW (CalendarDateTime o cal) = DayOfWeek cal
+  dayOfWeek (CalendarDateTime cd _) = dayOfWeek cd
   next i dow (CalendarDateTime cd lt) = CalendarDateTime (next i dow cd) lt
   previous i dow (CalendarDateTime cd lt) = CalendarDateTime (previous i dow cd) lt

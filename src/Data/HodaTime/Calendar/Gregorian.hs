@@ -31,6 +31,7 @@ instance IsCalendar Gregorian where
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December
     deriving (Show, Eq, Ord, Enum, Bounded)
   type CalendarOptions Gregorian = Int
+  dayOfWeek' (CalendarDate days _) = toEnum . dayOfWeekFromDays . fromIntegral $ days
 
   next' = undefined
   previous' = undefined
@@ -55,7 +56,7 @@ fromNthDay minFirstWeekDays nth dow m y = flip CalendarDate minFirstWeekDays <$>
     normDow x d = if d >= x then d else d + 7
     toDays days normalize subtr f multiple =
       let
-        startDow = dayOfWeek' days
+        startDow = dayOfWeekFromDays days
         --targetDow = normTDow startDow (fromEnum' dow)
         targetDow = fromEnum dow
         (startDow', targetDow') = normalize startDow targetDow
@@ -69,8 +70,8 @@ fromNthDay minFirstWeekDays nth dow m y = flip CalendarDate minFirstWeekDays <$>
 
 -- helper functions
 
-dayOfWeek' :: Int -> Int
-dayOfWeek' = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
+dayOfWeekFromDays :: Int -> Int
+dayOfWeekFromDays = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
   where
     normalize n = if n >= 7 then n - 7 else n
 
