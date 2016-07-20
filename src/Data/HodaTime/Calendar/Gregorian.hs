@@ -53,20 +53,17 @@ fromNthDay minFirstWeekDays nth dow m y = flip CalendarDate minFirstWeekDays <$>
     mdim = maxDaysInMonth (fromEnum m) y
     fomDays = yearMonthDayToDays y m 1
     eomDays = yearMonthDayToDays y m mdim
-    normDow x d = if d >= x then d else d + 7
-    toDays days normalize subtr f multiple =
+    toDays days adjust f multiple =
       let
         startDow = dayOfWeekFromDays days
-        --targetDow = normTDow startDow (fromEnum' dow)
         targetDow = fromEnum dow
-        (startDow', targetDow') = normalize startDow targetDow
-        adjustment = (targetDow' `subtr` startDow') + 7 * multiple
+        adjustment = 7 * multiple + adjust startDow targetDow
         days' = days `f` adjustment
         in do
           guard $ adjustment < fromIntegral mdim           -- NOTE: we have to use < not <= because we're adding to first of the month or subtracting from the end of the month
           return $ fromIntegral days'
-    forward = toDays fomDays (\s t -> (s, normDow s t)) (-) (+)
-    backward = toDays eomDays (\s t -> (normDow t s, t)) (flip (-)) (-)
+    forward = toDays fomDays weekdayDistance (+)
+    backward = toDays eomDays (flip weekdayDistance) (-)
 
 -- helper functions
 
@@ -74,6 +71,11 @@ dayOfWeekFromDays :: Int -> Int
 dayOfWeekFromDays = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
   where
     normalize n = if n >= 7 then n - 7 else n
+
+weekdayDistance :: (Ord a, Num a) => a -> a -> a
+weekdayDistance s e = e' - s
+  where
+    e' = if e >= s then e else e + 7
 
 maxDaysInMonth :: Int -> Int -> Int
 maxDaysInMonth 1 y
