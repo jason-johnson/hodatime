@@ -2,11 +2,7 @@
 
 module Data.HodaTime.Calendar.Internal
 (
-   IslamicLeapYearPattern(..)
-  ,IslamicEpoch(..)
-  ,HebrewMonthNumbering(..)
-  ,Calendar(..)
-  ,DayNth(..)
+   DayNth(..)
   ,CalendarDate(..)
   ,CalendarDateTime(..)
   ,IsCalendar(..)
@@ -16,32 +12,7 @@ where
 
 import Data.HodaTime.LocalTime.Internal (LocalTime(..))
 import Data.Int (Int32)
-
-data IslamicLeapYearPattern =
-    ILYPBase15
-  | ILYPBase16
-  | ILYPIndian
-  | ILYPHabashAlHasib
-    deriving (Eq, Show)
-
-data IslamicEpoch =
-    IslamicAstronomical
-  | IslamicCivil
-    deriving (Eq, Show)
-
-data HebrewMonthNumbering =
-    HebrewCivil
-  | HebrewScriptural
-    deriving (Eq, Show)
-
-data Calendar =
-    Iso
-  | Gregorian           -- TODO: Add min week day thing?
-  | Persian
-  | Hebrew HebrewMonthNumbering
-  | Coptic              -- TODO: Add min week day thing?
-  | Islamic IslamicLeapYearPattern IslamicEpoch
-    deriving (Eq, Show)
+import Data.Word (Word8, Word32)
 
 data DayNth =
     First
@@ -59,8 +30,14 @@ data CalendarDateTime o calendar = CalendarDateTime (CalendarDate o calendar) Lo
   deriving (Eq, Show, Ord)
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
+-- Note: We keep the date in 2 formats, redundantly.  We depend on lazy evaluation to only produce the portion that is actually used
+--data CalendarDate o calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdMonth :: Word8, cdYear :: Word32, ldOptions :: o }
 data CalendarDate o calendar = CalendarDate { cdDays :: Int32, ldOptions :: o }
   deriving (Eq, Show, Ord)
+
+-- NOTE: This is a test form of the calendar date that only stores the cycle.  Everything else will be pulled from the date cache table, as required
+--data CalendarDate o calendar = CalendarDate { cdDays :: Int32, cdCycle :: Word8, ldOptions :: o }
+--  deriving (Eq, Show, Ord)
 
 class IsCalendar cal where
   type Date cal
