@@ -25,13 +25,12 @@ epochDayOfWeek = Wednesday
 data Gregorian
 
 instance IsCalendar Gregorian where
-  type Date Gregorian = CalendarDate Int Gregorian
+  type Date Gregorian = CalendarDate Gregorian
   data DayOfWeek Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Eq, Ord, Enum, Bounded)
-  data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December
-    deriving (Show, Eq, Ord, Enum, Bounded)
-  type CalendarOptions Gregorian = Int
-  dayOfWeek' (CalendarDate days _) = toEnum . dayOfWeekFromDays . fromIntegral $ days
+  data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December      -- TODO: Move January and February to the back so the Enums work without adjustment
+    deriving (Show, Eq, Ord, Enum, Bounded)                                                                                               -- TODO: Note that if we do this, we can't derive Ord and possibly not bounded, they have to be hand written (is this true?  Do we need Jan == 0?)
+  dayOfWeek' (CalendarDate days) = toEnum . dayOfWeekFromDays . fromIntegral $ days
 
   next' = undefined
   previous' = undefined
@@ -42,10 +41,10 @@ calendarDate minFirstWeekDays d m y = do
   guard $ y > minDate
   guard $ d > 0 && d <= maxDaysInMonth (fromEnum m) y
   let days = fromIntegral $ yearMonthDayToDays y m d
-  return $ CalendarDate days minFirstWeekDays
+  return $ CalendarDate days
 
 fromNthDay :: Int -> DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Int -> Maybe (Date Gregorian)
-fromNthDay minFirstWeekDays nth dow m y = flip CalendarDate minFirstWeekDays <$> go (fromEnum nth)
+fromNthDay minFirstWeekDays nth dow m y = CalendarDate <$> go (fromEnum nth)
   where
     go d
       | d < 5     = forward d
