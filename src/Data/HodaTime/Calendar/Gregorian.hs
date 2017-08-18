@@ -39,7 +39,7 @@ instance IsCalendar Gregorian where
 calendarDate :: Int -> Int -> Month Gregorian -> Int -> Maybe (Date Gregorian)
 calendarDate minFirstWeekDays d m y = do
   guard $ y > minDate
-  guard $ d > 0 && d <= maxDaysInMonth (fromEnum m) y
+  guard $ d > 0 && d <= maxDaysInMonth m y
   let days = fromIntegral $ yearMonthDayToDays y m d
   return $ CalendarDate days
 
@@ -49,7 +49,7 @@ fromNthDay minFirstWeekDays nth dow m y = CalendarDate <$> go (fromEnum nth)
     go d
       | d < 5     = forward d
       | otherwise = backward (d - 5)
-    mdim = maxDaysInMonth (fromEnum m) y
+    mdim = maxDaysInMonth m y
     fomDays = yearMonthDayToDays y m 1
     eomDays = yearMonthDayToDays y m mdim
     toDays days adjust f multiple =
@@ -76,8 +76,8 @@ weekdayDistance s e = e' - s
   where
     e' = if e >= s then e else e + 7
 
-maxDaysInMonth :: Int -> Int -> Int
-maxDaysInMonth 1 y
+maxDaysInMonth :: Month Gregorian -> Int -> Int
+maxDaysInMonth February y
   | isLeap                                = 29
   | otherwise                             = 28
   where
@@ -85,8 +85,8 @@ maxDaysInMonth 1 y
       | 0 == y `mod` 100                  = 0 == y `mod` 400
       | otherwise                         = 0 == y `mod` 4
 maxDaysInMonth n _
-  | n == 3 || n == 5 || n == 8 || n == 10 = 30
-  | otherwise                             = 31
+  | n == April || n == June || n == September || n == November  = 30
+  | otherwise                                                   = 31
 
 yearMonthDayToDays :: Int -> Month Gregorian -> Int -> Int
 yearMonthDayToDays year month day = days
