@@ -3,12 +3,6 @@ module Data.HodaTime.TimeZone
    utc
   ,local
   ,timeZoneAt
-  ,atLeniently
-  ,atStartOfDay
-  ,atStrictly
-  ,atAll
-  ,resolve
-  ,forOffset
   ,getUtcOffset
   ,maxOffset
   ,minOffset
@@ -16,7 +10,6 @@ module Data.HodaTime.TimeZone
 where
 
 import Data.HodaTime.TimeZone.Internal
-import Data.HodaTime.LocalDateTime.Internal (LocalDateTime, LocalDate)
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime, ZoneLocalResult(..))
 import Data.HodaTime.OffsetDateTime.Internal (Offset)
 
@@ -29,6 +22,7 @@ timeZoneAt = undefined
 local :: TimeZone
 local = undefined
 
+{-
 atLeniently :: LocalDateTime -> TimeZone -> ZonedDateTime
 atLeniently = undefined
 
@@ -55,6 +49,7 @@ resolve _ldt _tz _am _sk = undefined
 -- | Return a special 'ZonedDateTime' for the given 'Offset'.  The identifier will be "UTC" in the case of a zero 'Offset' and "UTC(+/-)Offset" otherwise.
 forOffset :: LocalDateTime -> Offset -> TimeZone
 forOffset = undefined
+-}
 
 getUtcOffset :: TimeZone -> Int
 getUtcOffset UTCzone = 0

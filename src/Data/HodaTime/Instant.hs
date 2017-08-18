@@ -21,9 +21,9 @@ module Data.HodaTime.Instant
   ,difference
   ,minus
   -- * Conversion
-  ,withOffset
-  ,inZone
   ,inUtc
+  -- * Debug - to be removed
+  ,LTI.fromInstant  -- TODO:  REMOVE THIS!  This is only exported for testing, remove it immediately after fixing fromSecondsSinceUnixEpoch
 )
 where
 
@@ -31,15 +31,12 @@ import Data.HodaTime.Instant.Internal
 import Data.HodaTime.Instant.Clock (now)
 import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond)
 import Data.HodaTime.Duration.Internal (Duration(..))
-import Data.HodaTime.OffsetDateTime.Internal(Offset(..), OffsetDateTime(..))
-import Data.HodaTime.LocalDateTime.Internal (LocalDateTime(..))
+import Data.HodaTime.OffsetDateTime.Internal(Offset(..))
 import Data.HodaTime.TimeZone.Internal (TimeZone(..))
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
-import Data.HodaTime.Calendar (Calendar(..))
 import qualified Data.HodaTime.OffsetDateTime.Internal as Offset (empty)
 import qualified Data.HodaTime.Duration.Internal as D
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant)
-import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI (fromInstantInCalendar)
 
 -- | Create an 'Instant' from an 'Int' that represents a Unix Epoch
 fromSecondsSinceUnixEpoch :: Int -> Instant
@@ -77,6 +74,7 @@ minus linstant (Duration rinstant) = getInstant $ difference linstant rinstant
 
 -- Conversion
 
+{-^}
 -- | Create an 'OffsetDateTime' from this Instant and an Offset
 withOffset :: Instant -> Offset -> Calendar -> OffsetDateTime
 withOffset instant offset calendar = OffsetDateTime (LocalDateTime date time) offset          -- TODO: I'm not sure I like applying the offset on construction.  See if we can defer it
@@ -97,6 +95,7 @@ inZone instant tzi@TimeZone { } calendar = ZonedDateTime odt tzi
         odt = withOffset instant offset calendar
         offset
             | otherwise = undefined       -- TODO: When TimeZone module is implemented we can finish this (look at the olson time zone series from hackage, but we can't use it all)
+-}
 
 -- | Convert 'Instant' to a 'ZonedDateTime' in the UTC time zone, ISO calendar
 inUtc :: Instant -> ZonedDateTime

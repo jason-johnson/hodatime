@@ -1,13 +1,10 @@
 module Data.HodaTime.Calendar.Gregorian.Internal
 (
-  fromInstantInCalendar
 )
 where
 
 import Data.HodaTime.Constants (daysPerCycle, daysPerCentury, daysPerFourYears, daysPerYear, monthDayOffsets)
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Data.HodaTime.Calendar(Calendar)
-import Data.HodaTime.LocalDateTime.Internal(LocalDate(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Maybe (fromJust)
 import Data.List (findIndex)
@@ -15,10 +12,10 @@ import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMont
 import Data.Int (Int32, Int8, Int16)
 
 -- | Internal helper method to convert into a Gregorian compatible LocalDate
-fromInstantInCalendar :: Instant -> Calendar -> LocalDate
-fromInstantInCalendar (Instant days _ _) = LocalDate year month day
-    where
-        (year, month, day) = daysToYearMonthDay days
+--fromInstantInCalendar :: Instant -> Calendar -> LocalDate
+--fromInstantInCalendar (Instant days _ _) = LocalDate year month day
+--    where
+--        (year, month, day) = daysToYearMonthDay days
 
 -- | The issue is that 4 * daysPerCentury will be one less than daysPerCycle.  The reason for this is that the Gregorian calendar adds one more day per 400 year cycle
 --   and this day is missing from adding up 4 individual centuries.  We have the same issue again with 4 years (i.e. 365*4 is daysPerFourYears - 1)
