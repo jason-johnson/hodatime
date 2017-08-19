@@ -30,7 +30,7 @@ instance IsCalendar Gregorian where
     deriving (Show, Eq, Ord, Enum, Bounded)
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December      -- TODO: Move January and February to the back so the Enums work without adjustment
     deriving (Show, Eq, Ord, Enum, Bounded)                                                                                               -- TODO: Note that if we do this, we can't derive Ord and possibly not bounded, they have to be hand written (is this true?  Do we need Jan == 0?)
-  dayOfWeek' (CalendarDate days) = toEnum . dayOfWeekFromDays . fromIntegral $ days
+  dayOfWeek' (CalendarDate days _ _ _) = toEnum . dayOfWeekFromDays . fromIntegral $ days
 
   next' = undefined
   previous' = undefined
@@ -41,28 +41,23 @@ calendarDate d m y = do
   guard $ y > minDate
   guard $ d > 0 && d <= maxDaysInMonth m y
   let days = fromIntegral $ yearMonthDayToDays y m d
-  return $ CalendarDate days
+  return $ CalendarDate days (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
 
 fromNthDay :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Int -> Maybe (Date Gregorian)
-fromNthDay nth dow m y = CalendarDate <$> go (fromEnum nth)
+fromNthDay nth dow m y = do
+  guard $ adjustment < fromIntegral mdim           -- NOTE: we have to use < not <= because we're adding to first of the month or subtracting from the end of the month
+  return $ CalendarDate (fromIntegral days) (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
   where
-    go d
-      | d < 5     = forward d
-      | otherwise = backward (d - 5)
     mdim = maxDaysInMonth m y
-    fomDays = yearMonthDayToDays y m 1
+    somDays = yearMonthDayToDays y m 1
     eomDays = yearMonthDayToDays y m mdim
-    toDays days adjust f multiple =
-      let
-        startDow = dayOfWeekFromDays days
-        targetDow = fromEnum dow
-        adjustment = 7 * multiple + adjust startDow targetDow
-        days' = days `f` adjustment
-        in do
-          guard $ adjustment < fromIntegral mdim           -- NOTE: we have to use < not <= because we're adding to first of the month or subtracting from the end of the month
-          return $ fromIntegral days'
-    forward = toDays fomDays weekdayDistance (+)
-    backward = toDays eomDays (flip weekdayDistance) (-)
+    startDow = dayOfWeekFromDays days'
+    targetDow = fromEnum dow
+    adjustment = 7 * multiple + adjust startDow targetDow
+    (days', multiple, adjust, d, days) = frontOrBack (fromEnum nth)
+    frontOrBack nth'
+      | nth' < 5  = (somDays, nth', weekdayDistance, adjustment + 1, somDays + adjustment)
+      | otherwise = (eomDays, nth' - 5, flip weekdayDistance, mdim - adjustment, eomDays - adjustment)
 
 -- helper functions
 

@@ -31,8 +31,7 @@ data CalendarDateTime calendar = CalendarDateTime (CalendarDate calendar) LocalT
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
 -- Note: We keep the date in 2 formats, redundantly.  We depend on lazy evaluation to only produce the portion that is actually used
---data CalendarDate o calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdMonth :: Word8, cdYear :: Word32, ldOptions :: o }
-data CalendarDate calendar = CalendarDate { cdDays :: Int32 }
+data CalendarDate calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdMonth :: Word8, cdYear :: Word32 }
   deriving (Eq, Show, Ord)
 
 -- NOTE: This is a test form of the calendar date that only stores the cycle.  Everything else will be pulled from the date cache table, as required
