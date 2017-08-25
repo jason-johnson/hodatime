@@ -2,8 +2,11 @@
 
 module Data.HodaTime.Calendar.Gregorian
 (
+  -- * Constructors
    calendarDate
   ,fromNthDay
+  ,fromWeekDate
+  -- * Types
   ,Month(..)
   ,DayOfWeek(..)
 )
@@ -35,7 +38,7 @@ instance IsCalendar Gregorian where
   next' = undefined
   previous' = undefined
 
--- | Smart constuctor for Gregorian calendar date.  Minimum first week days is the first argument to allow for easier defaulting
+-- | Smart constuctor for Gregorian calendar date.
 calendarDate :: Int -> Month Gregorian -> Int -> Maybe (Date Gregorian)
 calendarDate d m y = do
   guard $ y > minDate
@@ -43,6 +46,7 @@ calendarDate d m y = do
   let days = fromIntegral $ yearMonthDayToDays y m d
   return $ CalendarDate days (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
 
+-- | Smart constuctor for Gregorian calendar date based on relative month day.
 fromNthDay :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Int -> Maybe (Date Gregorian)
 fromNthDay nth dow m y = do
   guard $ adjustment < fromIntegral mdim           -- NOTE: we have to use < not <= because we're adding to first of the month or subtracting from the end of the month
