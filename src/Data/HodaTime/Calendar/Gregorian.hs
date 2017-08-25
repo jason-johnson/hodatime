@@ -33,13 +33,16 @@ instance IsCalendar Gregorian where
     deriving (Show, Eq, Ord, Enum, Bounded)
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December      -- TODO: Move January and February to the back so the Enums work without adjustment
     deriving (Show, Eq, Ord, Enum, Bounded)                                                                                               -- TODO: Note that if we do this, we can't derive Ord and possibly not bounded, they have to be hand written (is this true?  Do we need Jan == 0?)
+  day' (CalendarDate _ d _ _) = fromIntegral d
+  month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m
+  year' (CalendarDate _ _ _ y) = fromIntegral y
   dayOfWeek' (CalendarDate days _ _ _) = toEnum . dayOfWeekFromDays . fromIntegral $ days
 
   next' = undefined
   previous' = undefined
 
 -- | Smart constuctor for Gregorian calendar date.
-calendarDate :: Int -> Month Gregorian -> Int -> Maybe (Date Gregorian)
+calendarDate :: DayOfMonth -> Month Gregorian -> Year -> Maybe (Date Gregorian)
 calendarDate d m y = do
   guard $ y > minDate
   guard $ d > 0 && d <= maxDaysInMonth m y
@@ -47,7 +50,7 @@ calendarDate d m y = do
   return $ CalendarDate days (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
 
 -- | Smart constuctor for Gregorian calendar date based on relative month day.
-fromNthDay :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Int -> Maybe (Date Gregorian)
+fromNthDay :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Year -> Maybe (Date Gregorian)
 fromNthDay nth dow m y = do
   guard $ adjustment < fromIntegral mdim           -- NOTE: we have to use < not <= because we're adding to first of the month or subtracting from the end of the month
   return $ CalendarDate (fromIntegral days) (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
@@ -75,7 +78,7 @@ weekdayDistance s e = e' - s
   where
     e' = if e >= s then e else e + 7
 
-maxDaysInMonth :: Month Gregorian -> Int -> Int
+maxDaysInMonth :: Month Gregorian -> Year -> Int
 maxDaysInMonth February y
   | isLeap                                = 29
   | otherwise                             = 28
@@ -87,11 +90,22 @@ maxDaysInMonth n _
   | n == April || n == June || n == September || n == November  = 30
   | otherwise                                                   = 31
 
+yearMonthDayToDays :: Year -> Month Gregorian -> DayOfMonth -> Int
+yearMonthDayToDays y m d = days
+  where
+    m' = if m > February then fromEnum m - 2 else fromEnum m + 10
+    years = if m < March then y - 2001 else y - 2000
+    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
+    days = yearDays + monthDayOffsets !! m' + d - 1
+
+{-
 yearMonthDayToDays :: Int -> Month Gregorian -> Int -> Int
 yearMonthDayToDays year month day = days
   where
     m = fromEnum month
-    month' = if m > 1 then m - 2 else m + 10
-    years = if m < 2 then year - 2001 else year - 2000
-    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
-    days = yearDays + monthDayOffsets !! month' + day - 1
+    m' = if m > 1 then m - 2 else m + 10
+    y = if m < 2 then year - 1 else year
+    era = (/ 400) $ if y >= 0 then y else y-399   -- TODO: this is wrong, we should probably just do: div 400.  The -399 is only for certain C++ compilers, but we should test it
+    yoe = y - era * 400                             -- [0,399]
+    doy = (153*(m + (m >= 2 ? -2 : 10)) + 2)/5 + d-1  -- TODO: What does this do?
+-}

@@ -3,6 +3,8 @@
 module Data.HodaTime.Calendar.Internal
 (
    DayNth(..)
+  ,Year
+  ,DayOfMonth
   ,CalendarDate(..)
   ,CalendarDateTime(..)
   ,IsCalendar(..)
@@ -26,6 +28,9 @@ data DayNth =
   | FourthToLast
     deriving (Eq, Show, Enum)
 
+type Year = Int
+type DayOfMonth = Int
+
 data CalendarDateTime calendar = CalendarDateTime (CalendarDate calendar) LocalTime
   deriving (Eq, Show, Ord)
 
@@ -42,24 +47,39 @@ class IsCalendar cal where
   type Date cal
   data DayOfWeek cal
   data Month cal
+  day' :: CalendarDate cal -> DayOfMonth
+  month' :: CalendarDate cal -> Month cal
+  year' :: CalendarDate cal -> Year
   dayOfWeek' :: CalendarDate cal -> DayOfWeek cal
   next' :: Int -> DayOfWeek cal -> CalendarDate cal -> CalendarDate cal
   previous' :: Int -> DayOfWeek cal -> CalendarDate cal -> CalendarDate cal
 
 class HasDate d where
   type DoW d
+  type MoY d
+  day :: d -> DayOfMonth
+  month :: d -> MoY d
+  year :: d -> Year
   dayOfWeek :: d -> DoW d
   next :: Int -> DoW d -> d -> d
   previous :: Int -> DoW d -> d -> d
 
 instance (IsCalendar cal) => HasDate (CalendarDate cal) where
   type DoW (CalendarDate cal) = DayOfWeek cal
+  type MoY (CalendarDate cal) = Month cal
+  day = day'
+  month = month'
+  year = year'
   dayOfWeek = dayOfWeek'
   next = next'
   previous = previous'
 
 instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   type DoW (CalendarDateTime cal) = DayOfWeek cal
+  type MoY (CalendarDateTime cal) = Month cal
+  day (CalendarDateTime cd _) = day cd
+  month (CalendarDateTime cd _) = month cd
+  year (CalendarDateTime cd _) = year cd
   dayOfWeek (CalendarDateTime cd _) = dayOfWeek cd
   next i dow (CalendarDateTime cd lt) = CalendarDateTime (next i dow cd) lt
   previous i dow (CalendarDateTime cd lt) = CalendarDateTime (previous i dow cd) lt
