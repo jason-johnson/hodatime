@@ -17,6 +17,10 @@
 module Data.HodaTime.LocalTime
 (
    LocalTime
+  ,Hour
+  ,Minute
+  ,Second
+  ,Nanosecond
   ,localTime
   ,hours
   ,minutes
@@ -29,14 +33,15 @@ import Data.HodaTime.LocalTime.Internal
 import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs, secondsFromHours, secondsFromMinutes)
 import Control.Monad (guard)
 
+type Hour = Int
+type Minute = Int
+type Second = Int
+type Nanosecond = Int
+
 -- Construction
 
 -- | Create a new 'LocalTime' from an hour, minute, second and nanosecond if values are valid, nothing otherwise
-localTime :: Int   -- ^ hour
-         -> Int   -- ^ minute
-         -> Int   -- ^ second
-         -> Int   -- ^ nanoseconds
-         -> Maybe LocalTime
+localTime :: Hour -> Minute -> Second -> Nanosecond -> Maybe LocalTime
 localTime h m s ns = do
   guard $ h < 24 && h >= 0
   guard $ m < 60 && m >= 0
@@ -50,27 +55,27 @@ localTime h m s ns = do
 -- Accessors
 
 -- | Lens for the hours component of the 'LocalTime'
-hours :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
+hours :: Functor f => (Hour -> f Hour) -> LocalTime -> f LocalTime
 hours f (LocalTime secs nsecs) = hoursFromSecs to f secs
   where
     to = fromSecondsNormalized nsecs
 {-# INLINE hours #-}
 
 -- | Lens for the minutes component of the 'LocalTime'
-minutes :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
+minutes :: Functor f => (Minute -> f Minute) -> LocalTime -> f LocalTime
 minutes f (LocalTime secs nsecs) = minutesFromSecs to f secs
   where
     to = fromSecondsNormalized nsecs
 {-# INLINE minutes #-}
 
 -- | Lens for the seconds component of the 'LocalTime'
-seconds :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
+seconds :: Functor f => (Second -> f Second) -> LocalTime -> f LocalTime
 seconds f (LocalTime secs nsecs) = secondsFromSecs to f secs
   where
     to = fromSecondsNormalized nsecs
 {-# INLINE seconds #-}
 
 -- | Lens for the nanoseconds component of the 'LocalTime'.  NOTE: no effort is made to detect nano overflow.  They will simply roll over on overflow without affecting the rest of the time.
-nanoseconds :: Functor f => (Int -> f Int) -> LocalTime -> f LocalTime
+nanoseconds :: Functor f => (Nanosecond -> f Nanosecond) -> LocalTime -> f LocalTime
 nanoseconds f (LocalTime secs nsecs) = LocalTime secs . fromIntegral <$> (f . fromIntegral) nsecs
 {-# INLINE nanoseconds #-}
