@@ -47,7 +47,7 @@ class IsCalendar cal where
   type Date cal
   data DayOfWeek cal
   data Month cal
-  day' :: CalendarDate cal -> DayOfMonth
+  day' :: Functor f => (DayOfMonth -> f DayOfMonth) -> CalendarDate cal -> f (CalendarDate cal)
   month' :: CalendarDate cal -> Month cal
   year' :: CalendarDate cal -> Year
   dayOfWeek' :: CalendarDate cal -> DayOfWeek cal
@@ -57,7 +57,7 @@ class IsCalendar cal where
 class HasDate d where
   type DoW d
   type MoY d
-  day :: d -> DayOfMonth
+  day :: Functor f => (DayOfMonth -> f DayOfMonth) -> d -> f (d)
   month :: d -> MoY d
   year :: d -> Year
   dayOfWeek :: d -> DoW d
@@ -77,7 +77,7 @@ instance (IsCalendar cal) => HasDate (CalendarDate cal) where
 instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   type DoW (CalendarDateTime cal) = DayOfWeek cal
   type MoY (CalendarDateTime cal) = Month cal
-  day (CalendarDateTime cd _) = day cd
+  day f (CalendarDateTime cd lt) = flip CalendarDateTime lt <$> day f cd
   month (CalendarDateTime cd _) = month cd
   year (CalendarDateTime cd _) = year cd
   dayOfWeek (CalendarDateTime cd _) = dayOfWeek cd
