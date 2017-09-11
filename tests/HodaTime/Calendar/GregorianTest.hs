@@ -10,9 +10,10 @@ import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 import Data.Maybe (fromJust)
+import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
-import Data.HodaTime.Calendar (day, monthl, year)
+import Data.HodaTime.Calendar (day, monthl, month, year)
 import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), Gregorian)
 
 instance Arbitrary (Month Gregorian) where
@@ -24,10 +25,25 @@ gregorianTests :: TestTree
 gregorianTests = testGroup "Gregorian Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [lensProps]
+qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps]
 
 unitTests :: TestTree
-unitTests = testGroup "Unit tests" [leapUnits]
+unitTests = testGroup "Unit tests" [lensUnits]
+
+constructorProps :: TestTree
+constructorProps = testGroup "Constructor"
+  [
+    QC.testProperty "same dates as Data.Time" $ testConstructor
+  ]
+    where
+      areSame Nothing Nothing = True
+      areSame (Just hdate) (Just date) = let (ty, tm, tday) = toGregorian date
+                      in get day hdate == tday && (convertMonth . month $ hdate) == tm && get year hdate == (fromIntegral ty)
+      areSame _ _ = False
+      convertMonth = succ . fromEnum
+      testConstructor (Positive y) m (Positive d) = areSame (calendarDate d m y') (fromGregorianValid (fromIntegral y') (convertMonth m) d)
+        where
+          y' = 1900 + y
 
 lensProps :: TestTree
 lensProps = testGroup "Lens"
@@ -39,8 +55,8 @@ lensProps = testGroup "Lens"
     mkcd d m = fromJust . calendarDate d m
     testMonthAdd d (Positive y) m add = y < 400 QC.==> get day (modify (+ add) monthl $ mkcd d m (y + 1900)) == d  -- NOTE: We fix the year so we don't run out of tests
 
-leapUnits :: TestTree
-leapUnits = testGroup "Rollover"
+lensUnits :: TestTree
+lensUnits = testGroup "Lens"
   [
      testCase "31-January-2000 + 2M == 31-March-2000" $ modify (+2) monthl <$> janEnd @?= calendarDate 31 March 2000
     ,testCase "31-January-2000 + 1M == 29-February-2000" $ modify (+1) monthl <$> janEnd @?= calendarDate 29 February 2000

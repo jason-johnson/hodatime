@@ -9,6 +9,8 @@ where
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
 
+-- Lenses
+
 get :: ((s -> Const s c) -> a -> Const t b) -> a -> t
 get l = getConst . l Const
   
