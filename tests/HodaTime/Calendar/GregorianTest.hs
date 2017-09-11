@@ -45,7 +45,9 @@ leapUnits = testGroup "Rollover"
      testCase "31-January-2000 + 2M == 31-March-2000" $ modify (+2) monthl <$> janEnd @?= calendarDate 31 March 2000
     ,testCase "31-January-2000 + 1M == 29-February-2000" $ modify (+1) monthl <$> janEnd @?= calendarDate 29 February 2000
     ,testCase "29-February-2000 + 1Y == 28-February-2001" $ modify (+1) year <$> leapFeb @?= calendarDate 28 February 2001
+    ,testCase "31-December-2000 + 1D == 1-January-2001" $ modify (+1) day <$> endYear @?= calendarDate 1 January 2001
   ]
     where
       janEnd = calendarDate 31 January 2000
       leapFeb = calendarDate 29 February 2000
+      endYear = calendarDate 31 December 2000
