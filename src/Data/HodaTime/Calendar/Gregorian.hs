@@ -73,21 +73,9 @@ instance IsCalendar Gregorian where
 
   dayOfWeek' (CalendarDate days _ _ _) = toEnum . dayOfWeekFromDays . fromIntegral $ days
 
-  next' n dow (CalendarDate days _ _ _) = CalendarDate days' d m y
-    where
-      currentDoW = dayOfWeekFromDays . fromIntegral $ days
-      targetDow = fromIntegral . fromEnum $ dow
-      distance = targetDow - currentDoW
-      days' = fromIntegral $ fromIntegral days + 7 * n + distance
-      (y, m, d) = daysToYearMonthDay days'
+  next' n dow (CalendarDate days _ _ _) = moveByDow n dow (-) (+) (fromIntegral days)
 
-  previous' n dow (CalendarDate days _ _ _) = CalendarDate days' d m y
-     where
-       currentDoW = dayOfWeekFromDays . fromIntegral $ days
-       targetDow = fromIntegral . fromEnum $ dow
-       distance = currentDoW - targetDow
-       days' = fromIntegral $ fromIntegral days - 7 * n - distance
-       (y, m, d) = daysToYearMonthDay days'
+  previous' n dow (CalendarDate days _ _ _) = moveByDow n dow subtract (-) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
 
 -- Constructors
 
@@ -127,6 +115,15 @@ weekdayDistance :: (Ord a, Num a) => a -> a -> a
 weekdayDistance s e = e' - s
   where
     e' = if e >= s then e else e + 7
+
+moveByDow :: Int -> DayOfWeek Gregorian -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> Int -> CalendarDate Gregorian
+moveByDow n dow distanceF adjust days = CalendarDate days' d m y
+  where
+    currentDoW = dayOfWeekFromDays days
+    targetDow = fromIntegral . fromEnum $ dow
+    distance = distanceF targetDow currentDoW
+    days' = fromIntegral $ fromIntegral days `adjust` (7 * n) `adjust` distance
+    (y, m, d) = daysToYearMonthDay days'
 
 maxDaysInMonth :: Month Gregorian -> Year -> Int
 maxDaysInMonth February y
