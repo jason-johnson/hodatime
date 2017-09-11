@@ -40,9 +40,12 @@ instance IsCalendar Gregorian where
 
   day' f (CalendarDate _ d m y) = mkcd . (rest+) <$> f (fromIntegral d)
     where
-      mkcd days = CalendarDate (fromIntegral days) d' m' y'
       rest = pred $ yearMonthDayToDays (fromIntegral y) (toEnum . fromIntegral $ m) 1
-      (d', m', y') = (0, 0, 0)    -- TODO: day, month, year not calculated
+      mkcd days =
+        let
+          days' = fromIntegral days
+          (y', m', d') = daysToYearMonthDay days'
+        in CalendarDate (fromIntegral days) d' m' y'
   {-# INLINE day' #-}
 
   month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m

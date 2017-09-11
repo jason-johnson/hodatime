@@ -1,5 +1,6 @@
 module Data.HodaTime.Calendar.Gregorian.Internal
 (
+  daysToYearMonthDay
 )
 where
 
@@ -10,6 +11,7 @@ import Data.Maybe (fromJust)
 import Data.List (findIndex)
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.Int (Int32, Int8, Int16)
+import Data.Word (Word8, Word32)
 
 -- | Internal helper method to convert into a Gregorian compatible LocalDate
 --fromInstantInCalendar :: Instant -> Calendar -> LocalDate
@@ -33,7 +35,7 @@ calculateCenturyDays days = (year, centuryDays, isExtraCycleDay)
     (centuryYears, centuryDays) = flip divMod daysPerCentury >>> first (* 100) $ cycleDays
     year = cycleYears + centuryYears
 
-daysToYearMonthDay :: Int32 -> (Int16, Int8, Int8)
+daysToYearMonthDay :: Int32 -> (Word32, Word8, Word8)
 daysToYearMonthDay days = (fromIntegral year, fromIntegral month'', fromIntegral day')
   where
     (centuryYears, centuryDays, isExtraCycleDay) = calculateCenturyDays days
