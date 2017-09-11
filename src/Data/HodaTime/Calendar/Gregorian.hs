@@ -81,7 +81,13 @@ instance IsCalendar Gregorian where
       days' = fromIntegral $ fromIntegral days + 7 * n + distance
       (y, m, d) = daysToYearMonthDay days'
 
-  previous' = undefined
+  previous' n dow (CalendarDate days _ _ _) = CalendarDate days' d m y
+     where
+       currentDoW = dayOfWeekFromDays . fromIntegral $ days
+       targetDow = fromIntegral . fromEnum $ dow
+       distance = currentDoW - targetDow
+       days' = fromIntegral $ fromIntegral days - 7 * n - distance
+       (y, m, d) = daysToYearMonthDay days'
 
 -- Constructors
 
