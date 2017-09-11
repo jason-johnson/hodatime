@@ -16,6 +16,7 @@ import Data.HodaTime.Calendar.Gregorian.Internal
 import Data.HodaTime.Calendar.Internal
 import Data.HodaTime.Constants (daysPerYear, monthDayOffsets)
 import Control.Monad (guard)
+import Control.Arrow ((>>>), first)
 
 minDate :: Int
 minDate = 1582
@@ -44,6 +45,16 @@ instance IsCalendar Gregorian where
   {-# INLINE day' #-}
 
   month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m
+
+  monthl' f (CalendarDate _ d m y) = mkcd <$> f (fromEnum m)
+    where
+      mkcd months = CalendarDate (fromIntegral days) d' (fromIntegral m') (fromIntegral y')
+        where
+          (y', m') = flip divMod 12 >>> first (+ fromIntegral y) $ months
+          mdim = fromIntegral $ maxDaysInMonth (toEnum m') y'
+          d' = if d > mdim then mdim else d
+          days = yearMonthDayToDays y' (toEnum m') (fromIntegral d')
+  {-# INLINE monthl' #-}
 
   year' f (CalendarDate _ d m y) = mkcd . clamp <$> f (fromIntegral y)
     where
