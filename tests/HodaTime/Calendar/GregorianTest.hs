@@ -33,7 +33,7 @@ qcProps :: TestTree
 qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps]
 
 unitTests :: TestTree
-unitTests = testGroup "Unit tests" [lensUnits]
+unitTests = testGroup "Unit tests" [constructorUnits, lensUnits]
 
 constructorProps :: TestTree
 constructorProps = testGroup "Constructor"
@@ -67,6 +67,12 @@ lensProps = testGroup "Lens"
     testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
     testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
     epochDay = mkcd 1 March 2000
+
+constructorUnits :: TestTree
+constructorUnits = testGroup "Constructor"
+  [
+     testCase "CalendarDate 30 February 2000 is not a valid date" $ calendarDate 30 February 2000 @?= Nothing
+  ]
 
 lensUnits :: TestTree
 lensUnits = testGroup "Lens"
