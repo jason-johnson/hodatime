@@ -36,19 +36,19 @@ instance IsCalendar Gregorian where
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December      -- TODO: Move January and February to the back so the Enums work without adjustment
     deriving (Show, Eq, Ord, Enum, Bounded)                                                                                               -- TODO: Note that if we do this, we can't derive Ord and possibly not bounded, they have to be hand written (is this true?  Do we need Jan == 0?)
 
-  day' f (CalendarDate _ d m y) = to . (rest+) <$> f (fromIntegral d)
+  day' f (CalendarDate _ d m y) = mkcd . (rest+) <$> f (fromIntegral d)
     where
-      to days = CalendarDate (fromIntegral days) d' m' y'
+      mkcd days = CalendarDate (fromIntegral days) d' m' y'
       rest = pred $ yearMonthDayToDays (fromIntegral y) (toEnum . fromIntegral $ m) 1
       (d', m', y') = (0, 0, 0)    -- TODO: day, month, year not calculated
   {-# INLINE day' #-}
 
   month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m
 
-  year' f (CalendarDate _ d m y) = to . clamp <$> f (fromIntegral y)
+  year' f (CalendarDate _ d m y) = mkcd . clamp <$> f (fromIntegral y)
     where
       clamp y' = if y' < minDate then minDate else y' 
-      to y' = CalendarDate days d' m (fromIntegral y')
+      mkcd y' = CalendarDate days d' m (fromIntegral y')
         where
           m' = toEnum . fromIntegral $ m
           mdim = fromIntegral $ maxDaysInMonth m' y'
