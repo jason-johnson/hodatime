@@ -9,6 +9,7 @@ module Data.HodaTime.Calendar.Gregorian
   -- * Types
   ,Month(..)
   ,DayOfWeek(..)
+  ,Gregorian
 )
 where
 

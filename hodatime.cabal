@@ -19,6 +19,7 @@ library
   ghc-options:     -Wall
   exposed-modules:
                    Data.HodaTime,
+                   Data.HodaTime.Calendar,
                    Data.HodaTime.Calendar.Coptic,
                    Data.HodaTime.Calendar.Gregorian,
                    Data.HodaTime.Calendar.Hebrew,
@@ -35,7 +36,6 @@ library
                    Data.HodaTime.TimeZone
                    Data.HodaTime.ZonedDateTime
   other-modules:
-                   Data.HodaTime.Calendar,
                    Data.HodaTime.Constants,
                    Data.HodaTime.Internal,
                    Data.HodaTime.Duration.Internal,
@@ -61,10 +61,12 @@ test-suite test
   main-is:
                    test.hs
   other-modules:
+                   HodaTime.Util,
                    HodaTime.InstantTest,
                    HodaTime.LocalTimeTest,
                    HodaTime.DurationTest,
-                   HodaTime.OffsetTest
+                   HodaTime.OffsetTest,
+                   HodaTime.Calendar.GregorianTest
   build-depends:
                    base >= 4 && < 5,
                    tasty >= 0.11,
