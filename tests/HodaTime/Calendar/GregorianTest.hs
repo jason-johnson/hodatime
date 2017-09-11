@@ -13,12 +13,17 @@ import Data.Maybe (fromJust)
 import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
-import Data.HodaTime.Calendar (day, monthl, month, year)
-import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), Gregorian)
+import Data.HodaTime.Calendar (day, monthl, month, year, next, dayOfWeek)
+import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), DayOfWeek(..), Gregorian)
 
 instance Arbitrary (Month Gregorian) where
   arbitrary = do
     x <- choose (0,11)
+    return $ toEnum x
+
+instance Arbitrary (DayOfWeek Gregorian) where
+  arbitrary = do
+    x <- choose (0,6)
     return $ toEnum x
 
 gregorianTests :: TestTree
@@ -50,10 +55,15 @@ lensProps = testGroup "Lens"
   [
      QC.testProperty "first day not changed by month math" $ testMonthAdd 1
     ,QC.testProperty "mid day not changed by month math" $ testMonthAdd 15
+    ,QC.testProperty "dayOfWeek . next n dow $ date == dow" $ testNextDoW
+    ,QC.testProperty "next n (dayOfWeek date) date == modify (+ n * 7) day date" $ testNextAndDay
   ]
   where
     mkcd d m = fromJust . calendarDate d m
     testMonthAdd d (Positive y) m add = y < 400 QC.==> get day (modify (+ add) monthl $ mkcd d m (y + 1900)) == d  -- NOTE: We fix the year so we don't run out of tests
+    testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
+    testNextAndDay (Positive n) = next n (dayOfWeek epochDay) epochDay == modify (+ n * 7) day epochDay
+    epochDay = mkcd 1 March 2000
 
 lensUnits :: TestTree
 lensUnits = testGroup "Lens"
