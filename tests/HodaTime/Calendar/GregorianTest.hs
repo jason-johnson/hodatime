@@ -42,8 +42,10 @@ constructorProps = testGroup "Constructor"
   ]
     where
       areSame Nothing Nothing = True
-      areSame (Just hdate) (Just date) = let (ty, tm, tday) = toGregorian date
-                      in get day hdate == tday && (convertMonth . month $ hdate) == tm && get year hdate == (fromIntegral ty)
+      areSame (Just hdate) (Just date) =
+        let
+          (ty, tm, tday) = toGregorian date
+        in get day hdate == tday && (convertMonth . month $ hdate) == tm && get year hdate == (fromIntegral ty)
       areSame _ _ = False
       convertMonth = succ . fromEnum
       testConstructor (Positive y) m (Positive d) = areSame (calendarDate d m y') (fromGregorianValid (fromIntegral y') (convertMonth m) d)
