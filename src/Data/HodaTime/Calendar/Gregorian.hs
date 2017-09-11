@@ -141,15 +141,3 @@ yearMonthDayToDays y m d = days
     years = if m < March then y - 2001 else y - 2000
     yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
     days = yearDays + monthDayOffsets !! m' + d - 1
-
-{-
-yearMonthDayToDays :: Int -> Month Gregorian -> Int -> Int
-yearMonthDayToDays year month day = days
-  where
-    m = fromEnum month
-    m' = if m > 1 then m - 2 else m + 10
-    y = if m < 2 then year - 1 else year
-    era = (/ 400) $ if y >= 0 then y else y-399   -- TODO: this is wrong, we should probably just do: div 400.  The -399 is only for certain C++ compilers, but we should test it
-    yoe = y - era * 400                             -- [0,399]
-    doy = (153*(m + (m >= 2 ? -2 : 10)) + 2)/5 + d-1  -- TODO: What does this do?
--}
