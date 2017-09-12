@@ -44,9 +44,9 @@ fromNthDay nth dow m y = do
       | nth' < 5  = (somDays, nth', weekdayDistance, adjustment + 1, somDays + adjustment)
       | otherwise = (eomDays, nth' - 5, flip weekdayDistance, mdim - adjustment, eomDays - adjustment)
 
--- | Smart constuctor for Gregorian calendar date based day within year week.  Note that this method assumes weeks start on Sunday and the first week of the year is the one
+-- | Smart constuctor for Gregorian calendar date based on week date.  Note that this method assumes weeks start on Sunday and the first week of the year is the one
 --   which has at least one day in the new year.  For ISO compliant behavior use this constructor from the ISO module
-fromWeekDate :: Int -> DayOfWeek Gregorian -> Year -> Maybe (CalendarDate Gregorian)
+fromWeekDate :: WeekNumber -> DayOfWeek Gregorian -> Year -> Maybe (CalendarDate Gregorian)
 fromWeekDate = GI.fromWeekDate 1 Sunday
 
 -- help functions

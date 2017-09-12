@@ -5,6 +5,7 @@ module Data.HodaTime.Calendar.Internal
    DayNth(..)
   ,Year
   ,DayOfMonth
+  ,WeekNumber
   ,CalendarDate(..)
   ,CalendarDateTime(..)
   ,IsCalendar(..)
@@ -30,6 +31,7 @@ data DayNth =
 
 type Year = Int
 type DayOfMonth = Int
+type WeekNumber = Int
 
 data CalendarDateTime calendar = CalendarDateTime (CalendarDate calendar) LocalTime
   deriving (Eq, Show, Ord)
