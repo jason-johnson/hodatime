@@ -104,6 +104,22 @@ fromNthDay nth dow m y = do
       | nth' < 5  = (somDays, nth', weekdayDistance, adjustment + 1, somDays + adjustment)
       | otherwise = (eomDays, nth' - 5, flip weekdayDistance, mdim - adjustment, eomDays - adjustment)
 
+-- TODO: Move to internal when complete
+-- TODO: We're exactly one week off with start and we're not yet adjusting to the requested dayOfWeek
+fromWeekDate :: Int -> DayOfWeek Gregorian -> Int -> DayOfWeek Gregorian -> Year -> Maybe (Date Gregorian)
+fromWeekDate minWeekDays wkStartDoW weekNum dow y = do
+  return $ CalendarDate days d m y'
+  where
+    soyDays = yearMonthDayToDays y January minWeekDays
+    soyDoW = dayOfWeekFromDays soyDays
+    startDoWDistance = fromEnum soyDoW - fromEnum wkStartDoW
+    dowDistance = fromEnum dow - fromEnum wkStartDoW
+    dowDistance' = if dowDistance < 0 then dowDistance + 7 else dowDistance
+    startDays = soyDays - startDoWDistance
+    weekNum' = pred weekNum
+    days = fromIntegral $ startDays + weekNum' * 7 + dowDistance'
+    (y', m, d) = daysToYearMonthDay days
+
 -- helper functions
 
 dayOfWeekFromDays :: Int -> Int
