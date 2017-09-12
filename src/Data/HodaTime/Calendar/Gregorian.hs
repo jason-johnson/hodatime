@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
-
 module Data.HodaTime.Calendar.Gregorian
 (
   -- * Constructors
@@ -13,69 +11,11 @@ module Data.HodaTime.Calendar.Gregorian
 )
 where
 
-import Data.HodaTime.Calendar.Gregorian.Internal
+import Data.HodaTime.Calendar.Gregorian.Internal hiding (fromWeekDate)
+import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI
 import Data.HodaTime.Calendar.Internal
-import Data.HodaTime.Constants (daysPerYear, monthDayOffsets)
 import Control.Monad (guard)
-import Control.Arrow ((>>>), first)
 
-minDate :: Int
-minDate = 1582
-
-epochDayOfWeek :: DayOfWeek Gregorian
-epochDayOfWeek = Wednesday
-
--- types
-
-data Gregorian
-
-instance IsCalendar Gregorian where
-  type Date Gregorian = CalendarDate Gregorian
-
-  data DayOfWeek Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
-    deriving (Show, Eq, Ord, Enum, Bounded)
-
-  data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December      -- TODO: Move January and February to the back so the Enums work without adjustment
-    deriving (Show, Eq, Ord, Enum, Bounded)                                                                                               -- TODO: Note that if we do this, we can't derive Ord and possibly not bounded, they have to be hand written (is this true?  Do we need Jan == 0?)
-
-  day' f (CalendarDate _ d m y) = mkcd . (rest+) <$> f (fromIntegral d)
-    where
-      rest = pred $ yearMonthDayToDays (fromIntegral y) (toEnum . fromIntegral $ m) 1
-      mkcd days =
-        let
-          days' = fromIntegral days
-          (y', m', d') = daysToYearMonthDay days'
-        in CalendarDate (fromIntegral days) d' m' y'
-  {-# INLINE day' #-}
-
-  month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m
-
-  monthl' f (CalendarDate _ d m y) = mkcd <$> f (fromEnum m)
-    where
-      mkcd months = CalendarDate (fromIntegral days) d' (fromIntegral m') (fromIntegral y')
-        where
-          (y', m') = flip divMod 12 >>> first (+ fromIntegral y) $ months
-          mdim = fromIntegral $ maxDaysInMonth (toEnum m') y'
-          d' = if d > mdim then mdim else d
-          days = yearMonthDayToDays y' (toEnum m') (fromIntegral d')
-  {-# INLINE monthl' #-}
-
-  year' f (CalendarDate _ d m y) = mkcd . clamp <$> f (fromIntegral y)
-    where
-      clamp y' = if y' < minDate then minDate else y' 
-      mkcd y' = CalendarDate days d' m (fromIntegral y')
-        where
-          m' = toEnum . fromIntegral $ m
-          mdim = fromIntegral $ maxDaysInMonth m' y'
-          d' = if d > mdim then mdim else d
-          days = fromIntegral $ yearMonthDayToDays y' m' (fromIntegral d')
-  {-# INLINE year' #-}
-
-  dayOfWeek' (CalendarDate days _ _ _) = toEnum . dayOfWeekFromDays . fromIntegral $ days
-
-  next' n dow (CalendarDate days _ _ _) = moveByDow n dow (-) (+) (fromIntegral days)
-
-  previous' n dow (CalendarDate days _ _ _) = moveByDow n dow subtract (-) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
 
 -- Constructors
 
@@ -104,59 +44,14 @@ fromNthDay nth dow m y = do
       | nth' < 5  = (somDays, nth', weekdayDistance, adjustment + 1, somDays + adjustment)
       | otherwise = (eomDays, nth' - 5, flip weekdayDistance, mdim - adjustment, eomDays - adjustment)
 
--- TODO: Move to internal when complete
--- TODO: We're exactly one week off with start and we're not yet adjusting to the requested dayOfWeek
-fromWeekDate :: Int -> DayOfWeek Gregorian -> Int -> DayOfWeek Gregorian -> Year -> Maybe (Date Gregorian)
-fromWeekDate minWeekDays wkStartDoW weekNum dow y = do
-  return $ CalendarDate days d m y'
-  where
-    soyDays = yearMonthDayToDays y January minWeekDays
-    soyDoW = dayOfWeekFromDays soyDays
-    startDoWDistance = fromEnum soyDoW - fromEnum wkStartDoW
-    dowDistance = fromEnum dow - fromEnum wkStartDoW
-    dowDistance' = if dowDistance < 0 then dowDistance + 7 else dowDistance
-    startDays = soyDays - startDoWDistance
-    weekNum' = pred weekNum
-    days = fromIntegral $ startDays + weekNum' * 7 + dowDistance'
-    (y', m, d) = daysToYearMonthDay days
+-- | Smart constuctor for Gregorian calendar date based day within year week.  Note that this method assumes weeks start on Sunday and the first week of the year is the one
+--   which has at least one day in the new year.  For ISO compliant behavior use this constructor from the ISO module
+fromWeekDate :: Int -> DayOfWeek Gregorian -> Year -> Maybe (CalendarDate Gregorian)
+fromWeekDate = GI.fromWeekDate 1 Sunday
 
--- helper functions
-
-dayOfWeekFromDays :: Int -> Int
-dayOfWeekFromDays = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
-  where
-    normalize n = if n >= 7 then n - 7 else n
+-- help functions
 
 weekdayDistance :: (Ord a, Num a) => a -> a -> a
 weekdayDistance s e = e' - s
   where
     e' = if e >= s then e else e + 7
-
-moveByDow :: Int -> DayOfWeek Gregorian -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> Int -> CalendarDate Gregorian
-moveByDow n dow distanceF adjust days = CalendarDate days' d m y
-  where
-    currentDoW = dayOfWeekFromDays days
-    targetDow = fromIntegral . fromEnum $ dow
-    distance = distanceF targetDow currentDoW
-    days' = fromIntegral $ fromIntegral days `adjust` (7 * n) `adjust` distance
-    (y, m, d) = daysToYearMonthDay days'
-
-maxDaysInMonth :: Month Gregorian -> Year -> Int
-maxDaysInMonth February y
-  | isLeap                                = 29
-  | otherwise                             = 28
-  where
-    isLeap
-      | 0 == y `mod` 100                  = 0 == y `mod` 400
-      | otherwise                         = 0 == y `mod` 4
-maxDaysInMonth n _
-  | n == April || n == June || n == September || n == November  = 30
-  | otherwise                                                   = 31
-
-yearMonthDayToDays :: Year -> Month Gregorian -> DayOfMonth -> Int
-yearMonthDayToDays y m d = days
-  where
-    m' = if m > February then fromEnum m - 2 else fromEnum m + 10
-    years = if m < March then y - 2001 else y - 2000
-    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
-    days = yearDays + monthDayOffsets !! m' + d - 1
