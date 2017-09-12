@@ -15,6 +15,8 @@ import Data.Time.Calendar (fromGregorianValid, toGregorian)
 import HodaTime.Util
 import Data.HodaTime.Calendar (day, monthl, month, year, next, previous, dayOfWeek)
 import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), DayOfWeek(..), Gregorian)
+import qualified Data.HodaTime.Calendar.Gregorian as G
+import qualified Data.HodaTime.Calendar.Iso as Iso
 
 instance Arbitrary (Month Gregorian) where
   arbitrary = do
@@ -72,6 +74,10 @@ constructorUnits :: TestTree
 constructorUnits = testGroup "Constructor"
   [
      testCase "CalendarDate 30 February 2000 is not a valid date" $ calendarDate 30 February 2000 @?= Nothing
+    ,testCase "Gregorian.fromWeekDate 1 Sunday 2000 = 26.Dec.1999" $ G.fromWeekDate 1 Sunday 2000 @?= calendarDate 26 December 1999
+    ,testCase "Gregorian.fromWeekDate 5 Sunday 2000 = 23.Jan.2000" $ G.fromWeekDate 5 Sunday 2000 @?= calendarDate 23 January 2000
+    ,testCase "Iso.fromWeekDate 1 Sunday 2000 = 9.Jan.2000" $ Iso.fromWeekDate 1 Sunday 2000 @?= calendarDate 9 January 2000
+    ,testCase "Iso.fromWeekDate 5 Sunday 2000 = 6.Feb.2000" $ Iso.fromWeekDate 5 Sunday 2000 @?= calendarDate 6 February 2000
   ]
 
 lensUnits :: TestTree
