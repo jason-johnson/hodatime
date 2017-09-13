@@ -26,12 +26,12 @@ library
                    Data.HodaTime.Calendar.Islamic,
                    Data.HodaTime.Calendar.Iso,
                    Data.HodaTime.Calendar.Persian,
+                   Data.HodaTime.CalendarDateTime,
                    Data.HodaTime.Duration,
                    Data.HodaTime.Instant,
                    Data.HodaTime.Interval,
                    Data.HodaTime.Offset,
                    Data.HodaTime.LocalTime,
-                   Data.HodaTime.LocalDateTime,
                    Data.HodaTime.OffsetDateTime,
                    Data.HodaTime.TimeZone
                    Data.HodaTime.ZonedDateTime
@@ -46,7 +46,6 @@ library
                    Data.HodaTime.CalendarDateTime.Internal,
                    Data.HodaTime.Instant.Internal,
                    Data.HodaTime.Instant.Clock,
-                   Data.HodaTime.LocalDateTime.Internal,
                    Data.HodaTime.OffsetDateTime.Internal,
                    Data.HodaTime.TimeZone.Internal,
                    Data.HodaTime.TimeZone.Olson,
