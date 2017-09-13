@@ -19,13 +19,13 @@ library
   ghc-options:     -Wall
   exposed-modules:
                    Data.HodaTime,
-                   Data.HodaTime.Calendar,
                    Data.HodaTime.Calendar.Coptic,
                    Data.HodaTime.Calendar.Gregorian,
                    Data.HodaTime.Calendar.Hebrew,
                    Data.HodaTime.Calendar.Islamic,
                    Data.HodaTime.Calendar.Iso,
                    Data.HodaTime.Calendar.Persian,
+                   Data.HodaTime.CalendarDate,
                    Data.HodaTime.CalendarDateTime,
                    Data.HodaTime.Duration,
                    Data.HodaTime.Instant,

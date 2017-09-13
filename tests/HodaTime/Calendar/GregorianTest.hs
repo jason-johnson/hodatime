@@ -13,7 +13,7 @@ import Data.Maybe (fromJust)
 import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
-import Data.HodaTime.Calendar (day, monthl, month, year, next, previous, dayOfWeek)
+import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek)
 import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), DayOfWeek(..), Gregorian)
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import qualified Data.HodaTime.Calendar.Iso as Iso
