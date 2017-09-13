@@ -8,7 +8,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch, fromInstant)
-import Data.HodaTime.LocalTime (hours, minutes, seconds)
+import Data.HodaTime.LocalTime (HasLocalTime(..))
 import Control.Applicative (Const(..))
 import Data.Time.Clock.POSIX (getPOSIXTime, posixSecondsToUTCTime)
 import Data.Time.LocalTime (todHour, todMin, todSec, hoursToTimeZone, utcToLocalTime, LocalTime(..))
@@ -30,6 +30,6 @@ test_fromSecondsSinceUnixEpoch = do
       utc = posixSecondsToUTCTime posT
       (LocalTime _ tod) = utcToLocalTime (hoursToTimeZone 0) utc
       get l = getConst . l Const
-  assertEqual "hours: " (get hours lt) (todHour tod)
-  assertEqual "minutes: " (get minutes lt) (todMin tod)
-  assertEqual "seconds: " (get seconds lt) (round . todSec $ tod)
+  assertEqual "hours: " (get hour lt) (todHour tod)
+  assertEqual "minutes: " (get minute lt) (todMin tod)
+  assertEqual "seconds: " (get second lt) (round . todSec $ tod)
