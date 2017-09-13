@@ -16,7 +16,7 @@ module Data.HodaTime.Calendar.Gregorian.Internal
 where
 
 import Data.HodaTime.Constants (daysPerCycle, daysPerCentury, daysPerFourYears, daysPerYear, monthDayOffsets)
-import Data.HodaTime.Calendar.Internal
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), DayOfMonth, Year)
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Maybe (fromJust)
 import Data.List (findIndex)
