@@ -16,7 +16,6 @@ import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI
 import Control.Monad (guard)
 
-
 -- Constructors
 
 -- | Smart constuctor for Gregorian calendar date.

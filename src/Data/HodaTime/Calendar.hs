@@ -4,8 +4,8 @@ module Data.HodaTime.Calendar
   ,Year
   ,WeekNumber
   ,DayOfMonth
-  ,CalendarDate(..)
-  ,CalendarDateTime(..)
+  ,CalendarDate
+  ,CalendarDateTime
   ,IsCalendar(..)
   ,HasDate(..)
 )
