@@ -83,11 +83,13 @@ rolloverUnits = testGroup "Rollover"
     ,testCase "30.Jan.2000 22:57:57 + 3h == 31.Jan.2000 01:57:57" $ modify (+3) hour <$> dt @?= mkLTWithRolledDate 1 57 57 0
     ,testCase "30.Jan.2000 22:57:57 + 3723s == 31.Jan.2000 00:00:00" $ modify (+3723) second <$> dt @?= mkLTWithRolledDate 0 0 0 0
     ,testCase "30.Jan.2000 22:57:57 + 3725s == 31.Jan.2000 00:00:02" $ modify (+3725) second <$> dt @?= mkLTWithRolledDate 0 0 2 0
+    ,testCase "30.Jan.2000 22:57:57 + 48h == 1.Feb.2000 22:57:57" $ modify (+48) hour <$> dt @?= mkLTWithDate monthRoll 22 57 57 0
   ]
   where
     time = localTime 22 57 57 0
     date = calendarDate 30 January 2000
     rollDate = calendarDate 31 January 2000
+    monthRoll = calendarDate 1 February 2000
     dt = on <$> time <*> date
     mkLTWithDate date' h m s n = on <$> localTime h m s n <*> date'
     mkLT = mkLTWithDate date

@@ -6,15 +6,15 @@ module Data.HodaTime.LocalTime.Internal
   ,Minute
   ,Second
   ,Nanosecond
-  ,fromSecondsNormalized
   ,fromInstant  -- TODO: Remove
 )
 where
 
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..), CalendarDateTime(..))
+import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..), CalendarDateTime(..), CalendarDate, day, IsCalendar(..))
 import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs)
 import Data.HodaTime.Constants (secondsPerDay)
+import Data.Functor.Identity (Identity(..))
 import Data.Word (Word32)
 
 type Hour = Int
@@ -35,34 +35,54 @@ class HasLocalTime lt where
 instance HasLocalTime LocalTime where
   hour f (LocalTime secs nsecs) = hoursFromSecs to f secs
     where
-      to = fromSecondsNormalized nsecs
+      to = fromSecondsClamped nsecs
   {-# INLINE hour #-}
 
   minute f (LocalTime secs nsecs) = minutesFromSecs to f secs
     where
-      to = fromSecondsNormalized nsecs
+      to = fromSecondsClamped nsecs
   {-# INLINE minute #-}
 
   second f (LocalTime secs nsecs) = secondsFromSecs to f secs
     where
-      to = fromSecondsNormalized nsecs
+      to = fromSecondsClamped nsecs
   {-# INLINE second #-}
 
   nanosecond f (LocalTime secs nsecs) = LocalTime secs . fromIntegral <$> (f . fromIntegral) nsecs
   {-# INLINE nanosecond #-}
 
-instance HasLocalTime (CalendarDateTime cal) where
-  hour f (CalendarDateTime cd lt) = CalendarDateTime cd <$> hour f lt
-  minute f (CalendarDateTime cd lt) = CalendarDateTime cd <$> minute f lt
-  second f (CalendarDateTime cd lt) = CalendarDateTime cd <$> second f lt
+instance IsCalendar cal => HasLocalTime (CalendarDateTime cal) where
+  hour f (CalendarDateTime cd (LocalTime secs nsecs)) = hoursFromSecs to f secs
+    where
+      to = fromSecondsRolled cd nsecs
+  {-# INLINE hour #-}
+
+  minute f (CalendarDateTime cd (LocalTime secs nsecs)) = minutesFromSecs to f secs
+    where
+      to = fromSecondsRolled cd nsecs
+  {-# INLINE minute #-}
+
+  second f (CalendarDateTime cd (LocalTime secs nsecs)) = secondsFromSecs to f secs
+    where
+      to = fromSecondsRolled cd nsecs
+  {-# INLINE second #-}
+
   nanosecond f (CalendarDateTime cd lt) = CalendarDateTime cd <$> nanosecond f lt
 
 -- Constructors
 
-fromInstant :: Instant -> LocalTime                             -- NOTE: This should never go to top level as Instant -> LocalTime is not supported, you must go through a ZonedDateTime
+fromInstant :: Instant -> LocalTime                   -- NOTE: This should never go to top level as Instant -> LocalTime is not supported, you must go through a ZonedDateTime
 fromInstant (Instant _ secs nsecs) = LocalTime secs nsecs
 
-fromSecondsNormalized :: Word32 -> Word32 -> LocalTime
-fromSecondsNormalized nsecs = flip LocalTime nsecs . normalize
+-- helper functions
+
+fromSecondsClamped :: Word32 -> Word32 -> LocalTime
+fromSecondsClamped nsecs = flip LocalTime nsecs . normalize
   where
     normalize x = if x >= secondsPerDay then x - secondsPerDay else x
+
+fromSecondsRolled :: IsCalendar cal => CalendarDate cal -> Word32 -> Word32 -> CalendarDateTime cal
+fromSecondsRolled date nsecs secs = CalendarDateTime date' $ LocalTime secs' nsecs
+    where
+      (d, secs') = secs `divMod` secondsPerDay
+      date' = if d == 0 then date else runIdentity . day (Identity . (+ fromIntegral d)) $ date  -- NOTE: inlining the modify lens here
