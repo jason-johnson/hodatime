@@ -96,7 +96,7 @@ data LocalTime = LocalTime { ltSecs :: Word32, ltNsecs :: Word32 }
 
 -- CalendarDateTime
 
--- | Represents a specific date and time within its calendar system.  NOTE: a LocalDateTime does
+-- | Represents a specific date and time within its calendar system.  NOTE: a CalendarDateTime does
 --   *not* represent a specific time on the global time line because e.g. "10.March.2006 4pm" is a different instant
 --   in most time zones.  Convert it to a ZonedDateTime first if you wish to convert to an instant (or use a convenience
 --   function).
