@@ -18,10 +18,13 @@ import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), DayOfWeek(..),
 import Data.HodaTime.CalendarDateTime (on, at)
 
 calendarDateTimeTests :: TestTree
-calendarDateTimeTests = testGroup "CalendarDateTimeTests Tests" [qcProps]
+calendarDateTimeTests = testGroup "CalendarDateTimeTests Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
 qcProps = testGroup "(checked by QuickCheck)" [timeLensProps, dateLensProps]
+
+unitTests :: TestTree
+unitTests = testGroup "Unit tests" [rolloverUnits]
 
 timeLensProps :: TestTree
 timeLensProps = testGroup "Time Lens"
@@ -65,8 +68,27 @@ dateLensProps = testGroup "Date Lens"
     ,QC.testProperty "previous n (dayOfWeek date) date == modify (- n * 7) day date" $ testDirection previous $ flip (-)
   ]
     where
-      mkcd d m = fromJust . calendarDate d m
+      mkcd d m y = fromJust $ on <$> localTime 10 10 10 0 <*> calendarDate d m y
       testMonthAdd d (Positive y) m add = y < 400 QC.==> get day (modify (+ add) monthl $ mkcd d m (y + 1900)) == d  -- NOTE: We fix the year so we don't run out of tests
       testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
       testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
       epochDay = mkcd 1 March 2000
+
+rolloverUnits :: TestTree
+rolloverUnits = testGroup "Rollover"
+  [
+     testCase "30.Jan.2000 22:57:57 + 2s == 30.Jan.2000 22:57:59" $ modify (+2) second <$> dt @?= mkLT 22 57 59 0
+    ,testCase "30.Jan.2000 22:57:57 + 5s == 30.Jan.2000 22:58:02" $ modify (+5) second <$> dt @?= mkLT 22 58 2 0
+    ,testCase "30.Jan.2000 22:57:57 + 5m == 30.Jan.2000 23:02:57" $ modify (+5) minute <$> dt @?= mkLT 23 02 57 0
+    ,testCase "30.Jan.2000 22:57:57 + 3h == 31.Jan.2000 01:57:57" $ modify (+3) hour <$> dt @?= mkLTWithRolledDate 1 57 57 0
+    ,testCase "30.Jan.2000 22:57:57 + 3723s == 31.Jan.2000 00:00:00" $ modify (+3723) second <$> dt @?= mkLTWithRolledDate 0 0 0 0
+    ,testCase "30.Jan.2000 22:57:57 + 3725s == 31.Jan.2000 00:00:02" $ modify (+3725) second <$> dt @?= mkLTWithRolledDate 0 0 2 0
+  ]
+  where
+    time = localTime 22 57 57 0
+    date = calendarDate 30 January 2000
+    rollDate = calendarDate 31 January 2000
+    dt = on <$> time <*> date
+    mkLTWithDate date' h m s n = on <$> localTime h m s n <*> date'
+    mkLT = mkLTWithDate date
+    mkLTWithRolledDate = mkLTWithDate rollDate
