@@ -66,8 +66,10 @@ class HasDate d where
   -- | Lens for interacting with the month component of a 'HasDate'.  Please note that we convert the month to an Int so meaningful math can be done on it.  Also
   --   please note that the day will be unaffected except in the case of "end of month" days which may clamp.  Note that this clamping will only occur as a final step,
   --   so that
-  --   > modify (+ 2) monthl $ Gregorian.calendarDate 31 January 2000
-  --   > -> CalendarDate 31 March 2000
+  --
+  --   >>> modify (+ 2) monthl $ Gregorian.calendarDate 31 January 2000
+  --   CalendarDate 31 March 2000
+  --
   --   and not 29th of March as would happen with some libraries.
   monthl :: Functor f => (Int -> f Int) -> d -> f d
   -- | Lens for the year component of a 'HasDate'.  Please note that the rest of the date is left as is, with two exceptions: Feb 29 will clamp to 28 in a non-leapyear
