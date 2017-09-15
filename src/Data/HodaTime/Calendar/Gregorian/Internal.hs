@@ -154,7 +154,7 @@ daysToYearMonthDay days = (fromIntegral y, fromIntegral m'', fromIntegral d')
     (centuryYears, centuryDays, isExtraCycleDay) = calculateCenturyDays days
     (fourYears, (remaining, isLeapDay)) = flip divMod daysPerFourYears >>> (* 4) *** id &&& borders daysPerFourYears $ centuryDays
     (oneYears, yearDays) = remaining `divMod` daysPerYear
-    m = pred . fromJust . findIndex (\y -> yearDays < y) $ monthDayOffsets
+    m = pred . fromJust . findIndex (\mo -> yearDays < mo) $ monthDayOffsets
     (m', startDate) = if m >= 10 then (m - 10, 2001) else (m + 2, 2000)
     d = yearDays - monthDayOffsets !! m + 1
     (m'', d') = if isExtraCycleDay || isLeapDay then (1, 29) else (m', d)
