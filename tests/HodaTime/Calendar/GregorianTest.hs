@@ -9,12 +9,12 @@ where
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, catMaybes)
 import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek)
-import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), DayOfWeek(..), Gregorian)
+import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..))
+import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, Month(..), DayOfWeek(..), Gregorian)
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import qualified Data.HodaTime.Calendar.Iso as Iso
 
@@ -78,7 +78,33 @@ constructorUnits = testGroup "Constructor"
     ,testCase "Gregorian.fromWeekDate 5 Sunday 2000 = 23.Jan.2000" $ G.fromWeekDate 5 Sunday 2000 @?= calendarDate 23 January 2000
     ,testCase "Iso.fromWeekDate 1 Sunday 2000 = 9.Jan.2000" $ Iso.fromWeekDate 1 Sunday 2000 @?= calendarDate 9 January 2000
     ,testCase "Iso.fromWeekDate 5 Sunday 2000 = 6.Feb.2000" $ Iso.fromWeekDate 5 Sunday 2000 @?= calendarDate 6 February 2000
+    ,testCase "Holidays in year 2000" $ test2k (holidays 2000)
+    ,testCase "Holidays in year 2001" $ test2001 (holidays 2001)
   ]
+    where
+      test2k hs = do
+        assertEqual "length == 8" 8 (length hs)
+        assertEqual "First Monday Sept = 4.Sept.2000" (fromJust $ calendarDate 4 September 2000) (hs !! 3)
+        assertEqual "Third Monday Jan = 17.Jan.2000" (fromJust $ calendarDate 17 January 2000) (hs !! 4)
+        assertEqual "Second Tuesday Feb = 8.Feb.2000" (fromJust $ calendarDate 8 February 2000) (hs !! 5)
+        assertEqual "Fourth Thursday Nov = 23.Nov.2000" (fromJust $ calendarDate 23 November 2000) (hs !! 6)
+      test2001 hs = do
+        assertEqual "length == 7" 7 (length hs)
+        assertEqual "First Monday Sept = 3.Sept.2001" (fromJust $ calendarDate 3 September 2001) (hs !! 3)
+        assertEqual "Third Monday Jan = 15.Jan.2001" (fromJust $ calendarDate 15 January 2001) (hs !! 4)
+        assertEqual "Second Tuesday Feb = 13.Feb.2001" (fromJust $ calendarDate 13 February 2001) (hs !! 5)
+        assertEqual "Fourth Thursday Nov = 22.Nov.2001" (fromJust $ calendarDate 22 November 2001) (hs !! 6)
+      holidays y = catMaybes $ ($ y) <$>
+        [
+           calendarDate 1 January               -- Western New Year
+          ,calendarDate 4 July                  -- US Independence Day 
+          ,calendarDate 25 December             -- Christmas
+          ,fromNthDay First Monday September    -- US Labor day
+          ,fromNthDay Third Monday January      -- MLK day
+          ,fromNthDay Second Tuesday February   -- Presidents day
+          ,fromNthDay Fourth Thursday November  -- Thanksgiving
+          ,calendarDate 29 February             -- Not a holiday but will sometimes be absent
+        ]
 
 lensUnits :: TestTree
 lensUnits = testGroup "Lens"
