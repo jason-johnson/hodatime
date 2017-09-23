@@ -21,15 +21,16 @@ import Control.Monad (guard)
 -- | Smart constuctor for Gregorian calendar date.
 calendarDate :: DayOfMonth -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
 calendarDate d m y = do
-  guard $ y > minDate
   guard $ d > 0 && d <= maxDaysInMonth m y
   let days = fromIntegral $ yearMonthDayToDays y m d
+  guard $ days > invalidDayThresh
   return $ CalendarDate days (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
 
 -- | Smart constuctor for Gregorian calendar date based on relative month day.
 fromNthDay :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
 fromNthDay nth dow m y = do
   guard $ adjustment < fromIntegral mdim           -- NOTE: we have to use < not <= because we're adding to first of the month or subtracting from the end of the month
+  guard $ days > invalidDayThresh
   return $ CalendarDate (fromIntegral days) (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
   where
     mdim = maxDaysInMonth m y

@@ -4,7 +4,7 @@ module Data.HodaTime.Calendar.Iso
 )
 where
 
-import Data.HodaTime.Calendar.Gregorian hiding (fromWeekDate)
+import Data.HodaTime.Calendar.Gregorian.Internal hiding (fromWeekDate)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDate(..), Year, WeekNumber)
 

@@ -7,7 +7,7 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,Gregorian
   ,Month(..)
   ,DayOfWeek(..)
-  ,minDate
+  ,invalidDayThresh
   ,epochDayOfWeek
   ,maxDaysInMonth
   ,yearMonthDayToDays
@@ -16,7 +16,7 @@ module Data.HodaTime.Calendar.Gregorian.Internal
 where
 
 import Data.HodaTime.Constants (daysPerCycle, daysPerCentury, daysPerFourYears)
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), DayOfMonth, Year)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), DayOfMonth, Year, WeekNumber)
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.HodaTime.Calendar.Constants (daysPerStandardYear)
 import Control.Arrow ((>>>), (&&&), (***), first)
@@ -24,11 +24,15 @@ import Data.Maybe (fromJust)
 import Data.List (findIndex)
 import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
+import Control.Monad (guard)
 
 -- Constants
 
-minDate :: Int
-minDate = 1582
+invalidDayThresh :: Integral a => a
+invalidDayThresh = -152445      -- NOTE: 14.Oct.1582, one day before Gregorian calendar came into effect
+
+firstGregDayTuple :: (Integral a, Integral b, Integral c) => (a, b, c)
+firstGregDayTuple = (1582, 9, 15)
     
 epochDayOfWeek :: DayOfWeek Gregorian
 epochDayOfWeek = Wednesday
@@ -57,7 +61,7 @@ instance IsCalendar Gregorian where
       rest = pred $ yearMonthDayToDays (fromIntegral y) (toEnum . fromIntegral $ m) 1
       mkcd days =
         let
-          days' = fromIntegral days
+          days' = fromIntegral $ if days > invalidDayThresh then days else invalidDayThresh + 1
           (y', m', d') = daysToYearMonthDay days'
         in CalendarDate (fromIntegral days) d' m' y'
   {-# INLINE day' #-}
@@ -66,23 +70,24 @@ instance IsCalendar Gregorian where
     
   monthl' f (CalendarDate _ d m y) = mkcd <$> f (fromEnum m)
     where
-      mkcd months = CalendarDate (fromIntegral days) d' (fromIntegral m') (fromIntegral y')
+      mkcd months = CalendarDate (fromIntegral days) d'' (fromIntegral m') (fromIntegral y'')
         where
-          (y', m') = flip divMod 12 >>> first (+ fromIntegral y) $ months
+          (y', months') = flip divMod 12 >>> first (+ fromIntegral y) $ months
+          (y'', m', d') = if (y', months', d) < firstGregDayTuple then firstGregDayTuple else (y', months', d)
           mdim = fromIntegral $ maxDaysInMonth (toEnum m') y'
-          d' = if d > mdim then mdim else d
-          days = yearMonthDayToDays y' (toEnum m') (fromIntegral d')
+          d'' = if d' > mdim then mdim else d'
+          days = yearMonthDayToDays y'' (toEnum m') (fromIntegral d'')
   {-# INLINE monthl' #-}
     
-  year' f (CalendarDate _ d m y) = mkcd . clamp <$> f (fromIntegral y)
+  year' f (CalendarDate _ d m y) = mkcd <$> f (fromIntegral y)
     where
-      clamp y' = if y' < minDate then minDate else y' 
-      mkcd y' = CalendarDate days d' m (fromIntegral y')
+      mkcd y' = CalendarDate days d'' m' (fromIntegral y'')
         where
-          m' = toEnum . fromIntegral $ m
-          mdim = fromIntegral $ maxDaysInMonth m' y'
-          d' = if d > mdim then mdim else d
-          days = fromIntegral $ yearMonthDayToDays y' m' (fromIntegral d')
+          (y'', m', d') = if (y', m, d) < firstGregDayTuple then firstGregDayTuple else (y', m, d)
+          m'' = toEnum . fromIntegral $ m'
+          mdim = fromIntegral $ maxDaysInMonth m'' y''
+          d'' = if d' > mdim then mdim else d'
+          days = fromIntegral $ yearMonthDayToDays y'' m'' (fromIntegral d'')
   {-# INLINE year' #-}
     
   dayOfWeek' (CalendarDate days _ _ _) = toEnum . dayOfWeekFromDays . fromIntegral $ days
@@ -91,8 +96,9 @@ instance IsCalendar Gregorian where
     
   previous' n dow (CalendarDate days _ _ _) = moveByDow n dow subtract (-) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
 
-fromWeekDate :: Int -> DayOfWeek Gregorian -> Int -> DayOfWeek Gregorian -> Year -> Maybe (Date Gregorian)
+fromWeekDate :: Int -> DayOfWeek Gregorian -> WeekNumber -> DayOfWeek Gregorian -> Year -> Maybe (Date Gregorian)
 fromWeekDate minWeekDays wkStartDoW weekNum dow y = do
+  guard $ days > invalidDayThresh
   return $ CalendarDate days d m y'
     where
       soyDays = yearMonthDayToDays y January minWeekDays
