@@ -74,12 +74,14 @@ constructorUnits :: TestTree
 constructorUnits = testGroup "Constructor"
   [
      testCase "CalendarDate 30 February 2000 is not a valid date" $ calendarDate 30 February 2000 @?= Nothing
+    ,testCase "CalendarDate 1 October 1582 is not a valid date" $ calendarDate 1 October 1582 @?= Nothing
     ,testCase "Gregorian.fromWeekDate 1 Sunday 2000 = 26.Dec.1999" $ G.fromWeekDate 1 Sunday 2000 @?= calendarDate 26 December 1999
     ,testCase "Gregorian.fromWeekDate 5 Sunday 2000 = 23.Jan.2000" $ G.fromWeekDate 5 Sunday 2000 @?= calendarDate 23 January 2000
     ,testCase "Iso.fromWeekDate 1 Sunday 2000 = 9.Jan.2000" $ Iso.fromWeekDate 1 Sunday 2000 @?= calendarDate 9 January 2000
     ,testCase "Iso.fromWeekDate 5 Sunday 2000 = 6.Feb.2000" $ Iso.fromWeekDate 5 Sunday 2000 @?= calendarDate 6 February 2000
     ,testCase "Holidays in year 2000" $ test2k (usaHolidays 2000)
     ,testCase "Holidays in year 2001" $ test2001 (usaHolidays 2001)
+    ,testCase "Holidays in year 1582" $ test1582 (usaHolidays 1582)
   ]
     where
       test2k hs = do
@@ -94,6 +96,9 @@ constructorUnits = testGroup "Constructor"
         assertEqual "Third Monday Jan = 15.Jan.2001" (fromJust $ calendarDate 15 January 2001) (hs !! 4)
         assertEqual "Second Tuesday Feb = 13.Feb.2001" (fromJust $ calendarDate 13 February 2001) (hs !! 5)
         assertEqual "Fourth Thursday Nov = 22.Nov.2001" (fromJust $ calendarDate 22 November 2001) (hs !! 6)
+      test1582 hs = do
+        assertEqual "length == 2" 2 (length hs)
+        assertEqual "Fourth Thursday Nov = 25.Nov.1582" (fromJust $ calendarDate 25 November 1582) (hs !! 1)
       usaHolidays y = catMaybes $ ($ y) <$>
         [
            calendarDate 1 January               -- New Year
@@ -111,10 +116,17 @@ lensUnits = testGroup "Lens"
   [
      testCase "31-January-2000 + 2M == 31-March-2000" $ modify (+2) monthl <$> janEnd @?= calendarDate 31 March 2000
     ,testCase "31-January-2000 + 1M == 29-February-2000" $ modify (+1) monthl <$> janEnd @?= calendarDate 29 February 2000
+    ,testCase "15-November-1582 - 1M == 15-October-1582" $ modify (subtract 1) monthl <$> calendarDate 15 November 1582 @?= firstValidDate
+    ,testCase "14-November-1582 - 1M == 15-October-1582 (clamped)" $ modify (subtract 1) monthl <$> calendarDate 14 November 1582 @?= firstValidDate
     ,testCase "29-February-2000 + 1Y == 28-February-2001" $ modify (+1) year <$> leapFeb @?= calendarDate 28 February 2001
+    ,testCase "15-October-1583 - 1Y == 15-October-1582" $ modify (subtract 1) year <$> calendarDate 15 October 1583 @?= firstValidDate
+    ,testCase "14-October-1583 - 1Y == 15-October-1582 (clamped)" $ modify (subtract 1) year <$> calendarDate 14 October 1583 @?= firstValidDate
     ,testCase "31-December-2000 + 1D == 1-January-2001" $ modify (+1) day <$> endYear @?= calendarDate 1 January 2001
+    ,testCase "16-October-1583 - 1D == 15-October-1582" $ modify (subtract 1) day <$> calendarDate 16 October 1582 @?= firstValidDate
+    ,testCase "15-October-1583 - 1D == 15-October-1582 (clamped)" $ modify (subtract 1) day <$> calendarDate 15 October 1582 @?= firstValidDate
   ]
     where
       janEnd = calendarDate 31 January 2000
       leapFeb = calendarDate 29 February 2000
       endYear = calendarDate 31 December 2000
+      firstValidDate = calendarDate 15 October 1582

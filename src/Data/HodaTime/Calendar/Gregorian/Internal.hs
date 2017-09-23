@@ -63,7 +63,7 @@ instance IsCalendar Gregorian where
         let
           days' = fromIntegral $ if days > invalidDayThresh then days else invalidDayThresh + 1
           (y', m', d') = daysToYearMonthDay days'
-        in CalendarDate (fromIntegral days) d' m' y'
+        in CalendarDate days' d' m' y'
   {-# INLINE day' #-}
     
   month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m
