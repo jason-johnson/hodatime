@@ -56,6 +56,7 @@ library
                    Data.HodaTime.Duration.Internal,
                    Data.HodaTime.LocalTime.Internal,
                    Data.HodaTime.Calendar.Internal,
+                   Data.HodaTime.Calendar.Constants,
                    Data.HodaTime.Calendar.Gregorian.Internal,
                    Data.HodaTime.Calendar.Gregorian.CacheTable,
                    Data.HodaTime.CalendarDateTime.Internal,
