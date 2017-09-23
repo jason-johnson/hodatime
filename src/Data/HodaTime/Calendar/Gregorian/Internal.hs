@@ -15,20 +15,29 @@ module Data.HodaTime.Calendar.Gregorian.Internal
 )
 where
 
-import Data.HodaTime.Constants (daysPerCycle, daysPerCentury, daysPerFourYears, daysPerYear, monthDayOffsets)
+import Data.HodaTime.Constants (daysPerCycle, daysPerCentury, daysPerFourYears)
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), DayOfMonth, Year)
+import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
+import Data.HodaTime.Calendar.Constants (daysPerStandardYear)
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Maybe (fromJust)
 import Data.List (findIndex)
-import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
+
+-- Constants
 
 minDate :: Int
 minDate = 1582
     
 epochDayOfWeek :: DayOfWeek Gregorian
 epochDayOfWeek = Wednesday
+
+monthDayOffsets :: Num a => [a]
+monthDayOffsets = 0 : rest
+  where
+    rest = zipWith (+) daysPerMonth (0:rest)
+    daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28]         -- NOTE: rotated (TODO BUG: Why do we need Feb?  That will be past end of year, thus impossible)
     
 -- types
     
@@ -120,16 +129,19 @@ maxDaysInMonth February y
     isLeap
       | 0 == y `mod` 100                  = 0 == y `mod` 400
       | otherwise                         = 0 == y `mod` 4
-maxDaysInMonth n _
-  | n == April || n == June || n == September || n == November  = 30
+maxDaysInMonth m _
+  | m == April || m == June || m == September || m == November  = 30
   | otherwise                                                   = 31
 
+-- NOTE: Epoch is March 1 2000 because that has nicest properties that is near our current time.
+-- TODO: The addition of leap days below will add from the previous year.  We need to determine if this is a bug
+-- TODO: and if it is not, why isn't it
 yearMonthDayToDays :: Year -> Month Gregorian -> DayOfMonth -> Int
 yearMonthDayToDays y m d = days
   where
     m' = if m > February then fromEnum m - 2 else fromEnum m + 10
     years = if m < March then y - 2001 else y - 2000
-    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
+    yearDays = years * daysPerStandardYear + years `div` 4 + years `div` 400 - years `div` 100
     days = yearDays + monthDayOffsets !! m' + d - 1
 
 -- | The issue is that 4 * daysPerCentury will be one less than daysPerCycle.  The reason for this is that the Gregorian calendar adds one more day per 400 year cycle
@@ -153,7 +165,7 @@ daysToYearMonthDay days = (fromIntegral y, fromIntegral m'', fromIntegral d')
   where
     (centuryYears, centuryDays, isExtraCycleDay) = calculateCenturyDays days
     (fourYears, (remaining, isLeapDay)) = flip divMod daysPerFourYears >>> (* 4) *** id &&& borders daysPerFourYears $ centuryDays
-    (oneYears, yearDays) = remaining `divMod` daysPerYear
+    (oneYears, yearDays) = remaining `divMod` daysPerStandardYear
     m = pred . fromJust . findIndex (\mo -> yearDays < mo) $ monthDayOffsets
     (m', startDate) = if m >= 10 then (m - 10, 2001) else (m + 2, 2000)
     d = yearDays - monthDayOffsets !! m + 1
