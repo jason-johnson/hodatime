@@ -1,12 +1,14 @@
 module Data.HodaTime.TimeZone.Internal
 (
    TZIdentifier
-  ,Transition(..)
-  ,Transitions
-  ,mkTransitions
+  ,TransitionInfo(..)
+  ,UtcTransitionsMap
+  ,LeapsMap
+  ,emptyTransitions
   ,addTransition
   ,activeTransitionFor
   ,nextTransition
+  ,importLeaps
   ,TimeZone(..)
 )
 where
@@ -19,22 +21,34 @@ import qualified Data.Map.Strict as Map
 data TZIdentifier = UTC | Zone String
   deriving (Eq, Show)
 
-data Transition = TransitionInfo { tOffset :: Int, tIsDst :: Bool, tAbbreviation :: String, tIsStd :: Bool, tIsGmt :: Bool }
+data TransitionInfo = TransitionInfo { utcOffset :: Int, isDst :: Bool, abbreviation :: String }
   deriving (Eq, Show)
 
-type Transitions = Map Instant Transition
+-- UTC instant to transition
 
-mkTransitions :: Transitions
-mkTransitions = Map.empty
+type UtcTransitionsMap = Map Instant TransitionInfo
 
-addTransition :: Instant -> Transition -> Transitions -> Transitions
+emptyTransitions :: UtcTransitionsMap
+emptyTransitions = Map.empty
+
+addTransition :: Instant -> TransitionInfo -> UtcTransitionsMap -> UtcTransitionsMap
 addTransition = Map.insert
 
-activeTransitionFor :: Instant -> Transitions -> (Instant, Transition)
+activeTransitionFor :: Instant -> UtcTransitionsMap -> (Instant, TransitionInfo)
 activeTransitionFor t ts = fromMaybe (Map.findMin ts) $ Map.lookupLE t ts
 
-nextTransition :: Instant -> Transitions -> (Instant, Transition)
+nextTransition :: Instant -> UtcTransitionsMap -> (Instant, TransitionInfo)
 nextTransition t ts = fromMaybe (Map.findMax ts) $ Map.lookupGT t ts
 
-data TimeZone = TimeZone { tzZone :: TZIdentifier, tzTransitions :: Transitions }
+-- Leap seconds
+
+type LeapsMap = Map Instant Int
+
+importLeaps :: [(Instant, Int)] -> LeapsMap
+importLeaps = Map.fromList
+
+-- TODO: Right now we have the mapping from UTC instance to an offset, but we need an interval set for mapping from local time to the offset.
+-- TODO: IMPORTANT: the utcTransitionMap must have the key in UTC because it will be coming from UTC instances.  The interval map *must be*
+-- TODO: in localtime because it will be coming from localtime, not UTC
+data TimeZone = TimeZone { zone :: TZIdentifier, utcTransitionsMap :: UtcTransitionsMap }
   deriving (Eq, Show)

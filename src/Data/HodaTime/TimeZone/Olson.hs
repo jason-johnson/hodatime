@@ -18,40 +18,51 @@ import System.FilePath ((</>))
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.Instant.Internal (Instant)
 
-getTransitions :: L.ByteString -> Either String Transitions
+data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String, isStd :: Bool, isGmt :: Bool }
+  deriving (Eq, Show)
+
+getTransitions :: L.ByteString -> Either String (UtcTransitionsMap, [(Instant, Int)], LeapsMap)
 getTransitions bs = case runGetOrFail getTransitions' bs of
-    Left (_, _, msg) -> Left msg
-    Right (_, _, xs) -> Right xs
-    where
-        getTransitions' = do
-            magic <- (toASCII . B.unpack) <$> getByteString 4
-            unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
-            _version <- getWord8
-            replicateM_ 15 getWord8 -- skip reserved section
-            [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
-            transitions <- replicateM transcnt $ fromSecondsSinceUnixEpoch <$> get32bitInt
-            indexes <- replicateM transcnt get8bitInt
-            ttypes <- replicateM ttypecnt $ (,,) <$> get32bitInt <*> getBool <*> get8bitInt
-            abbrs <- (toASCII . B.unpack) <$> getByteString abbrlen
-            _leaps <- replicateM leapcnt getLeapInfo
-            ttisstds <- replicateM ttisstdcnt getBool
-            ttisgmts <- replicateM ttisgmtcnt getBool
-            return $ zipTransitions (zipTransitionTypes abbrs ttypes ttisstds ttisgmts) transitions indexes
+  Left (_, _, msg) -> Left msg
+  Right (_, _, xs) -> Right xs
+  where
+    getTransitions' = do
+      (magic, _version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen) <- getHeader
+      unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
+      (utcM, wall, leapsMap) <- getPayload transcnt ttypecnt abbrlen leapcnt ttisstdcnt ttisgmtcnt
+      return (utcM, wall, leapsMap)
 
-zipTransitionTypes :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [Transition]
-zipTransitionTypes abbrs = zipWith3 toTI
-    where
-        toTI (gmt, isdst, offset) = TransitionInfo gmt isdst (getAbbr offset abbrs)
-        getAbbr offset = takeWhile (/= '\NUL') . drop offset
+-- Get combinators
 
-zipTransitions :: [Transition] -> [Instant] -> [Int] -> Transitions
-zipTransitions tis trans = foldr (\(i, idx) im -> addTransition i (tis !! idx) im) mkTransitions . zip trans
+getHeader :: Get (String, Word8, Int, Int, Int, Int, Int, Int)
+getHeader = do
+  magic <- (toString . B.unpack) <$> getByteString 4
+  version <- getWord8
+  replicateM_ 15 getWord8 -- skip reserved section
+  [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
+  unless
+    (ttisgmtcnt == ttisstdcnt && ttisstdcnt == ttypecnt)
+    (fail $ "format issue, sizes don't match: ttisgmtcnt = " ++ show ttisgmtcnt ++ ", ttisstdcnt = " ++ show ttisstdcnt ++ ", ttypecnt = " ++ show ttypecnt)
+  return (magic, version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen)
 
-getLeapInfo :: Get (Integer, Int)
+getLeapInfo :: Get (Instant, Int)
 getLeapInfo = do
-    lEpoch <- fmap toInteger get32bitInteger
-    lOffset <- get32bitInt
-    return (lEpoch, lOffset)
+  instant <- fromSecondsSinceUnixEpoch <$> get32bitInt
+  lOffset <- get32bitInt
+  return (instant, lOffset)
+
+getPayload :: Int -> Int -> Int -> Int -> Int -> Int -> Get (UtcTransitionsMap, [(Instant, Int)], LeapsMap)
+getPayload transCount typeCount abbrLen leapCount isStdCount isGmtCount = do
+  transitions <- replicateM transCount $ fromSecondsSinceUnixEpoch <$> get32bitInt
+  indexes <- replicateM transCount get8bitInt
+  types <- replicateM typeCount $ (,,) <$> get32bitInt <*> getBool <*> get8bitInt
+  abbrs <- (toString . B.unpack) <$> getByteString abbrLen
+  leaps <- replicateM leapCount getLeapInfo
+  isStds <- replicateM isStdCount getBool
+  isGmts <- replicateM isGmtCount getBool
+  let tInfos = zipTransitionInfos abbrs types isStds isGmts
+  let (utcM, wall) = partitionAndZip (zip transitions indexes) tInfos
+  return (utcM, wall, importLeaps leaps)
 
 getBool :: Get Bool
 getBool = fmap (/= 0) getWord8
@@ -65,8 +76,24 @@ getInt32 = fmap fromIntegral getWord32be
 get32bitInt :: Get Int
 get32bitInt = fmap fromIntegral getInt32
 
-get32bitInteger :: Get Integer
-get32bitInteger = fmap fromIntegral getInt32
+-- helper fucntions
 
-toASCII :: [Word8] -> String
-toASCII = map (toEnum . fromIntegral)
+zipTransitionInfos :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [TransInfo]
+zipTransitionInfos abbrs = zipWith3 toTI
+  where
+    toTI (gmt, isdst, offset) = TransInfo gmt isdst (getAbbr offset abbrs)
+    getAbbr offset = takeWhile (/= '\NUL') . drop offset
+
+partitionAndZip :: [(Instant, Int)] -> [TransInfo] -> (UtcTransitionsMap, [(Instant, Int)])
+partitionAndZip transAndIndexes tInfos = foldr select (emptyTransitions,[]) transAndIndexes
+  where
+    isUtc tInfo = isGmt tInfo && isStd tInfo
+    select x@(tran, idx) ~(utcM , wallclock)
+      | isUtc tInfo = (addTransition tran tInfo' utcM, wallclock)
+      | otherwise   = (utcM, x:wallclock)
+      where
+        tInfo = tInfos !! idx
+        tInfo' = TransitionInfo (tiOffset tInfo) (tiIsDst tInfo) (abbr tInfo)
+
+toString :: [Word8] -> String
+toString = map (toEnum . fromIntegral)
