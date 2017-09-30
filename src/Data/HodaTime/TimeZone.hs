@@ -2,7 +2,7 @@ module Data.HodaTime.TimeZone
 (
    utc
   ,local
-  ,timeZoneAt
+  ,timeZone
   ,getUtcOffset
   ,maxOffset
   ,minOffset
@@ -14,13 +14,15 @@ import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime, ZoneLocalResult(..))
 import Data.HodaTime.OffsetDateTime.Internal (Offset)
 
 utc :: TimeZone
-utc = UTCzone
+utc = undefined    -- TODO: Creates a timezone with an empty map and 0 offset
 
-timeZoneAt :: TZIdentifier -> Maybe TimeZone
-timeZoneAt = undefined
+timeZone :: String -> Maybe TimeZone
+timeZone = undefined
 
 local :: TimeZone
 local = undefined
+
+-- TODO: Remove all UTC stuff from here.  UTC is handled specially as it has no gaps, so no reason for it to be handled here.  It sound be handled in ZoneDateTime directly
 
 {-
 atLeniently :: LocalDateTime -> TimeZone -> ZonedDateTime
@@ -52,13 +54,10 @@ forOffset = undefined
 -}
 
 getUtcOffset :: TimeZone -> Int
-getUtcOffset UTCzone = 0
 getUtcOffset _tz = undefined
 
 maxOffset :: TimeZone -> Int
-maxOffset UTCzone = 0
 maxOffset _tz = undefined
 
 minOffset :: TimeZone -> Int
-minOffset UTCzone = 0
 minOffset _tz = undefined

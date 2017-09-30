@@ -98,5 +98,5 @@ inZone instant tzi@TimeZone { } calendar = ZonedDateTime odt tzi
 -}
 
 -- | Convert 'Instant' to a 'ZonedDateTime' in the UTC time zone, ISO calendar
-inUtc :: Instant -> ZonedDateTime
+inUtc :: Instant -> ZonedDateTime cal
 inUtc instant = undefined
