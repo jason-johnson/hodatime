@@ -8,7 +8,7 @@ import Data.HodaTime.TimeZone.Internal
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail, skip)
+import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail, skip, isEmpty)
 import Data.Word (Word8)
 import Control.Monad (unless, replicateM_, replicateM)
 import Data.Int (Int32)
@@ -30,6 +30,8 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
       (magic, _version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen) <- getHeader
       unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
       (utcM, wall, leapsMap) <- getPayload transcnt ttypecnt abbrlen leapcnt ttisstdcnt ttisgmtcnt
+      finished <- isEmpty
+      unless finished $ fail "unprocessed data still in olson file"
       return (utcM, wall, leapsMap)
 
 -- Get combinators
