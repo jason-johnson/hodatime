@@ -8,7 +8,7 @@ import Data.HodaTime.TimeZone.Internal
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail)
+import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail, skip)
 import Data.Word (Word8)
 import Control.Monad (unless, replicateM_, replicateM)
 import Data.Int (Int32)
@@ -18,7 +18,7 @@ import System.FilePath ((</>))
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.Instant.Internal (Instant)
 
-data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String, isStd :: Bool, isGmt :: Bool }
+data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
   deriving (Eq, Show)
 
 getTransitions :: L.ByteString -> Either String (UtcTransitionsMap, [(Instant, Int)], LeapsMap)
@@ -58,9 +58,8 @@ getPayload transCount typeCount abbrLen leapCount isStdCount isGmtCount = do
   types <- replicateM typeCount $ (,,) <$> get32bitInt <*> getBool <*> get8bitInt
   abbrs <- (toString . B.unpack) <$> getByteString abbrLen
   leaps <- replicateM leapCount getLeapInfo
-  isStds <- replicateM isStdCount getBool
-  isGmts <- replicateM isGmtCount getBool
-  let tInfos = zipTransitionInfos abbrs types isStds isGmts
+  skip $ isStdCount + isGmtCount
+  let tInfos = mapTransitionInfos abbrs types
   let (utcM, wall) = partitionAndZip (zip transitions indexes) tInfos
   return (utcM, wall, importLeaps leaps)
 
@@ -78,8 +77,8 @@ get32bitInt = fmap fromIntegral getInt32
 
 -- helper fucntions
 
-zipTransitionInfos :: String -> [(Int, Bool, Int)] -> [Bool] -> [Bool] -> [TransInfo]
-zipTransitionInfos abbrs = zipWith3 toTI
+mapTransitionInfos :: String -> [(Int, Bool, Int)] -> [TransInfo]
+mapTransitionInfos abbrs = fmap toTI
   where
     toTI (gmt, isdst, offset) = TransInfo gmt isdst (getAbbr offset abbrs)
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
@@ -87,10 +86,7 @@ zipTransitionInfos abbrs = zipWith3 toTI
 partitionAndZip :: [(Instant, Int)] -> [TransInfo] -> (UtcTransitionsMap, [(Instant, Int)])
 partitionAndZip transAndIndexes tInfos = foldr select (emptyTransitions,[]) transAndIndexes
   where
-    isUtc tInfo = isGmt tInfo && isStd tInfo
-    select x@(tran, idx) ~(utcM , wallclock)
-      | isUtc tInfo = (addTransition tran tInfo' utcM, wallclock)
-      | otherwise   = (utcM, x:wallclock)
+    select (tran, idx) (utcM , wallclock) = (addTransition tran tInfo' utcM, wallclock)
       where
         tInfo = tInfos !! idx
         tInfo' = TransitionInfo (tiOffset tInfo) (tiIsDst tInfo) (abbr tInfo)
