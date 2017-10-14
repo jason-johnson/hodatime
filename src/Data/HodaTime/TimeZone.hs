@@ -7,6 +7,7 @@ module Data.HodaTime.TimeZone
 where
 
 import Data.HodaTime.TimeZone.Internal
+import Data.HodaTime.TimeZone.Platform
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime, ZoneLocalResult(..))
 import Data.HodaTime.OffsetDateTime.Internal (Offset)
 
