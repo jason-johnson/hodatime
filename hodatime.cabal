@@ -30,7 +30,8 @@ library
                    bytestring,
                    directory,
                    filepath,
-                   containers
+                   containers,
+                   fingertree
   ghc-options:     -Wall
   exposed-modules:
                    Data.HodaTime,

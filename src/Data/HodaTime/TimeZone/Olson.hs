@@ -15,13 +15,14 @@ import Data.Int (Int32)
 import Control.Applicative ((<$>), (<*>), ZipList(..))
 import System.Directory (doesFileExist, getDirectoryContents)
 import System.FilePath ((</>))
-import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
+import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch, add, minus)      -- TODO <--- violation: internal modules cannot reference top level ones
 import Data.HodaTime.Instant.Internal (Instant)
+import Data.HodaTime.Duration.Internal (fromSeconds)
 
 data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
   deriving (Eq, Show)
 
-getTransitions :: L.ByteString -> Either String (UtcTransitionsMap, [(Instant, Int)], LeapsMap)
+getTransitions :: L.ByteString -> Either String (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 getTransitions bs = case runGetOrFail getTransitions' bs of
   Left (_, _, msg) -> Left msg
   Right (_, _, xs) -> Right xs
@@ -29,10 +30,10 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
     getTransitions' = do
       (magic, _version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen) <- getHeader
       unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
-      (utcM, wall, leapsMap) <- getPayload transcnt ttypecnt abbrlen leapcnt ttisstdcnt ttisgmtcnt
+      (utcM, calDateM, leapsMap) <- getPayload transcnt ttypecnt abbrlen leapcnt ttisstdcnt ttisgmtcnt
       finished <- isEmpty
       unless finished $ fail "unprocessed data still in olson file"
-      return (utcM, wall, leapsMap)
+      return (utcM, calDateM, leapsMap)
 
 -- Get combinators
 
@@ -53,7 +54,7 @@ getLeapInfo = do
   lOffset <- get32bitInt
   return (instant, lOffset)
 
-getPayload :: Int -> Int -> Int -> Int -> Int -> Int -> Get (UtcTransitionsMap, [(Instant, Int)], LeapsMap)
+getPayload :: Int -> Int -> Int -> Int -> Int -> Int -> Get (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 getPayload transCount typeCount abbrLen leapCount isStdCount isGmtCount = do
   transitions <- replicateM transCount $ fromSecondsSinceUnixEpoch <$> get32bitInt
   indexes <- replicateM transCount get8bitInt
@@ -62,8 +63,8 @@ getPayload transCount typeCount abbrLen leapCount isStdCount isGmtCount = do
   leaps <- replicateM leapCount getLeapInfo
   skip $ isStdCount + isGmtCount
   let tInfos = mapTransitionInfos abbrs types
-  let (utcM, wall) = partitionAndZip (zip transitions indexes) tInfos
-  return (utcM, wall, importLeaps leaps)
+  let (utcM, calDateM) = buildTransitionMaps (zip transitions indexes) tInfos
+  return (utcM, calDateM, importLeaps leaps)
 
 getBool :: Get Bool
 getBool = fmap (/= 0) getWord8
@@ -85,13 +86,32 @@ mapTransitionInfos abbrs = fmap toTI
     toTI (gmt, isdst, offset) = TransInfo gmt isdst (getAbbr offset abbrs)
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
-partitionAndZip :: [(Instant, Int)] -> [TransInfo] -> (UtcTransitionsMap, [(Instant, Int)])
-partitionAndZip transAndIndexes tInfos = foldr select (emptyTransitions,[]) transAndIndexes
+buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> (UtcTransitionsMap, CalDateTransitionsMap)
+buildTransitionMaps transAndIndexes tInfos = (utcMap, calDateMap')
   where
-    select (tran, idx) (utcM , wallclock) = (addTransition tran tInfo' utcM, wallclock)
+    calDateMap' = addCalDateTransition lastEntry Largest defaultTI calDateMap
+    mkTI t = TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
+    defaultTI = mkTI . findDefaultTransInfo $ tInfos
+    (utcMap, calDateMap, lastEntry) = foldr go (emptyUtcTransitions, emptyCalDateTransitions, Smallest) transAndIndexes
+    go (tran, idx) (utcM, calDateM, prevEntry) = (utcM', calDateM', entry)
       where
+        utcM' = addUtcTransition tran tInfo' utcM
+        calDateM' = addCalDateTransition prevEntry entry tInfo' calDateM
+        entry = Entry . applyOffset (tiOffset tInfo) $ tran
         tInfo = tInfos !! idx
-        tInfo' = TransitionInfo (tiOffset tInfo) (tiIsDst tInfo) (abbr tInfo)
+        tInfo' = mkTI tInfo
+
+applyOffset :: Int -> Instant -> Instant
+applyOffset off i = apply i d
+  where
+    apply = if off < 0 then minus else add
+    d = fromSeconds . abs $ off
+
+findDefaultTransInfo :: [TransInfo] -> TransInfo
+findDefaultTransInfo tis = go . filter ((== False) . tiIsDst) $ tis
+  where
+    go [] = head tis
+    go (ti:_) = ti
 
 toString :: [Word8] -> String
 toString = map (toEnum . fromIntegral)

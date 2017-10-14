@@ -5,7 +5,7 @@ module HodaTime.OffsetTest
 where
 
 import Test.Tasty
-import Test.Tasty.SmallCheck as SC
+import qualified Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
@@ -32,7 +32,7 @@ unitTests = testGroup "Unit tests"
 -- properties
 
 mathPropSC :: TestTree
-mathPropSC = localOption (SmallCheckDepth 18) $ testGroup "Math"  -- NOTE: Max offset size is 18/-18 so we set the depth to make sure everything in that range is tested
+mathPropSC = localOption (SC.SmallCheckDepth 18) $ testGroup "Math"  -- NOTE: Max offset size is 18/-18 so we set the depth to make sure everything in that range is tested
   [
      SC.testProperty "fromHours x `add` fromHours y == fromHours (x+y)" $ test fromHours add (+)
     ,SC.testProperty "fromHours x `minus` fromHours y == fromHours (x-y)" $ test fromHours minus (-)
