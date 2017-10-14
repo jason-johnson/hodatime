@@ -10,7 +10,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail, skip, isEmpty)
 import Data.Word (Word8)
-import Control.Monad (unless, replicateM_, replicateM)
+import Control.Monad (unless, replicateM)
 import Data.Int (Int32)
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch, add, minus)      -- TODO <--- violation: internal modules cannot reference top level ones
 import Data.HodaTime.Instant.Internal (Instant)
@@ -18,6 +18,9 @@ import Data.HodaTime.Duration.Internal (fromSeconds)
 
 data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
   deriving (Eq, Show)
+
+reservedSectionSize :: Int
+reservedSectionSize = 15
 
 getTransitions :: L.ByteString -> Either String (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 getTransitions bs = case runGetOrFail getTransitions' bs of
@@ -38,7 +41,7 @@ getHeader :: Get (String, Word8, Int, Int, Int, Int, Int, Int)
 getHeader = do
   magic <- (toString . B.unpack) <$> getByteString 4
   version <- getWord8
-  replicateM_ 15 getWord8 -- skip reserved section
+  skip reservedSectionSize
   [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
   unless
     (ttisgmtcnt == ttisstdcnt && ttisstdcnt == ttypecnt)
