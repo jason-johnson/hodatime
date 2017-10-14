@@ -30,6 +30,9 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
     getTransitions' = do
       (magic, _version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen) <- getHeader
       unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
+      unless
+        (ttisgmtcnt == ttisstdcnt && ttisstdcnt == ttypecnt)
+        (fail $ "format issue, sizes don't match: ttisgmtcnt = " ++ show ttisgmtcnt ++ ", ttisstdcnt = " ++ show ttisstdcnt ++ ", ttypecnt = " ++ show ttypecnt)
       (utcM, calDateM, leapsMap) <- getPayload transcnt ttypecnt abbrlen leapcnt ttisstdcnt ttisgmtcnt
       finished <- isEmpty
       unless finished $ fail "unprocessed data still in olson file"
@@ -43,9 +46,6 @@ getHeader = do
   version <- getWord8
   skip reservedSectionSize
   [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
-  unless
-    (ttisgmtcnt == ttisstdcnt && ttisstdcnt == ttypecnt)
-    (fail $ "format issue, sizes don't match: ttisgmtcnt = " ++ show ttisgmtcnt ++ ", ttisstdcnt = " ++ show ttisstdcnt ++ ", ttypecnt = " ++ show ttypecnt)
   return (magic, version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen)
 
 getLeapInfo :: Get (Instant, Int)
