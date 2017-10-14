@@ -1,6 +1,6 @@
 module Data.HodaTime.TimeZone.Internal
 (
-   TZIdentifier
+   TZIdentifier(..)
   ,TransitionInfo(..)
   ,UtcTransitionsMap
   ,LeapsMap
@@ -73,8 +73,5 @@ addCalDateTransition b e = IMap.insert interval
   where
     interval = Interval b e
 
--- TODO: Right now we have the mapping from UTC instance to an offset, but we need an interval set for mapping from local time to the offset.
--- TODO: IMPORTANT: the utcTransitionMap must have the key in UTC because it will be coming from UTC instances.  The interval map *must be*
--- TODO: in localtime because it will be coming from localtime, not UTC
 data TimeZone = TimeZone { zone :: TZIdentifier, utcTransitionsMap :: UtcTransitionsMap, calDateTransitionsMap :: CalDateTransitionsMap }
   deriving (Eq, Show)

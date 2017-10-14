@@ -12,9 +12,6 @@ import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail,
 import Data.Word (Word8)
 import Control.Monad (unless, replicateM_, replicateM)
 import Data.Int (Int32)
-import Control.Applicative ((<$>), (<*>), ZipList(..))
-import System.Directory (doesFileExist, getDirectoryContents)
-import System.FilePath ((</>))
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch, add, minus)      -- TODO <--- violation: internal modules cannot reference top level ones
 import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.Duration.Internal (fromSeconds)
