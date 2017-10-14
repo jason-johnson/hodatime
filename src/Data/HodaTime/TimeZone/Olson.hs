@@ -89,15 +89,17 @@ mapTransitionInfos abbrs = fmap toTI
 buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> (UtcTransitionsMap, CalDateTransitionsMap)
 buildTransitionMaps transAndIndexes tInfos = (utcMap, calDateMap')
   where
-    calDateMap' = addCalDateTransition lastEntry Largest defaultTI calDateMap
+    calDateMap' = addCalDateTransition lastEntry Largest lastTI calDateMap -- TODO: At some point we may want to have a special POSIX tInfo for generating these from TZ string
     mkTI t = TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
     defaultTI = mkTI . findDefaultTransInfo $ tInfos
-    (utcMap, calDateMap, lastEntry) = foldr go (emptyUtcTransitions, emptyCalDateTransitions, Smallest) transAndIndexes
-    go (tran, idx) (utcM, calDateM, prevEntry) = (utcM', calDateM', entry)
+    oneSecond = fromSeconds 1
+    (utcMap, calDateMap, lastEntry, lastTI) = foldr go (emptyUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
+    go (tran, idx) (utcM, calDateM, prevEntry, prevTI) = (utcM', calDateM', Entry localTran, tInfo')
       where
         utcM' = addUtcTransition tran tInfo' utcM
-        calDateM' = addCalDateTransition prevEntry entry tInfo' calDateM
-        entry = Entry . applyOffset (tiOffset tInfo) $ tran
+        calDateM' = addCalDateTransition prevEntry before prevTI calDateM
+        localTran = applyOffset (tiOffset tInfo) $ tran
+        before = Entry (minus localTran oneSecond)
         tInfo = tInfos !! idx
         tInfo' = mkTI tInfo
 
