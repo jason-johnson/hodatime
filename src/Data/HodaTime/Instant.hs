@@ -21,7 +21,7 @@ module Data.HodaTime.Instant
   ,difference
   ,minus
   -- * Conversion
-  ,inUtc
+  ,inTimeZone
   -- * Debug - to be removed
   ,LTI.fromInstant  -- TODO:  REMOVE THIS!  This is only exported for testing, remove it immediately after fixing fromSecondsSinceUnixEpoch
 )
@@ -29,11 +29,12 @@ where
 
 import Data.HodaTime.Instant.Internal
 import Data.HodaTime.Instant.Clock (now)
+import Data.HodaTime.TimeZone.Internal (TimeZone)
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant, Hour)    -- Made to warn so we don't forget to remove this stuff
 
 -- Conversion
 
--- | Convert 'Instant' to a 'ZonedDateTime' in the UTC time zone, ISO calendar
-inUtc :: Instant -> ZonedDateTime cal
-inUtc _instant = undefined
+-- | Convert 'Instant' to a 'ZonedDateTime' in the specified time zone.  The calendar must be derivable or specified in the type explicitly
+inTimeZone :: Instant -> TimeZone -> ZonedDateTime cal
+inTimeZone _instant _tz = undefined
