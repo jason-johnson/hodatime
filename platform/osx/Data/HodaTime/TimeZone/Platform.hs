@@ -57,9 +57,13 @@ tzdbDir = "/usr" </> "share" </> "zoneinfo"
 loadZoneFromOlsonFile :: (MonadIO m, MonadThrow n) => FilePath -> m (n (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap))
 loadZoneFromOlsonFile file = do
   exists <- liftIO . doesFileExist $ file
-  unless exists $ liftIO . throwM $ TimeZoneDoesNotExistException
-  mTrans <- fmap getTransitions (liftIO . BS.readFile $ file)
-  return . fmap (\(utcM, calDateM, _) -> (utcM, calDateM, loadLeaps')) $ mTrans
+  if exists then
+    do
+      bs <- liftIO . BS.readFile $ file
+      return $ do
+        (utcM, calDateM, _) <- getTransitions bs
+        return (utcM, calDateM, loadLeaps')
+  else return $ throwM TimeZoneDoesNotExistException
 
 -- On Mac platform, leaps aren't stored anywhere so we have to load them seperately
 loadLeaps' :: LeapsMap
