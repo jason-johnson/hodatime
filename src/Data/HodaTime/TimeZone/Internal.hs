@@ -73,6 +73,7 @@ addCalDateTransition b e = IMap.insert interval
   where
     interval = Interval b e
 
+-- | Represents a time zone.  A TimeZone can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
   TimeZone
     {
