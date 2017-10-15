@@ -42,6 +42,9 @@ library
                    containers,
                    exceptions,
                    fingertree
+  if !os(windows)
+    build-depends: unix
+
   ghc-options:     -Wall
 
   exposed-modules:
