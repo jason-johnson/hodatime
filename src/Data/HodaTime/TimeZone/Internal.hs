@@ -73,5 +73,12 @@ addCalDateTransition b e = IMap.insert interval
   where
     interval = Interval b e
 
-data TimeZone = TimeZone { zone :: TZIdentifier, utcTransitionsMap :: UtcTransitionsMap, calDateTransitionsMap :: CalDateTransitionsMap }
+data TimeZone =
+  TimeZone
+    {
+       zoneName :: TZIdentifier
+      ,utcTransitionsMap :: UtcTransitionsMap
+      ,calDateTransitionsMap :: CalDateTransitionsMap
+      ,leapsMap :: LeapsMap
+    }
   deriving (Eq, Show)

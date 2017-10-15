@@ -1,6 +1,7 @@
 module Data.HodaTime.TimeZone.Platform
 (
-   loadLocalZone
+   loadUTC
+  ,loadLocalZone
   ,loadTimeZone
 )
 where
@@ -19,6 +20,8 @@ import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Typeable (Typeable)
 
+-- exceptions
+
 data TimeZoneDoesNotExistException = TimeZoneDoesNotExistException
   deriving (Typeable, Show)
 
@@ -29,26 +32,38 @@ data TZoneDBCorruptException = TZoneDBCorruptException
 
 instance Exception TZoneDBCorruptException
 
-tzdbDir :: FilePath
-tzdbDir = "/usr" </> "share" </> "zoneinfo"
+-- interface
 
-loadTimeZone :: (MonadThrow n, MonadIO m) => String -> m (n TimeZone)
+loadUTC :: (MonadIO m, MonadThrow n) => m (n (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap))
+loadUTC = loadTimeZone "UTC"
+
+loadTimeZone :: (MonadThrow n, MonadIO m) => String -> m (n (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap))
 loadTimeZone tzName = do
-  let file = tzdbDir </> tzName
-  loadZoneFromOlsonFile (Zone tzName) file
+  loadZoneFromOlsonFile $ tzdbDir </> tzName
 
-loadLocalZone :: (MonadIO m, MonadThrow n) => m (n TimeZone)
+loadLocalZone :: (MonadIO m, MonadThrow n) => m (n (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, String))
 loadLocalZone = do
   let file = "/etc" </> "localtime"
   tzPath <- liftIO . readSymbolicLink $ file
-  let tzName = Zone . drop 1 . fromMaybe " unknown" . stripPrefix tzdbDir $ tzPath  -- TODO: We should detect if this failed and throw an error, not set to unknown
-  loadZoneFromOlsonFile tzName file
+  let tzName = drop 1 . fromMaybe " unknown" . stripPrefix tzdbDir $ tzPath  -- TODO: We should detect if this failed and throw an error, not set to unknown
+  res <- loadZoneFromOlsonFile file
+  return . fmap (\(utcM, calDateM, leaps) -> (utcM, calDateM, leaps, tzName)) $ res
 
 -- helper functions
 
-loadZoneFromOlsonFile :: (MonadIO m, MonadThrow n) => TZIdentifier -> FilePath -> m (n TimeZone)
-loadZoneFromOlsonFile tzName file = do
+tzdbDir :: FilePath
+tzdbDir = "/usr" </> "share" </> "zoneinfo"
+
+loadZoneFromOlsonFile :: (MonadIO m, MonadThrow n) => FilePath -> m (n (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap))
+loadZoneFromOlsonFile file = do
   exists <- liftIO . doesFileExist $ file
   unless exists $ liftIO . throwM $ TimeZoneDoesNotExistException
   mTrans <- fmap getTransitions (liftIO . BS.readFile $ file)
-  return . fmap (\(utcM, calDateM, _) -> TimeZone tzName utcM calDateM) $ mTrans
+  return . fmap (\(utcM, calDateM, _) -> (utcM, calDateM, loadLeaps')) $ mTrans
+
+-- On Mac platform, leaps aren't stored anywhere so we have to load them seperately
+loadLeaps' :: LeapsMap
+loadLeaps' = importLeaps []
+
+loadLeaps :: (MonadIO m, MonadThrow n) => m (n LeapsMap)
+loadLeaps = return . return $ loadLeaps'

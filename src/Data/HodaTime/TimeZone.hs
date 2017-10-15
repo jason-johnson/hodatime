@@ -8,15 +8,20 @@ where
 
 import Data.HodaTime.TimeZone.Internal
 import Data.HodaTime.TimeZone.Platform
-import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime, ZoneLocalResult(..))
-import Data.HodaTime.OffsetDateTime.Internal (Offset)
+import Control.Monad.Catch (MonadThrow)
+import Control.Monad.IO.Class (MonadIO)
 
--- TODO: Leap seconds will make this an IO like the others
-utc :: TimeZone
-utc = TimeZone UTC emptyUtcTransitions emptyCalDateTransitions
+utc :: (MonadThrow n, MonadIO m) => m (n TimeZone)
+utc = do
+  res <- loadUTC
+  return . fmap (\(utcM, calDateM, leaps) -> TimeZone UTC utcM calDateM leaps) $ res
 
-timeZone :: String -> Maybe TimeZone
-timeZone = undefined
+timeZone :: (MonadThrow n, MonadIO m) => String -> m (n TimeZone)
+timeZone tzName = do
+  res <- loadTimeZone tzName
+  return . fmap (\(utcM, calDateM, leaps) -> TimeZone (Zone tzName) utcM calDateM leaps) $ res
 
-localZone :: TimeZone
-localZone = undefined
+localZone :: (MonadIO m, MonadThrow n) => m (n TimeZone)
+localZone = do
+  res <- loadLocalZone
+  return . fmap (\(utcM, calDateM, leaps, tzName) -> TimeZone (Zone tzName) utcM calDateM leaps) $ res
