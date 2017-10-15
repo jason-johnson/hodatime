@@ -41,10 +41,10 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
       unless
         (ttisgmtcnt == ttisstdcnt && ttisstdcnt == ttypecnt)
         (fail $ "format issue, sizes don't match: ttisgmtcnt = " ++ show ttisgmtcnt ++ ", ttisstdcnt = " ++ show ttisstdcnt ++ ", ttypecnt = " ++ show ttypecnt)
-      (utcM, calDateM, leapsMap) <- getPayload transcnt ttypecnt abbrlen leapcnt ttisstdcnt ttisgmtcnt
+      (utcM, calDateM, leapsM) <- getPayload transcnt ttypecnt abbrlen leapcnt ttisstdcnt ttisgmtcnt
       finished <- isEmpty
       unless finished $ fail "unprocessed data still in olson file"
-      return (utcM, calDateM, leapsMap)
+      return (utcM, calDateM, leapsM)
 
 -- Get combinators
 
