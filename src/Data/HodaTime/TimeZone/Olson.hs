@@ -101,7 +101,8 @@ buildTransitionMaps transAndIndexes tInfos = (utcMap, calDateMap')
     mkTI t = TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
     defaultTI = mkTI . findDefaultTransInfo $ tInfos
     oneSecond = fromSeconds 1
-    (utcMap, calDateMap, lastEntry, lastTI) = foldr go (emptyUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
+    initialUtcTransitions = addUtcTransition bigBang defaultTI emptyUtcTransitions
+    (utcMap, calDateMap, lastEntry, lastTI) = foldr go (initialUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
     go (tran, idx) (utcM, calDateM, prevEntry, prevTI) = (utcM', calDateM', Entry localTran, tInfo')
       where
         utcM' = addUtcTransition tran tInfo' utcM
