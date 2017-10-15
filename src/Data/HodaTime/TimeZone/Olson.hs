@@ -1,6 +1,7 @@
 module Data.HodaTime.TimeZone.Olson
 (
-  getTransitions
+   getTransitions
+  ,ParseException(..)
 )
 where
 
@@ -12,9 +13,17 @@ import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail,
 import Data.Word (Word8)
 import Control.Monad (unless, replicateM)
 import Data.Int (Int32)
+import Control.Exception (Exception)
+import Control.Monad.Catch (MonadThrow, throwM)
+import Data.Typeable (Typeable)
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch, add, minus)      -- TODO <--- violation: internal modules cannot reference top level ones
 import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.Duration.Internal (fromSeconds)
+
+data ParseException = ParseException String Int
+  deriving (Typeable, Show)
+
+instance Exception ParseException
 
 data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
   deriving (Eq, Show)
@@ -22,10 +31,10 @@ data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
 reservedSectionSize :: Int
 reservedSectionSize = 15
 
-getTransitions :: L.ByteString -> Either String (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
+getTransitions :: MonadThrow m => L.ByteString -> m (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 getTransitions bs = case runGetOrFail getTransitions' bs of
-  Left (_, _, msg) -> Left msg
-  Right (_, _, xs) -> Right xs
+  Left (_, consumed, msg) -> throwM $ ParseException msg (fromIntegral consumed)
+  Right (_, _, xs) -> return xs
   where
     getTransitions' = do
       (magic, _version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen) <- getHeader
