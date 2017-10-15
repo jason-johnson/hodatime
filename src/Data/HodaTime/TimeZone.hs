@@ -8,20 +8,18 @@ where
 
 import Data.HodaTime.TimeZone.Internal
 import Data.HodaTime.TimeZone.Platform
-import Control.Monad.Catch (MonadThrow)
-import Control.Monad.IO.Class (MonadIO)
 
-utc :: (MonadThrow n, MonadIO m) => m (n TimeZone)
+utc :: IO TimeZone
 utc = do
-  res <- loadUTC
-  return . fmap (\(utcM, calDateM, leaps) -> TimeZone UTC utcM calDateM leaps) $ res
+  (utcM, calDateM, leaps) <- loadUTC
+  return $ TimeZone UTC utcM calDateM leaps
 
-timeZone :: (MonadThrow n, MonadIO m) => String -> m (n TimeZone)
+timeZone :: String -> IO TimeZone
 timeZone tzName = do
-  res <- loadTimeZone tzName
-  return . fmap (\(utcM, calDateM, leaps) -> TimeZone (Zone tzName) utcM calDateM leaps) $ res
+  (utcM, calDateM, leaps) <- loadTimeZone tzName
+  return $ TimeZone (Zone tzName) utcM calDateM leaps
 
-localZone :: (MonadIO m, MonadThrow n) => m (n TimeZone)
+localZone :: IO TimeZone
 localZone = do
-  res <- loadLocalZone
-  return . fmap (\(utcM, calDateM, leaps, tzName) -> TimeZone (Zone tzName) utcM calDateM leaps) $ res
+  (utcM, calDateM, leaps, tzName) <- loadLocalZone
+  return $ TimeZone (Zone tzName) utcM calDateM leaps
