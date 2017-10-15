@@ -16,8 +16,7 @@ import Data.Int (Int32)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
-import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch, add, minus)      -- TODO <--- violation: internal modules cannot reference top level ones
-import Data.HodaTime.Instant.Internal (Instant)
+import Data.HodaTime.Instant.Internal (Instant, fromSecondsSinceUnixEpoch, add, minus)
 import Data.HodaTime.Duration.Internal (fromSeconds)
 
 data ParseException = ParseException String Int
