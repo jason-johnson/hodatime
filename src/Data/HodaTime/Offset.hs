@@ -18,6 +18,7 @@ module Data.HodaTime.Offset
   -- * Types
    Offset
   -- * Constructors
+  ,empty
   ,fromSeconds
   ,fromMinutes
   ,fromHours
