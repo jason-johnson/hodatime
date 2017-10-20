@@ -5,11 +5,13 @@ module Data.HodaTime.ZonedDateTime.Internal
 )
 where
 
-import Data.HodaTime.OffsetDateTime.Internal (OffsetDateTime(..))
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime)
 import Data.HodaTime.TimeZone.Internal (TimeZone)
 
 -- | A CalendarDateTime in a specific time zone. A ZonedDateTime is global and maps directly to a single Instant.
-data ZonedDateTime cal = ZonedDateTime { zdtCalendarDateTime :: OffsetDateTime cal, zdtTimeZone :: TimeZone }
+data ZonedDateTime cal = ZonedDateTime { zdtCalendarDateTime :: CalendarDateTime cal, zdtTimeZone :: TimeZone }
+  deriving (Eq, Show)
+-- TODO: We should have an Ord instance, we can just ignore the timezone field
 
 data ZoneLocalResult cal =
     ZLSingle (ZonedDateTime cal)

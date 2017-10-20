@@ -7,6 +7,7 @@ module Data.HodaTime.OffsetDateTime.Internal
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDate(..))
+import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
 import Data.Int (Int32)
 import Data.Word (Word64)
 
@@ -18,5 +19,5 @@ empty :: Offset
 empty = Offset 0
 
 -- | A 'CalendarDateTime' with a UTC offset.  This is the format used by e.g. HTTP.
-data OffsetDateTime cal = OffsetDateTime { osdtDate :: CalendarDate cal, osdtOffset :: Offset, osdtNanos :: Word64 }
-  deriving (Eq, Ord, Show)    -- TODO: Remove Show
+newtype OffsetDateTime cal = OffsetDateTime (ZonedDateTime cal)
+  deriving (Eq, Show)    -- TODO: Remove Show
