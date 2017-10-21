@@ -4,10 +4,13 @@ module Data.HodaTime.OffsetDateTime.Internal
   ,OffsetDateTime(..)
   ,empty
   ,toStringRep
+  ,adjustInstant
 )
 where
 
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
+import Data.HodaTime.Instant.Internal (Instant, add, minus)
+import Data.HodaTime.Duration.Internal (fromSeconds)
 import Data.HodaTime.Constants (secondsPerHour)
 import Data.Int (Int32)
 
@@ -33,3 +36,12 @@ toStringRep (Offset secs) = rep
 -- empty, the name of the 'TimeZone' will be UTC
 newtype OffsetDateTime cal = OffsetDateTime (ZonedDateTime cal)
   deriving (Eq, Show)    -- TODO: Remove Show
+
+-- helper functions
+
+adjustInstant :: Int -> Instant -> Instant
+adjustInstant secs instant = instant'
+  where
+    op = if secs < 0 then minus else add
+    duration = fromSeconds . abs $ secs
+    instant' = instant `op` duration
