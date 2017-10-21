@@ -11,36 +11,32 @@ module Data.HodaTime.OffsetDateTime
 where
 
 import Data.HodaTime.OffsetDateTime.Internal
-import Data.HodaTime.Instant.Internal (Instant, add, minus)
-import Data.HodaTime.Duration.Internal (fromSeconds)
+import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, IsCalendarDateTime(..))
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
-import Data.HodaTime.TimeZone.Internal (TimeZone(..), TZIdentifier(..))
+import Data.HodaTime.TimeZone.Internal (TimeZone(..), TZIdentifier(..), TransitionInfo)
 import Data.HodaTime.TimeZone.Platform (fixedOffsetZone)
 
 -- | Create an 'OffsetDateTime' from an 'Instant' and an 'Offset'.
 fromInstantWithOffset :: IsCalendarDateTime cal => Instant -> Offset -> IO (OffsetDateTime cal)
 fromInstantWithOffset inst offset = do
-  tz <- makeFixedTimeZone offset
-  return . OffsetDateTime . ZonedDateTime cdt $ tz
+  (tz, tInfo) <- makeFixedTimeZone offset
+  return . OffsetDateTime . ZonedDateTime cdt tz $ tInfo
     where
-      cdt = fromAdjustedInstant inst'
+      cdt = fromAdjustedInstant . adjustInstant secs $ inst
       secs = fromIntegral . offsetSeconds $ offset
-      op = if secs < 0 then minus else add
-      duration = fromSeconds . abs $ secs
-      inst' = inst `op` duration
 
 -- | Create an 'OffsetDateTime' from a 'CalendarDateTime' and an 'Offset'.
 fromCalendarDateTimeWithOffset :: CalendarDateTime cal -> Offset -> IO (OffsetDateTime cal)
 fromCalendarDateTimeWithOffset cdt offset = do
-  tz <- makeFixedTimeZone offset
-  return . OffsetDateTime . ZonedDateTime cdt $ tz
+  (tz, tInfo) <- makeFixedTimeZone offset
+  return . OffsetDateTime . ZonedDateTime cdt tz $ tInfo
 
 -- helper functions
 
-makeFixedTimeZone :: Offset -> IO TimeZone
+makeFixedTimeZone :: Offset -> IO (TimeZone, TransitionInfo)
 makeFixedTimeZone offset = do
-  (utcM, calDateM, leapsM) <- fixedOffsetZone tzName (fromIntegral . offsetSeconds $ offset)
-  return $ TimeZone (Zone tzName) utcM calDateM leapsM
+  (utcM, calDateM, leapsM, tInfo) <- fixedOffsetZone tzName (fromIntegral . offsetSeconds $ offset)
+  return $ (TimeZone (Zone tzName) utcM calDateM leapsM, tInfo)
     where
       tzName = toStringRep offset

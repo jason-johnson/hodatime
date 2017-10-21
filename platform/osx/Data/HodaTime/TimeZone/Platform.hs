@@ -37,10 +37,10 @@ instance Exception TZoneDBCorruptException
 loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 loadUTC = loadTimeZone "UTC"
 
-fixedOffsetZone :: String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
+fixedOffsetZone :: String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, TransitionInfo)
 fixedOffsetZone tzName offset = do
   leapM' <- loadLeaps leapM
-  return (utcM, calDateM, leapM')
+  return (utcM, calDateM, leapM', tInfo)
     where
       utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
       calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions

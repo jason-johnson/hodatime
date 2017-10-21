@@ -14,8 +14,10 @@ module Data.HodaTime.TimeZone.Internal
   ,importLeaps
   ,addLeapTransition
   ,mergeLeapMaps
+  ,activeLeapsFor
   ,emptyCalDateTransitions
   ,addCalDateTransition
+  ,calDateTransitionsFor
   ,TimeZone(..)
 )
 where
@@ -43,8 +45,8 @@ emptyUtcTransitions = Map.empty
 addUtcTransition :: Instant -> TransitionInfo -> UtcTransitionsMap -> UtcTransitionsMap
 addUtcTransition = Map.insert
 
-activeTransitionFor :: Instant -> UtcTransitionsMap -> (Instant, TransitionInfo)
-activeTransitionFor t ts = fromMaybe (Map.findMin ts) $ Map.lookupLE t ts
+activeTransitionFor :: Instant -> UtcTransitionsMap -> TransitionInfo
+activeTransitionFor i utcM = snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- TODO: The findMin case should be impossible actually
 
 nextTransition :: Instant -> UtcTransitionsMap -> (Instant, TransitionInfo)
 nextTransition t ts = fromMaybe (Map.findMax ts) $ Map.lookupGT t ts
@@ -65,6 +67,9 @@ addLeapTransition = Map.insert
 mergeLeapMaps :: LeapsMap -> LeapsMap -> LeapsMap
 mergeLeapMaps = Map.union
 
+activeLeapsFor :: Instant -> LeapsMap -> Int
+activeLeapsFor i leapsM = fromMaybe 0 $ fmap snd $ Map.lookupLE i leapsM
+
 -- CalendarDate to transition
 
 data IntervalEntry a =
@@ -82,6 +87,9 @@ addCalDateTransition :: IntervalEntry Instant -> IntervalEntry Instant -> Transi
 addCalDateTransition b e = IMap.insert interval
   where
     interval = Interval b e
+
+calDateTransitionsFor :: Instant -> CalDateTransitionsMap -> [TransitionInfo]
+calDateTransitionsFor i = fmap snd . IMap.search (Entry i)
 
 -- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
