@@ -11,9 +11,11 @@ module Data.HodaTime.CalendarDateTime.Internal
   ,IsCalendar(..)
   ,HasDate(..)
   ,LocalTime(..)
+  ,HasFromAdjustedInstant(..)
 )
 where
 
+import Data.HodaTime.Instant.Internal (Instant)
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 
@@ -115,3 +117,7 @@ instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   dayOfWeek (CalendarDateTime cd _) = dayOfWeek cd
   next i dow (CalendarDateTime cd lt) = CalendarDateTime (next i dow cd) lt
   previous i dow (CalendarDateTime cd lt) = CalendarDateTime (previous i dow cd) lt
+
+-- | Private class used to allow conversions to CalendarDateTime for a given calendar.  If you see this in the documentation, consider it a bug
+class HasFromAdjustedInstant cal where
+  fromAdjustedInstant :: Instant -> CalendarDateTime cal

@@ -16,9 +16,10 @@ module Data.HodaTime.Calendar.Gregorian.Internal
 where
 
 import Data.HodaTime.Constants (daysPerCycle, daysPerCentury, daysPerFourYears)
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), DayOfMonth, Year, WeekNumber)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), HasFromAdjustedInstant(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.HodaTime.Calendar.Constants (daysPerStandardYear)
+import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Maybe (fromJust)
 import Data.List (findIndex)
@@ -95,6 +96,15 @@ instance IsCalendar Gregorian where
   next' n dow (CalendarDate days _ _ _) = moveByDow n dow (-) (+) (fromIntegral days)
     
   previous' n dow (CalendarDate days _ _ _) = moveByDow n dow subtract (-) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+
+instance HasFromAdjustedInstant Gregorian where
+  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime cd lt
+    where
+      cd = CalendarDate days d m y
+      (y, m, d) = daysToYearMonthDay days
+      lt = LocalTime secs nsecs
+
+-- constructors
 
 fromWeekDate :: Int -> DayOfWeek Gregorian -> WeekNumber -> DayOfWeek Gregorian -> Year -> Maybe (Date Gregorian)
 fromWeekDate minWeekDays wkStartDoW weekNum dow y = do
