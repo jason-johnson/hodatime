@@ -1,7 +1,6 @@
 module Data.HodaTime.ZonedDateTime.Internal
 (
-   ZonedDateTime(..)
-  ,ZoneLocalResult(..)
+  ZonedDateTime(..)
 )
 where
 
@@ -12,10 +11,6 @@ import Data.HodaTime.TimeZone.Internal (TimeZone)
 data ZonedDateTime cal = ZonedDateTime { zdtCalendarDateTime :: CalendarDateTime cal, zdtTimeZone :: TimeZone }
   deriving (Eq, Show)
 -- TODO: We should have an Ord instance, we can just ignore the timezone field
-
-data ZoneLocalResult cal =
-    ZLSingle (ZonedDateTime cal)
-  | ZLMulti { firstResult :: (ZonedDateTime cal), lastResult :: (ZonedDateTime cal) }
 
 -- helper functions
 
