@@ -10,7 +10,10 @@ module Data.HodaTime.TimeZone.Internal
   ,addUtcTransition
   ,activeTransitionFor
   ,nextTransition
+  ,emptyLeapsMap
   ,importLeaps
+  ,addLeapTransition
+  ,mergeLeapMaps
   ,emptyCalDateTransitions
   ,addCalDateTransition
   ,TimeZone(..)
@@ -19,8 +22,6 @@ where
 
 import Data.Maybe (fromMaybe)
 import Data.HodaTime.Instant.Internal (Instant)
-import Data.Int (Int32)
-import Data.Word (Word32)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
@@ -52,8 +53,17 @@ nextTransition t ts = fromMaybe (Map.findMax ts) $ Map.lookupGT t ts
 
 type LeapsMap = Map Instant Int
 
+emptyLeapsMap :: LeapsMap
+emptyLeapsMap = Map.empty
+
 importLeaps :: [(Instant, Int)] -> LeapsMap
 importLeaps = Map.fromList
+
+addLeapTransition :: Instant -> Int -> LeapsMap -> LeapsMap
+addLeapTransition = Map.insert
+
+mergeLeapMaps :: LeapsMap -> LeapsMap -> LeapsMap
+mergeLeapMaps = Map.union
 
 -- CalendarDate to transition
 
@@ -73,7 +83,7 @@ addCalDateTransition b e = IMap.insert interval
   where
     interval = Interval b e
 
--- | Represents a time zone.  A TimeZone can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
+-- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
   TimeZone
     {

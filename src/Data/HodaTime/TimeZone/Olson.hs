@@ -72,7 +72,8 @@ getPayload transCount typeCount abbrLen leapCount isStdCount isGmtCount = do
   skip $ isStdCount + isGmtCount
   let tInfos = mapTransitionInfos abbrs types
   let (utcM, calDateM) = buildTransitionMaps (zip transitions indexes) tInfos
-  return (utcM, calDateM, importLeaps leaps)
+  let leapM = addLeapTransition bigBang 0 $ importLeaps leaps
+  return (utcM, calDateM, leapM)
 
 getBool :: Get Bool
 getBool = fmap (/= 0) getWord8
