@@ -1,6 +1,7 @@
 module Data.HodaTime.TimeZone.Platform
 (
    loadUTC
+  ,fixedOffsetZone
   ,loadLocalZone
   ,loadTimeZone
 )
@@ -8,6 +9,7 @@ where
 
 import Data.HodaTime.TimeZone.Internal
 import Data.HodaTime.TimeZone.Olson
+import Data.HodaTime.Instant.Internal (bigBang)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 import qualified Data.ByteString.Lazy.Char8 as BS
@@ -34,6 +36,15 @@ instance Exception TZoneDBCorruptException
 
 loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 loadUTC = loadTimeZone "UTC"
+
+fixedOffsetZone :: String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
+fixedOffsetZone tzName offset = do
+  leaps <- loadLeaps
+  return (utcM, calDateM, leaps)
+    where
+      utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
+      calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
+      tInfo = TransitionInfo offset False tzName
 
 loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 loadTimeZone tzName = do
