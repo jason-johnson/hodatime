@@ -12,6 +12,7 @@ import qualified Data.ByteString.Lazy as L
 import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail, skip, isEmpty)
 import Data.Word (Word8)
 import Control.Monad (unless, replicateM)
+import Data.List (foldl')
 import Data.Int (Int32)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
@@ -103,8 +104,8 @@ buildTransitionMaps transAndIndexes tInfos = (utcMap, calDateMap')
     defaultTI = mkTI . findDefaultTransInfo $ tInfos
     oneSecond = fromSeconds 1
     initialUtcTransitions = addUtcTransition bigBang defaultTI emptyUtcTransitions
-    (utcMap, calDateMap, lastEntry, lastTI) = foldr go (initialUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
-    go (tran, idx) (utcM, calDateM, prevEntry, prevTI) = (utcM', calDateM', Entry localTran, tInfo')
+    (utcMap, calDateMap, lastEntry, lastTI) = foldl' go (initialUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
+    go (utcM, calDateM, prevEntry, prevTI) (tran, idx) = (utcM', calDateM', Entry localTran, tInfo')
       where
         utcM' = addUtcTransition tran tInfo' utcM
         calDateM' = addCalDateTransition prevEntry before prevTI calDateM
