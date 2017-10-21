@@ -11,7 +11,7 @@ module Data.HodaTime.CalendarDateTime.Internal
   ,IsCalendar(..)
   ,HasDate(..)
   ,LocalTime(..)
-  ,HasFromAdjustedInstant(..)
+  ,IsCalendarDateTime(..)
 )
 where
 
@@ -118,6 +118,9 @@ instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   next i dow (CalendarDateTime cd lt) = CalendarDateTime (next i dow cd) lt
   previous i dow (CalendarDateTime cd lt) = CalendarDateTime (previous i dow cd) lt
 
--- | Private class used to allow conversions to CalendarDateTime for a given calendar.  If you see this in the documentation, consider it a bug
-class HasFromAdjustedInstant cal where
+-- | Private class used to allow conversions to and from CalendarDateTime for a given calendar.  If you see this in the documentation, consider it a bug
+class IsCalendarDateTime cal where
+  -- | Convert an Instant which has already been converted to the correct time for the Calendar and TimeZone into CalendarDateTime
   fromAdjustedInstant :: Instant -> CalendarDateTime cal
+  -- | Convert a CalendarDateTime directly to an Instant.  Needed because different calendars use different epochs.  If this ever changes we can revisit this
+  toUnadjustedInstant :: CalendarDateTime cal -> Instant

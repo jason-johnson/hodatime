@@ -16,7 +16,7 @@ module Data.HodaTime.Calendar.Gregorian.Internal
 where
 
 import Data.HodaTime.Constants (daysPerCycle, daysPerCentury, daysPerFourYears)
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), HasFromAdjustedInstant(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.HodaTime.Calendar.Constants (daysPerStandardYear)
 import Data.HodaTime.Instant.Internal (Instant(..))
@@ -97,12 +97,14 @@ instance IsCalendar Gregorian where
     
   previous' n dow (CalendarDate days _ _ _) = moveByDow n dow subtract (-) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
 
-instance HasFromAdjustedInstant Gregorian where
+instance IsCalendarDateTime Gregorian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime cd lt
     where
       cd = CalendarDate days d m y
       (y, m, d) = daysToYearMonthDay days
       lt = LocalTime secs nsecs
+
+  toUnadjustedInstant (CalendarDateTime (CalendarDate days _ _ _) (LocalTime secs nsecs)) = Instant days secs nsecs
 
 -- constructors
 

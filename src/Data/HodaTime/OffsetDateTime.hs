@@ -13,13 +13,13 @@ where
 import Data.HodaTime.OffsetDateTime.Internal
 import Data.HodaTime.Instant.Internal (Instant, add, minus)
 import Data.HodaTime.Duration.Internal (fromSeconds)
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, HasFromAdjustedInstant(..))
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, IsCalendarDateTime(..))
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
 import Data.HodaTime.TimeZone.Internal (TimeZone(..), TZIdentifier(..))
 import Data.HodaTime.TimeZone.Platform (fixedOffsetZone)
 
 -- | Create an 'OffsetDateTime' from an 'Instant' and an 'Offset'.
-fromInstantWithOffset :: HasFromAdjustedInstant cal => Instant -> Offset -> IO (OffsetDateTime cal)
+fromInstantWithOffset :: IsCalendarDateTime cal => Instant -> Offset -> IO (OffsetDateTime cal)
 fromInstantWithOffset inst offset = do
   tz <- makeFixedTimeZone offset
   return . OffsetDateTime . ZonedDateTime cdt $ tz
