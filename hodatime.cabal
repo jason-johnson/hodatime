@@ -107,6 +107,7 @@ test-suite test
                    tasty-smallcheck,
                    tasty-quickcheck,
                    tasty-hunit,
+                   QuickCheck,
                    time,
                    bytestring,
                    hodatime

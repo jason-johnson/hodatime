@@ -4,6 +4,7 @@ module HodaTime.Util
    RandomOffset(..)
   ,RandomTime(..)
   ,CycleYear(..)
+  ,RandomStandardDate(..)
   ,get
   ,modify
   ,set
@@ -63,6 +64,16 @@ instance Arbitrary CycleYear where
   arbitrary = do
     y <- choose (0,399)
     return $ CycleYear y
+
+data RandomStandardDate = RandomStandardDate Int Int Int
+  deriving (Show)
+
+instance Arbitrary RandomStandardDate where
+  arbitrary = do
+    y <- choose (1972,2030)
+    m <- choose (0,11)
+    d <- choose (1,28)
+    return $ RandomStandardDate y m d
 
 -- Lenses
 
