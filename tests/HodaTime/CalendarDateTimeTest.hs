@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-
 module HodaTime.CalendarDateTimeTest
 (
   calendarDateTimeTests
@@ -13,8 +11,8 @@ import Data.Maybe (fromJust)
 
 import HodaTime.Util
 import Data.HodaTime.LocalTime (localTime, HasLocalTime(..))
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek)
-import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), DayOfWeek(..), Gregorian)
+import Data.HodaTime.CalendarDate (day, monthl, next, previous, dayOfWeek)
+import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
 import Data.HodaTime.CalendarDateTime (on, at)
 
 calendarDateTimeTests :: TestTree
@@ -45,18 +43,8 @@ timeLensProps = testGroup "Time Lens"
     _1 f (a,b,c) = (\a' -> (a',b,c)) <$> f a
     _2 f (a,b,c) = (\b' -> (a,b',c)) <$> f b
     _3 f (a,b,c) = (\c' -> (a,b,c')) <$> f c
-    testGet l l' (Positive s, Positive m, Positive h) = h < 23 && s < 60 && m < 60 QC.==> get l (mkTime h m s) == get l' (s, m, h)
-    testF f l l' g n (Positive s, Positive m, Positive h) = h < 23 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (mkTime h m s)
-
-instance Arbitrary (Month Gregorian) where
-  arbitrary = do
-    x <- choose (0,11)
-    return $ toEnum x
-
-instance Arbitrary (DayOfWeek Gregorian) where
-  arbitrary = do
-    x <- choose (0,6)
-    return $ toEnum x
+    testGet l l' (RandomTime h m s) = get l (mkTime h m s) == get l' (s, m, h)
+    testF f l l' g n (RandomTime h m s) = h < 23 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (mkTime h m s)
 
 dateLensProps :: TestTree
 dateLensProps = testGroup "Date Lens"
@@ -69,7 +57,7 @@ dateLensProps = testGroup "Date Lens"
   ]
     where
       mkcd d m y = fromJust $ on <$> localTime 10 10 10 0 <*> calendarDate d m y
-      testMonthAdd d (Positive y) m add = y < 400 QC.==> get day (modify (+ add) monthl $ mkcd d m (y + 1900)) == d  -- NOTE: We fix the year so we don't run out of tests
+      testMonthAdd d (CycleYear y) m add = get day (modify (+ add) monthl $ mkcd d m (y + 1900)) == d  -- NOTE: We fix the year so we don't run out of tests
       testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
       testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
       epochDay = mkcd 1 March 2000

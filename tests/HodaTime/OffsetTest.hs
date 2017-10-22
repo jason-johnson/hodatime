@@ -8,7 +8,7 @@ import Test.Tasty
 import qualified Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
-
+import HodaTime.Util
 import Data.HodaTime.Offset
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
@@ -67,9 +67,9 @@ lensProps = testGroup "Lens"
     ,QC.testProperty "modify seconds offset" $ testF (modify . (+)) seconds _1 (+) 5
     ,QC.testProperty "modify minutes offset" $ testF (modify . (+)) minutes _2 (+) 5
     ,QC.testProperty "modify hours offset" $ testF (modify . (+)) hours _3 (+) 5
-    ,QC.testProperty "set seconds offset" $ testF setL seconds _1 const 5
-    ,QC.testProperty "set minutes offset" $ testF setL minutes _2 const 5
-    ,QC.testProperty "set hours offset" $ testF setL hours _3 const 5
+    ,QC.testProperty "set seconds offset" $ testF set seconds _1 const 5
+    ,QC.testProperty "set minutes offset" $ testF set minutes _2 const 5
+    ,QC.testProperty "set hours offset" $ testF set hours _3 const 5
   ]
   where
     offset :: Int -> Int -> Int -> Offset   -- Only needed so the compiler can decide which concreate type to use
@@ -78,11 +78,8 @@ lensProps = testGroup "Lens"
     _1 f (a,b,c) = (\a' -> (a',b,c)) <$> f a
     _2 f (a,b,c) = (\b' -> (a,b',c)) <$> f b
     _3 f (a,b,c) = (\c' -> (a,b,c')) <$> f c
-    get l = getConst . l Const
-    modify f l = runIdentity . l (Identity . f)
-    setL v = modify (const v)
-    testGet l l' (Positive s, Positive m, Positive h) = h < 18 && s < 60 && m < 60 QC.==> get l (offset s m h) == get l' (s, m, h)
-    testF f l l' g n (Positive s, Positive m, Positive h) = h < 18 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (offset s m h)
+    testGet l l' (RandomOffset h m s) = get l (offset s m h) == get l' (s, m, h)
+    testF f l l' g n (RandomOffset h m s) = h < 18 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (offset s m h)
 
 -- helper functions
 

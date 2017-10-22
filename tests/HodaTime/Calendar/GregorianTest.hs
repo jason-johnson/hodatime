@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-
 module HodaTime.Calendar.GregorianTest
 (
   gregorianTests
@@ -14,19 +12,9 @@ import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
 import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..))
-import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, Month(..), DayOfWeek(..), Gregorian)
+import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, Month(..), DayOfWeek(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import qualified Data.HodaTime.Calendar.Iso as Iso
-
-instance Arbitrary (Month Gregorian) where
-  arbitrary = do
-    x <- choose (0,11)
-    return $ toEnum x
-
-instance Arbitrary (DayOfWeek Gregorian) where
-  arbitrary = do
-    x <- choose (0,6)
-    return $ toEnum x
 
 gregorianTests :: TestTree
 gregorianTests = testGroup "Gregorian Tests" [qcProps, unitTests]
@@ -65,7 +53,7 @@ lensProps = testGroup "Lens"
   ]
   where
     mkcd d m = fromJust . calendarDate d m
-    testMonthAdd d (Positive y) m add = y < 400 QC.==> get day (modify (+ add) monthl $ mkcd d m (y + 1900)) == d  -- NOTE: We fix the year so we don't run out of tests
+    testMonthAdd d (CycleYear y) m add = get day (modify (+ add) monthl $ mkcd d m (y + 1900)) == d  -- NOTE: We fix the year so we don't run out of tests
     testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
     testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
     epochDay = mkcd 1 March 2000

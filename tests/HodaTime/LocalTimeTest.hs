@@ -42,8 +42,8 @@ lensProps = testGroup "Lens"
     _1 f (a,b,c) = (\a' -> (a',b,c)) <$> f a
     _2 f (a,b,c) = (\b' -> (a,b',c)) <$> f b
     _3 f (a,b,c) = (\c' -> (a,b,c')) <$> f c
-    testGet l l' (Positive s, Positive m, Positive h) = h < 23 && s < 60 && m < 60 QC.==> get l (mkTime h m s) == get l' (s, m, h)
-    testF f l l' g n (Positive s, Positive m, Positive h) = h < 23 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (mkTime h m s)
+    testGet l l' (RandomTime h m s) = get l (mkTime h m s) == get l' (s, m, h)
+    testF f l l' g n (RandomTime h m s) = h < 23 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (mkTime h m s)
 
 rolloverUnits :: TestTree
 rolloverUnits = testGroup "Rollover"
