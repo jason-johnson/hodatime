@@ -22,20 +22,43 @@ module Data.HodaTime.ZonedDateTime
   ,toLocalDateTime
   ,toLocalDate
   ,toLocalTime
+  -- * Exceptions
+  ,DateTimeDoesNotExistException(..)
+  ,DateTimeAmbiguousException(..)
 )
 where
 
 import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), LocalTime)
 import Data.HodaTime.TimeZone.Internal (TimeZone(..), calDateTransitionsFor)
+import Control.Exception (Exception)
+import Control.Monad.Catch (MonadThrow, throwM)
+import Data.Typeable (Typeable)
+
+-- exceptions
+
+data DateTimeDoesNotExistException = DateTimeDoesNotExistException
+  deriving (Typeable, Show)
+
+instance Exception DateTimeDoesNotExistException
+
+data DateTimeAmbiguousException = DateTimeAmbiguousException
+  deriving (Typeable, Show)
+
+instance Exception DateTimeAmbiguousException
+
+-- TODO: Remember not to export constructor, as we don't want people accessing the internal representation
+
+-- TODO: Actually everything below probably belongs in CalendarDateTime, not here (UPDATE: Not sure I agree)
 
 -- constructors
 
-fromCalendarDateTimeStrictly :: IsCalendarDateTime cal => CalendarDateTime cal -> TimeZone -> Maybe (ZonedDateTime cal)
+fromCalendarDateTimeStrictly :: (MonadThrow m, IsCalendarDateTime cal) => CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal)
 fromCalendarDateTimeStrictly cdt = go . fromCalendarDateTimeAll cdt
   where
-    go [zdt] = Just zdt
-    go _ = Nothing
+    go [zdt] = return zdt
+    go [] = throwM $ DateTimeDoesNotExistException
+    go _ = throwM $ DateTimeAmbiguousException
 
 -- | Return all 'ZonedDateTime' entries for a specific 'CalendarDateTime' in a 'TimeZone'. Normally this would be one, but in the case that a time
 -- occurs twice in a zone (i.e. due to daylight savings time change) both would be returned.  Also, if the time does not occur at all, an empty list
