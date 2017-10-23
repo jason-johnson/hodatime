@@ -47,10 +47,6 @@ data DateTimeAmbiguousException = DateTimeAmbiguousException
 
 instance Exception DateTimeAmbiguousException
 
--- TODO: Remember not to export constructor, as we don't want people accessing the internal representation
-
--- TODO: Actually everything below probably belongs in CalendarDateTime, not here (UPDATE: Not sure I agree)
-
 -- constructors
 
 fromCalendarDateTimeStrictly :: (MonadThrow m, IsCalendarDateTime cal) => CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal)
