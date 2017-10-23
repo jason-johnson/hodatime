@@ -110,7 +110,7 @@ buildTransitionMaps transAndIndexes tInfos = (utcMap, calDateMap')
         utcM' = addUtcTransition tran tInfo' utcM
         calDateM' = addCalDateTransition prevEntry before prevTI calDateM
         localTran = applyOffset (tiOffset tInfo) $ tran
-        before = Entry (minus localTran oneSecond)
+        before = Entry . flip minus oneSecond . applyOffset (utcOffset prevTI) $ tran
         tInfo = tInfos !! idx
         tInfo' = mkTI tInfo
 
