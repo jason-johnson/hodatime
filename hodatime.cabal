@@ -42,6 +42,8 @@ library
                    containers,
                    exceptions,
                    fingertree
+  if os(windows)
+    build-depends: Win32
   if !os(windows)
     build-depends: unix
 
