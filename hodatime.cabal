@@ -94,6 +94,27 @@ library
                    Data.HodaTime.TimeZone.Unix,
                    Data.HodaTime.Instant.Unix
 
+executable print-olson
+  default-language:
+                   Haskell2010
+  build-depends:
+                   base >= 4.9 && < 4.10,
+                   mtl,
+                   binary,
+                   bytestring,
+                   directory,
+                   filepath,
+                   containers,
+                   exceptions,
+                   IntervalMap >= 0.5.3 && < 0.5.4,
+                   fingertree,
+                   optparse-applicative
+  main-is:        Main.hs
+  hs-source-dirs: progSrc
+  other-modules:
+                   Parser
+                   Olson
+
 test-suite test
   default-language:
                    Haskell2010
