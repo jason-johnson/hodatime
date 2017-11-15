@@ -16,7 +16,7 @@ where
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import Data.Binary.Get (Get, getWord8, getWord32be, getWord64be, getByteString, runGetOrFail, skip, isEmpty, getRemainingLazyByteString)
+import Data.Binary.Get (Get, getWord8, getInt32be, getInt64be, getWord32be, getByteString, runGetOrFail, skip, isEmpty, getRemainingLazyByteString)
 import Data.Word (Word8)
 import Control.Monad (unless, replicateM)
 import Data.List (foldl')
@@ -98,13 +98,13 @@ get8bitInt :: Get Int
 get8bitInt = fmap fromIntegral getWord8
 
 get32bitInt :: Get Int
-get32bitInt = fmap fromIntegral getWord32be
+get32bitInt = fmap fromIntegral getInt32be
 
 get32bitInteger :: Get Integer
-get32bitInteger = fmap fromIntegral getWord32be
+get32bitInteger = fmap fromIntegral getInt32be
 
 get64bitInteger :: Get Integer
-get64bitInteger = fmap fromIntegral getWord64be
+get64bitInteger = fmap fromIntegral getInt64be
 
 -- helper fucntions
 
