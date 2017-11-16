@@ -9,11 +9,10 @@ import Data.HodaTime.TimeZone.Internal
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import Data.Binary.Get (Get, getWord8, getWord32be, getByteString, runGetOrFail, skip, isEmpty)
+import Data.Binary.Get (Get, getWord8, getWord32be, getInt32be, getInt64be, getByteString, runGetOrFail, skip, isEmpty)
 import Data.Word (Word8)
 import Control.Monad (unless, replicateM)
 import Data.List (foldl')
-import Data.Int (Int32)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -49,25 +48,40 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
 
 -- Get combinators
 
+getBool :: Get Bool
+getBool = fmap (/= 0) getWord8
+
+getInt8 :: Get Int
+getInt8 = fmap fromIntegral getWord8
+
+getUInt32 :: Get Int
+getUInt32 = fmap fromIntegral getWord32be
+
+getInt32 :: Get Int
+getInt32 = fmap fromIntegral getInt32be
+
+getInt64 :: Get Int
+getInt64 = fmap fromIntegral getInt64be
+
 getHeader :: Get (String, Word8, Int, Int, Int, Int, Int, Int)
 getHeader = do
   magic <- (toString . B.unpack) <$> getByteString 4
   version <- getWord8
   skip reservedSectionSize
-  [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 get32bitInt
+  [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 getUInt32
   return (magic, version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen)
 
 getLeapInfo :: Get (Instant, Int)
 getLeapInfo = do
-  instant <- fromSecondsSinceUnixEpoch <$> get32bitInt
-  lOffset <- get32bitInt
+  instant <- fromSecondsSinceUnixEpoch <$> getInt32
+  lOffset <- getInt32
   return (instant, lOffset)
 
 getPayload :: Int -> Int -> Int -> Int -> Int -> Int -> Get (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 getPayload transCount typeCount abbrLen leapCount isStdCount isGmtCount = do
-  transitions <- replicateM transCount $ fromSecondsSinceUnixEpoch <$> get32bitInt
-  indexes <- replicateM transCount get8bitInt
-  types <- replicateM typeCount $ (,,) <$> get32bitInt <*> getBool <*> get8bitInt
+  transitions <- replicateM transCount $ fromSecondsSinceUnixEpoch <$> getInt32
+  indexes <- replicateM transCount getInt8
+  types <- replicateM typeCount $ (,,) <$> getInt32 <*> getBool <*> getInt8
   abbrs <- (toString . B.unpack) <$> getByteString abbrLen
   leaps <- replicateM leapCount getLeapInfo
   skip $ isStdCount + isGmtCount
@@ -76,24 +90,12 @@ getPayload transCount typeCount abbrLen leapCount isStdCount isGmtCount = do
   let leapM = addLeapTransition bigBang 0 $ importLeaps leaps
   return (utcM, calDateM, leapM)
 
-getBool :: Get Bool
-getBool = fmap (/= 0) getWord8
-
-get8bitInt :: Get Int
-get8bitInt = fmap fromIntegral getWord8
-
-getInt32 :: Get Int32
-getInt32 = fmap fromIntegral getWord32be
-
-get32bitInt :: Get Int
-get32bitInt = fmap fromIntegral getInt32
-
 -- helper fucntions
 
 mapTransitionInfos :: String -> [(Int, Bool, Int)] -> [TransInfo]
 mapTransitionInfos abbrs = fmap toTI
   where
-    toTI (gmt, isdst, offset) = TransInfo gmt isdst (getAbbr offset abbrs)
+    toTI (gmt, isdst, offset) = TransInfo gmt isdst $ getAbbr offset abbrs
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
 buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> (UtcTransitionsMap, CalDateTransitionsMap)
