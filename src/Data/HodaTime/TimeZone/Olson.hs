@@ -24,6 +24,8 @@ data ParseException = ParseException String Int
 
 instance Exception ParseException
 
+data Header = Header String Word8 Int Int Int Int Int Int
+
 data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
   deriving (Eq, Show)
 
@@ -35,13 +37,21 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
   Left (_, consumed, msg) -> throwM $ ParseException msg (fromIntegral consumed)
   Right (_, _, xs) -> return xs
   where
+    getCorrectHeader 0 header = return header
+    getCorrectHeader version (Header _ _ isGmtCount isStdCount leapCount transCount typeCount abbrLen)
+      | version == 50 || version == 51  = do
+        let size = transCount * 4 + transCount + typeCount * 4 + typeCount + typeCount + abbrLen + leapCount * 4 * 2 + isStdCount + isGmtCount
+        skip size
+        getHeader
+      | otherwise                       = fail $ "unknown olson version: " ++ (show . toChar $ version)
     getTransitions' = do
-      (magic, _version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen) <- getHeader
+      header@(Header magic version _ _ _ _ _ _) <- getHeader
       unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
+      (Header _ _ isGmtCount isStdCount leapCount transCount typeCount abbrLen) <- getCorrectHeader version header
       unless
-        (ttisgmtcnt == ttisstdcnt && ttisstdcnt == ttypecnt)
-        (fail $ "format issue, sizes don't match: ttisgmtcnt = " ++ show ttisgmtcnt ++ ", ttisstdcnt = " ++ show ttisstdcnt ++ ", ttypecnt = " ++ show ttypecnt)
-      (utcM, calDateM, leapsM) <- getPayload transcnt ttypecnt abbrlen leapcnt ttisstdcnt ttisgmtcnt
+        (isGmtCount == isStdCount && isStdCount == typeCount)
+        (fail $ "format issue, sizes don't match: ttisgmtcnt = " ++ show isGmtCount ++ ", ttisstdcnt = " ++ show isStdCount ++ ", ttypecnt = " ++ show typeCount)
+      (utcM, calDateM, leapsM) <- getPayload transCount typeCount abbrLen leapCount isStdCount isGmtCount
       finished <- isEmpty
       unless finished $ fail "unprocessed data still in olson file"
       return (utcM, calDateM, leapsM)
@@ -63,13 +73,13 @@ getInt32 = fmap fromIntegral getInt32be
 getInt64 :: Get Int
 getInt64 = fmap fromIntegral getInt64be
 
-getHeader :: Get (String, Word8, Int, Int, Int, Int, Int, Int)
+getHeader :: Get Header
 getHeader = do
   magic <- (toString . B.unpack) <$> getByteString 4
   version <- getWord8
   skip reservedSectionSize
   [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 getUInt32
-  return (magic, version, ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen)
+  return $ Header magic version ttisgmtcnt ttisstdcnt leapcnt transcnt ttypecnt abbrlen
 
 getLeapInfo :: Get (Instant, Int)
 getLeapInfo = do
@@ -127,6 +137,9 @@ findDefaultTransInfo tis = go . filter ((== False) . tiIsDst) $ tis
   where
     go [] = head tis
     go (ti:_) = ti
+
+toChar :: Word8 -> Char
+toChar = toEnum . fromIntegral
 
 toString :: [Word8] -> String
 toString = map (toEnum . fromIntegral)
