@@ -44,10 +44,11 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
       unless
         (isGmtCount == isStdCount && isStdCount == typeCount)
         (fail $ "format issue: sizes don't match: ttisgmtcnt = " ++ show isGmtCount ++ ", ttisstdcnt = " ++ show isStdCount ++ ", ttypecnt = " ++ show typeCount)
-      (utcM, calDateM, leapsM) <- getPayload getInt header'
+      (transitions, indexes, tInfos, leapsM) <- getPayload getInt header'
       _tzString <- getTZString version
       finished <- isEmpty
       unless finished $ fail "unprocessed data still in olson file"
+      let (utcM, calDateM) = buildTransitionMaps (zip transitions indexes) tInfos
       return (utcM, calDateM, leapsM)
 
 -- Get combinators
@@ -86,7 +87,7 @@ getLeapInfo getInt = do
   lOffset <- getInt32
   return (instant, lOffset)
 
-getPayload :: Get Int -> Header -> Get (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
+getPayload :: Get Int -> Header -> Get ([Instant], [Int], [TransInfo], LeapsMap)
 getPayload getInt (Header _ _ isGmtCount isStdCount leapCount transCount typeCount abbrLen) = do
   transitions <- replicateM transCount $ fromSecondsSinceUnixEpoch <$> getInt
   indexes <- replicateM transCount getInt8
@@ -95,9 +96,8 @@ getPayload getInt (Header _ _ isGmtCount isStdCount leapCount transCount typeCou
   leaps <- replicateM leapCount $ getLeapInfo getInt       -- TODO: when we have good tests in place, see if we can turn this into a fold and create the leaps map right here
   skip $ isStdCount + isGmtCount
   let tInfos = mapTransitionInfos abbrs types
-  let (utcM, calDateM) = buildTransitionMaps (zip transitions indexes) tInfos
   let leapM = addLeapTransition bigBang 0 $ importLeaps leaps
-  return (utcM, calDateM, leapM)
+  return (transitions, indexes, tInfos, leapM)
 getCorrectHeader :: Header -> Get (Get Int, Header)
 getCorrectHeader header@(Header _ version isGmtCount isStdCount leapCount transCount typeCount abbrLen)
   | version == '\NUL'                 = return (getInt32, header)
