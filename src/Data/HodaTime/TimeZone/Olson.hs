@@ -93,7 +93,7 @@ getPayload getInt (Header _ _ isGmtCount isStdCount leapCount transCount typeCou
   indexes <- replicateM transCount getInt8
   types <- replicateM typeCount $ (,,) <$> getInt32 <*> getBool <*> getInt8
   abbrs <- (toString . B.unpack) <$> getByteString abbrLen
-  leaps <- replicateM leapCount $ getLeapInfo getInt       -- TODO: when we have good tests in place, see if we can turn this into a fold and create the leaps map right here
+  leaps <- replicateM leapCount $ getLeapInfo getInt
   skip $ isStdCount + isGmtCount
   let tInfos = mapTransitionInfos abbrs types
   let leapM = addLeapTransition bigBang 0 $ importLeaps leaps
