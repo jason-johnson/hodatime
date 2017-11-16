@@ -9,7 +9,7 @@ import Data.HodaTime.TimeZone.Internal
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import Data.Binary.Get (Get, getWord8, getWord32be, getInt32be, getInt64be, getByteString, runGetOrFail, skip, isEmpty, getRemainingLazyByteString)
+import Data.Binary.Get (Get, getWord8, getWord32be, getInt32be, getInt64be, getByteString, runGetOrFail, skip, isEmpty)
 import Data.Word (Word8)
 import Control.Monad (unless, replicateM)
 import Data.List (foldl')
@@ -24,7 +24,7 @@ data ParseException = ParseException String Int
 
 instance Exception ParseException
 
-data Header = Header String Word8 Int Int Int Int Int Int
+data Header = Header String Char Int Int Int Int Int Int
 
 data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
   deriving (Eq, Show)
@@ -43,7 +43,7 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
       (getInt, header'@(Header _ _ isGmtCount isStdCount _ _ typeCount _)) <- getCorrectHeader header
       unless
         (isGmtCount == isStdCount && isStdCount == typeCount)
-        (fail $ "format issue, sizes don't match: ttisgmtcnt = " ++ show isGmtCount ++ ", ttisstdcnt = " ++ show isStdCount ++ ", ttypecnt = " ++ show typeCount)
+        (fail $ "format issue: sizes don't match: ttisgmtcnt = " ++ show isGmtCount ++ ", ttisstdcnt = " ++ show isStdCount ++ ", ttypecnt = " ++ show typeCount)
       (utcM, calDateM, leapsM) <- getPayload getInt header'
       _tzString <- getTZString version
       finished <- isEmpty
@@ -51,6 +51,11 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
       return (utcM, calDateM, leapsM)
 
 -- Get combinators
+
+getCh :: Get Char
+getCh = fmap toChar getWord8
+  where
+    toChar = toEnum . fromIntegral
 
 getBool :: Get Bool
 getBool = fmap (/= 0) getWord8
@@ -70,7 +75,7 @@ getInt64 = fmap fromIntegral getInt64be
 getHeader :: Get Header
 getHeader = do
   magic <- (toString . B.unpack) <$> getByteString 4
-  version <- getWord8
+  version <- getCh
   skip reservedSectionSize
   [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 getUInt32
   return $ Header magic version ttisgmtcnt ttisstdcnt leapcnt transcnt ttypecnt abbrlen
@@ -95,26 +100,32 @@ getPayload getInt (Header _ _ isGmtCount isStdCount leapCount transCount typeCou
   return (utcM, calDateM, leapM)
 getCorrectHeader :: Header -> Get (Get Int, Header)
 getCorrectHeader header@(Header _ version isGmtCount isStdCount leapCount transCount typeCount abbrLen)
-  | version == 0                    = return (getInt32, header)
-  | version == 50 || version == 51  = skipOldDataAndGetHeader
-  | otherwise                       = fail $ "unknown olson version: " ++ (show . toChar $ version)
+  | version == '\NUL'                 = return (getInt32, header)
+  | version == '1' || version == '2'  = skipOldDataAndGetHeader
+  | otherwise                         = fail $ "unknown olson version: " ++ show version
   where
     skipOldDataAndGetHeader = do
       skip $ transCount * 4 + transCount + typeCount * 4 + typeCount + typeCount + abbrLen + leapCount * 4 * 2 + isStdCount + isGmtCount
       correctHeader <- getHeader
       return (getInt64, correctHeader)
 
-getTZString :: Word8 -> Get (Maybe String)
+getTZString :: Char -> Get (Maybe String)
 getTZString version
-  | version == 0                    = return Nothing
-  | version == 50 || version == 51  = getTZString'
-  | otherwise                       = fail $ "impossible: unknown version in getTZString"
+  | version == '\NUL'                 = return Nothing
+  | version == '1' || version == '2'  = getTZString'
+  | otherwise                         = fail $ "impossible: unknown version in getTZString"
   where
     getTZString' = do
-      nl <- toChar <$> getWord8
+      nl <- getCh
       unless (nl == '\n') (fail $ "POSIX TZ string preceded by non-newline:" ++ show nl)
-      posixTZ <- fmap (L.takeWhile (/= 10)) getRemainingLazyByteString
-      return . Just . toString . L.unpack $ posixTZ
+      posixTZ <- getWhileM (/= '\n')
+      return . Just $ posixTZ
+    getWhileM p = do
+      ch <- getCh
+      if p ch then do
+        rest <- getWhileM p
+        return $ ch : rest
+      else return []
 
 -- helper fucntions
 
@@ -153,9 +164,6 @@ findDefaultTransInfo tis = go . filter ((== False) . tiIsDst) $ tis
   where
     go [] = head tis
     go (ti:_) = ti
-
-toChar :: Word8 -> Char
-toChar = toEnum . fromIntegral
 
 toString :: [Word8] -> String
 toString = map (toEnum . fromIntegral)
