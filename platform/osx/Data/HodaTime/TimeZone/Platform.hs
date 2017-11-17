@@ -14,8 +14,7 @@ import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 import qualified Data.ByteString.Lazy.Char8 as BS
 import System.Posix.Files (readSymbolicLink)
-import Data.List (stripPrefix)
-import Data.Maybe (fromMaybe)
+import Data.List (intercalate)
 import Control.Exception (Exception, throwIO)
 import Control.Monad (unless)
 import Data.Typeable (Typeable)
@@ -55,7 +54,7 @@ loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, String)
 loadLocalZone = do
   let file = "/etc" </> "localtime"
   tzPath <- readSymbolicLink $ file
-  let tzName = drop 1 . fromMaybe " unknown" . stripPrefix tzdbDir $ tzPath  -- TODO: We should detect if this failed and throw an error, not set to unknown
+  let tzName = timeZoneFromPath $ tzPath
   (utcM, calDateM, leaps)  <- loadZoneFromOlsonFile file
   return (utcM, calDateM, leaps, tzName)
 
@@ -79,3 +78,13 @@ loadLeaps :: LeapsMap -> IO LeapsMap
 loadLeaps = return . mergeLeapMaps leaps
   where
     leaps = importLeaps []
+
+-- helper functions
+
+timeZoneFromPath :: FilePath -> String
+timeZoneFromPath = intercalate "/" . drp . foldr collect [[]]
+  where
+    drp = drop 1 . dropWhile (/= "zoneinfo")
+    collect ch l@(x:xs)
+      | ch == '/' = []:l
+      | otherwise = (ch:x):xs
