@@ -81,9 +81,10 @@ library
                    Data.HodaTime.Instant.Clock,
                    Data.HodaTime.OffsetDateTime.Internal,
                    Data.HodaTime.TimeZone.Internal,
-                   Data.HodaTime.TimeZone.Olson,
                    Data.HodaTime.TimeZone.Platform,
-                   Data.HodaTime.ZonedDateTime.Internal
+                   Data.HodaTime.ZonedDateTime.Internal,
+                   Data.HodaTime.TimeZone.Olson,
+                   Data.HodaTime.TimeZone.Unix
 
 test-suite test
   default-language:

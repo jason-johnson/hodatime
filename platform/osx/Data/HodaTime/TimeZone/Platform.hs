@@ -8,67 +8,23 @@ module Data.HodaTime.TimeZone.Platform
 where
 
 import Data.HodaTime.TimeZone.Internal
-import Data.HodaTime.TimeZone.Olson
-import Data.HodaTime.Instant.Internal (bigBang)
-import System.Directory (doesFileExist)
-import System.FilePath ((</>))
-import qualified Data.ByteString.Lazy.Char8 as BS
-import System.Posix.Files (readSymbolicLink)
-import Data.List (intercalate)
-import Control.Exception (Exception, throwIO)
-import Control.Monad (unless)
-import Data.Typeable (Typeable)
-
--- exceptions
-
-data TimeZoneDoesNotExistException = TimeZoneDoesNotExistException
-  deriving (Typeable, Show)
-
-instance Exception TimeZoneDoesNotExistException
-
-data TZoneDBCorruptException = TZoneDBCorruptException
-  deriving (Typeable, Show)
-
-instance Exception TZoneDBCorruptException
-
--- interface
+import qualified Data.HodaTime.TimeZone.Unix as U
 
 loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
-loadUTC = loadTimeZone "UTC"
+loadUTC = U.loadUTC loadZoneFromOlsonFile
 
 fixedOffsetZone :: String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, TransitionInfo)
-fixedOffsetZone tzName offset = do
-  leapM' <- loadLeaps leapM
-  return (utcM, calDateM, leapM', tInfo)
-    where
-      utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
-      calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
-      leapM = addLeapTransition bigBang 0 emptyLeapsMap
-      tInfo = TransitionInfo offset False tzName
-
-loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
-loadTimeZone tzName = do
-  loadZoneFromOlsonFile $ tzdbDir </> tzName
+fixedOffsetZone = U.fixedOffsetZone loadLeaps
 
 loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, String)
-loadLocalZone = do
-  let file = "/etc" </> "localtime"
-  tzPath <- readSymbolicLink $ file
-  let tzName = timeZoneFromPath $ tzPath
-  (utcM, calDateM, leaps)  <- loadZoneFromOlsonFile file
-  return (utcM, calDateM, leaps, tzName)
+loadLocalZone = U.loadLocalZone loadZoneFromOlsonFile
 
--- helper functions
-
-tzdbDir :: FilePath
-tzdbDir = "/usr" </> "share" </> "zoneinfo"
+loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
+loadTimeZone = U.loadTimeZone loadZoneFromOlsonFile
 
 loadZoneFromOlsonFile :: FilePath -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 loadZoneFromOlsonFile file = do
-  exists <- doesFileExist $ file
-  unless exists (throwIO TimeZoneDoesNotExistException)
-  bs <- BS.readFile $ file
-  (utcM, calDateM, leapM) <- getTransitions bs
+  (utcM, calDateM, leapM) <- U.defaultLoadZoneFromOlsonFile file
   leapM' <- loadLeaps leapM
   return (utcM, calDateM, leapM')
 
@@ -78,13 +34,3 @@ loadLeaps :: LeapsMap -> IO LeapsMap
 loadLeaps = return . mergeLeapMaps leaps
   where
     leaps = importLeaps []
-
--- helper functions
-
-timeZoneFromPath :: FilePath -> String
-timeZoneFromPath = intercalate "/" . drp . foldr collect [[]]
-  where
-    drp = drop 1 . dropWhile (/= "zoneinfo")
-    collect ch l@(x:xs)
-      | ch == '/' = []:l
-      | otherwise = (ch:x):xs
