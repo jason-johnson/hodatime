@@ -28,7 +28,7 @@ module Data.HodaTime.Instant
 where
 
 import Data.HodaTime.Instant.Internal
-import Data.HodaTime.Instant.Clock (now)
+import Data.HodaTime.Instant.Platform (now)
 import Data.HodaTime.TimeZone.Internal (TimeZone)
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
 import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant, Hour)    -- Made to warn so we don't forget to remove this stuff

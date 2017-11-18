@@ -16,7 +16,11 @@ build-type:     Simple
 tested-with:    GHC == 8.0.2
 extra-source-files:
                    platform/osx/Data/HodaTime/TimeZone/Platform.hs
+                   platform/osx/Data/HodaTime/Instant/Platform.hs
                    platform/linux/Data/HodaTime/TimeZone/Platform.hs
+                   platform/linux/Data/HodaTime/Instant/Platform.hs
+                   platform/windows/Data/HodaTime/TimeZone/Platform.hs
+                   platform/windows/Data/HodaTime/Instant/Platform.hsc
 
 source-repository head
     type:     git
@@ -31,7 +35,7 @@ library
   if os(darwin)
     hs-source-dirs: platform/osx
   if os(windows)
-    hs-source-dirs: platform/win32
+    hs-source-dirs: platform/windows
 
   build-depends:
                    base >= 4.9 && < 4.10,
@@ -79,13 +83,16 @@ library
                    Data.HodaTime.Calendar.Gregorian.CacheTable,
                    Data.HodaTime.CalendarDateTime.Internal,
                    Data.HodaTime.Instant.Internal,
-                   Data.HodaTime.Instant.Clock,
+                   Data.HodaTime.Instant.Platform,
                    Data.HodaTime.OffsetDateTime.Internal,
                    Data.HodaTime.TimeZone.Internal,
                    Data.HodaTime.TimeZone.Platform,
-                   Data.HodaTime.ZonedDateTime.Internal,
+                   Data.HodaTime.ZonedDateTime.Internal
+  if !os(windows)
+    other-modules:
                    Data.HodaTime.TimeZone.Olson,
-                   Data.HodaTime.TimeZone.Unix
+                   Data.HodaTime.TimeZone.Unix,
+                   Data.HodaTime.Instant.Unix
 
 test-suite test
   default-language:
