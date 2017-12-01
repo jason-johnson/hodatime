@@ -31,4 +31,5 @@ test_fromSecondsSinceUnixEpoch = do
       (LocalTime _ tod) = utcToLocalTime (hoursToTimeZone 0) utc
       todT = (todHour tod, todMin tod, round . todSec $ tod)
       t = (get hour lt, get minute lt, get second lt)
-  assertEqual "time: " todT t
+      str = "time(" ++ show secs ++ "): "
+  assertEqual str todT t
