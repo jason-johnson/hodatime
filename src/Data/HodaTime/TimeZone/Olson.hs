@@ -45,10 +45,10 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
         (isGmtCount == isStdCount && isStdCount == typeCount)
         (fail $ "format issue: sizes don't match: ttisgmtcnt = " ++ show isGmtCount ++ ", ttisstdcnt = " ++ show isStdCount ++ ", ttypecnt = " ++ show typeCount)
       (transitions, indexes, tInfos, leapsM) <- getPayload getInt header'
-      _tzString <- getTZString version
+      tzString <- getTZString version
       finished <- isEmpty
       unless finished $ fail "unprocessed data still in olson file"
-      let (utcM, calDateM) = buildTransitionMaps (zip transitions indexes) tInfos
+      let (utcM, calDateM) = buildTransitionMaps (zip transitions indexes) tInfos tzString
       return (utcM, calDateM, leapsM)
 
 -- Get combinators
@@ -135,11 +135,11 @@ mapTransitionInfos abbrs = fmap toTI
     toTI (gmt, isdst, offset) = TransInfo gmt isdst $ getAbbr offset abbrs
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
-buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> (UtcTransitionsMap, CalDateTransitionsMap)
-buildTransitionMaps transAndIndexes tInfos = (utcMap, calDateMap')
+buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> Maybe String -> (UtcTransitionsMap, CalDateTransitionsMap)
+buildTransitionMaps transAndIndexes tInfos _tzString = (utcMap, calDateMap')
   where
     calDateMap' = addCalDateTransition lastEntry Largest lastTI calDateMap -- TODO: At some point we may want to have a special POSIX tInfo for generating these from TZ string
-    mkTI t = TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
+    mkTI t = TInfo $ TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
     defaultTI = mkTI . findDefaultTransInfo $ tInfos
     oneSecond = fromSeconds 1
     initialUtcTransitions = addUtcTransition bigBang defaultTI emptyUtcTransitions
@@ -149,7 +149,9 @@ buildTransitionMaps transAndIndexes tInfos = (utcMap, calDateMap')
         utcM' = addUtcTransition tran tInfo' utcM
         calDateM' = addCalDateTransition prevEntry before prevTI calDateM
         localTran = applyOffset (tiOffset tInfo) $ tran
-        before = Entry . flip minus oneSecond . applyOffset (utcOffset prevTI) $ tran
+        before = case prevTI of
+          (TInfo ti)  -> Entry . flip minus oneSecond . applyOffset (tiUtcOffset ti) $ tran
+          _           -> error $ "impossible: buildTransitionMaps.go called with TExp"
         tInfo = tInfos !! idx
         tInfo' = mkTI tInfo
 

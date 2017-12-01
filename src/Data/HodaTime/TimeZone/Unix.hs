@@ -45,10 +45,11 @@ fixedOffsetZone loadLeaps tzName offset = do
   leapM' <- loadLeaps leapM
   return (utcM, calDateM, leapM', tInfo)
     where
-      utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
-      calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
+      utcM = addUtcTransition bigBang tInfo' emptyUtcTransitions
+      calDateM = addCalDateTransition Smallest Largest tInfo' emptyCalDateTransitions
       leapM = addLeapTransition bigBang 0 emptyLeapsMap
       tInfo = TransitionInfo offset False tzName
+      tInfo' = TInfo tInfo
 
 loadTimeZone :: LoadZoneFromOlsonFile -> String -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
 loadTimeZone loadZoneFromOlsonFile tzName = do

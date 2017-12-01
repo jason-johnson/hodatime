@@ -2,6 +2,9 @@ module Data.HodaTime.TimeZone.Internal
 (
    TZIdentifier(..)
   ,TransitionInfo(..)
+  ,TransitionExpression(..)
+  ,TransitionExpressionInfo(..)
+  ,TransExpressionOrInfo(..)
   ,UtcTransitionsMap
   ,LeapsMap
   ,IntervalEntry(..)
@@ -26,30 +29,47 @@ import Data.Maybe (fromMaybe)
 import Data.HodaTime.Instant.Internal (Instant)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Control.Arrow ((>>>), second)
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
 import qualified Data.IntervalMap.FingerTree as IMap
 
 data TZIdentifier = UTC | Zone String
   deriving (Eq, Show)
 
-data TransitionInfo = TransitionInfo { utcOffset :: Int, isDst :: Bool, abbreviation :: String }
+data TransitionExpression = TransitionExpression
+  {
+     teAbbreviation :: String
+    ,teMonth :: Int
+    ,teNthDay :: Int
+    ,teDay :: Int
+    ,teSeconds :: Int
+  }
+  deriving (Eq, Show)
+
+data TransitionExpressionInfo = TransitionExpressionInfo { teUtcOffset :: Int, expression :: TransitionExpression, dstExpression :: TransitionExpression }
+  deriving (Eq, Show)
+
+data TransitionInfo = TransitionInfo { tiUtcOffset :: Int, isDst :: Bool, tiAbbreviation :: String }
+  deriving (Eq, Show)
+
+data TransExpressionOrInfo = TInfo TransitionInfo | TExp TransitionExpressionInfo
   deriving (Eq, Show)
 
 -- UTC instant to transition
 
-type UtcTransitionsMap = Map Instant TransitionInfo
+type UtcTransitionsMap = Map Instant TransExpressionOrInfo
 
 emptyUtcTransitions :: UtcTransitionsMap
 emptyUtcTransitions = Map.empty
 
-addUtcTransition :: Instant -> TransitionInfo -> UtcTransitionsMap -> UtcTransitionsMap
+addUtcTransition :: Instant -> TransExpressionOrInfo -> UtcTransitionsMap -> UtcTransitionsMap
 addUtcTransition = Map.insert
 
 activeTransitionFor :: Instant -> UtcTransitionsMap -> TransitionInfo
-activeTransitionFor i utcM = snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- TODO: The findMin case should be impossible actually
+activeTransitionFor i utcM = resolveTI i . snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- TODO: The findMin case should be impossible actually
 
 nextTransition :: Instant -> UtcTransitionsMap -> (Instant, TransitionInfo)
-nextTransition t ts = fromMaybe (Map.findMax ts) $ Map.lookupGT t ts
+nextTransition i ts = fromMaybe (Map.findMax ts) >>> second (resolveTI i) $ Map.lookupGT i ts
 
 -- Leap seconds
 
@@ -78,18 +98,18 @@ data IntervalEntry a =
   | Largest
   deriving (Eq, Ord, Show)
 
-type CalDateTransitionsMap = IntervalMap (IntervalEntry Instant) TransitionInfo
+type CalDateTransitionsMap = IntervalMap (IntervalEntry Instant) TransExpressionOrInfo
 
 emptyCalDateTransitions :: CalDateTransitionsMap
 emptyCalDateTransitions = IMap.empty
 
-addCalDateTransition :: IntervalEntry Instant -> IntervalEntry Instant -> TransitionInfo -> CalDateTransitionsMap -> CalDateTransitionsMap
+addCalDateTransition :: IntervalEntry Instant -> IntervalEntry Instant -> TransExpressionOrInfo -> CalDateTransitionsMap -> CalDateTransitionsMap
 addCalDateTransition b e = IMap.insert interval
   where
     interval = Interval b e
 
 calDateTransitionsFor :: Instant -> CalDateTransitionsMap -> [TransitionInfo]
-calDateTransitionsFor i = fmap snd . IMap.search (Entry i)
+calDateTransitionsFor i = fmap (resolveTI i . snd) . IMap.search (Entry i)
 
 -- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
