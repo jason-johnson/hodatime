@@ -129,16 +129,40 @@ benchmark bench
   type:
                    exitcode-stdio-1.0
   hs-source-dirs:
-                   src,
-                   bench
+                   bench,
+                   src
   main-is:
                    bench.hs
   other-modules:
-                   HodaTime.OffsetBench
+                   HodaTime.OffsetBench,
+                   HodaTime.CalendarBench,
+
+                   Data.HodaTime.Calendar.Constants,
+                   Data.HodaTime.Calendar.Gregorian,
+                   Data.HodaTime.Calendar.Gregorian.CacheTable,
+                   Data.HodaTime.Calendar.Gregorian.Internal,
+                   Data.HodaTime.CalendarDateTime.Internal,
+                   Data.HodaTime.Constants,
+                   Data.HodaTime.Duration.Internal,
+                   Data.HodaTime.Instant.Internal,
+                   Data.HodaTime.Internal,
+                   Data.HodaTime.Offset,
+                   Data.HodaTime.OffsetDateTime.Internal,
+                   Data.HodaTime.TimeZone.Internal,
+                   Data.HodaTime.ZonedDateTime.Internal
   build-depends:
                    base > 4,
                    criterion,
-                   random
+                   random,
+
+                   mtl,
+                   binary,
+                   bytestring,
+                   directory,
+                   filepath,
+                   containers,
+                   exceptions,
+                   fingertree
   ghc-options:
                    -Wall
                    -O2

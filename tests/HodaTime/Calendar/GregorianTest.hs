@@ -12,7 +12,7 @@ import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
 import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..))
-import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, Month(..), DayOfWeek(..))
+import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, fromNthDay', Month(..), DayOfWeek(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import qualified Data.HodaTime.Calendar.Iso as Iso
 
@@ -70,6 +70,9 @@ constructorUnits = testGroup "Constructor"
     ,testCase "Holidays in year 2000" $ test2k (usaHolidays 2000)
     ,testCase "Holidays in year 2001" $ test2001 (usaHolidays 2001)
     ,testCase "Holidays in year 1582" $ test1582 (usaHolidays 1582)
+    ,testCase "Holidays in year 2000 (new function)" $ test2k (usaHolidays' 2000)
+    ,testCase "Holidays in year 2001 (new function)" $ test2001 (usaHolidays' 2001)
+    ,testCase "Holidays in year 1582 (new function)" $ test1582 (usaHolidays' 1582)
   ]
     where
       test2k hs = do
@@ -96,6 +99,17 @@ constructorUnits = testGroup "Constructor"
           ,fromNthDay Third Monday January      -- MLK day
           ,fromNthDay Second Tuesday February   -- Presidents day
           ,fromNthDay Fourth Thursday November  -- Thanksgiving
+          ,calendarDate 29 February             -- Not a holiday but will sometimes be absent
+        ]
+      usaHolidays' y = catMaybes $ ($ y) <$>
+        [
+           calendarDate 1 January               -- New Year
+          ,calendarDate 4 July                  -- Independence Day 
+          ,calendarDate 25 December             -- Christmas
+          ,fromNthDay' First Monday September    -- Labor day
+          ,fromNthDay' Third Monday January      -- MLK day
+          ,fromNthDay' Second Tuesday February   -- Presidents day
+          ,fromNthDay' Fourth Thursday November  -- Thanksgiving
           ,calendarDate 29 February             -- Not a holiday but will sometimes be absent
         ]
 

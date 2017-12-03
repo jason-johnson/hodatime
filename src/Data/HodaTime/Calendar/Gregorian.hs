@@ -3,6 +3,7 @@ module Data.HodaTime.Calendar.Gregorian
   -- * Constructors
    calendarDate
   ,fromNthDay
+  ,fromNthDay'
   ,fromWeekDate
   -- * Types
   ,Month(..)
@@ -43,6 +44,17 @@ fromNthDay nth dow m y = do
     frontOrBack nth'
       | nth' < 5  = (somDays, nth', weekdayDistance, adjustment + 1, somDays + adjustment)
       | otherwise = (eomDays, nth' - 5, flip weekdayDistance, mdim - adjustment, eomDays - adjustment)
+
+fromNthDay' :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
+fromNthDay' nth dow m y = do
+  guard $ d > 0 && d <= mdim
+  guard $ days > invalidDayThresh
+  return $ CalendarDate (fromIntegral days) (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
+  where
+    m' = fromEnum m
+    mdim = daysInMonth m' y
+    d = nthDayToDayOfMonth (fromEnum nth) (fromEnum dow) m' y
+    days = yearMonthDayToDays y m d
 
 -- | Smart constuctor for Gregorian calendar date based on week date.  Note that this method assumes weeks start on Sunday and the first week of the year is the one
 --   which has at least one day in the new year.  For ISO compliant behavior use this constructor from the ISO module
