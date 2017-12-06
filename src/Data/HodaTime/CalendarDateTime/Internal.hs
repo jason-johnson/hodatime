@@ -18,6 +18,7 @@ where
 import Data.HodaTime.Instant.Internal (Instant)
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
+import Control.DeepSeq
 
 -- CalendarDate
 
@@ -41,6 +42,9 @@ type WeekNumber = Int
 -- Note: We keep the date in 2 formats, redundantly.  We depend on lazy evaluation to only produce the portion that is actually used
 data CalendarDate calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdMonth :: Word8, cdYear :: Word32 }
   deriving (Eq, Show, Ord)  -- TODO: Get rid of Show and define the other instances to only use cdDays
+  
+instance NFData (CalendarDate a) where
+  rnf (CalendarDate days d m y) = rnf days `seq` rnf d `seq` rnf m `seq` rnf y
 
 -- NOTE: This is a test form of the calendar date that only stores the cycle.  Everything else will be pulled from the date cache table, as required
 --data CalendarDate o calendar = CalendarDate { cdDays :: Int32, cdCycle :: Word8, ldOptions :: o }

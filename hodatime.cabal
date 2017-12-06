@@ -46,6 +46,7 @@ library
                    filepath,
                    containers,
                    exceptions,
+                   deepseq,
                    fingertree
   if os(windows)
     build-depends: Win32
@@ -149,11 +150,13 @@ benchmark bench
                    Data.HodaTime.Offset,
                    Data.HodaTime.OffsetDateTime.Internal,
                    Data.HodaTime.TimeZone.Internal,
-                   Data.HodaTime.ZonedDateTime.Internal
+                   Data.HodaTime.ZonedDateTime.Internal,
+                   Data.HodaTime.CalendarDate
   build-depends:
                    base > 4,
                    criterion,
                    random,
+                   deepseq,
 
                    mtl,
                    binary,
