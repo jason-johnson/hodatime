@@ -53,9 +53,8 @@ fromNthDay' nth dow m y = do
   where
     nth' = fromEnum nth
     nth'' = if nth' < 5 then nth' else nth' - 5
-    m' = fromEnum m
-    mdim = daysInMonth m' y
-    d = nthDayToDayOfMonth nth'' (fromEnum dow) m' y
+    mdim = maxDaysInMonth m y
+    d = nthDayToDayOfMonth nth'' (fromEnum dow) m y
     days = yearMonthDayToDays y m d
 
 -- | Smart constuctor for Gregorian calendar date based on week date.  Note that this method assumes weeks start on Sunday and the first week of the year is the one

@@ -14,7 +14,6 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,dayOfWeekFromDays
   ,dayMonthYearToDayOfWeek
   ,nthDayToDayOfMonth
-  ,daysInMonth
 )
 where
 
@@ -136,25 +135,15 @@ dayMonthYearToDayOfWeek d month year = (d + (13 * m - 1) `div` 5 + yrhs + (yrhs 
     yrhs = y `mod` 100
     ylhs = y `div` 100
 
-nthDayToDayOfMonth :: Int -> Int -> Int -> Int -> Int
+nthDayToDayOfMonth :: Int -> Int -> Month Gregorian -> Int -> Int
 nthDayToDayOfMonth nth d m y = day
   where
     dom = if nth < 0 then mdm else 1
-    mdm = daysInMonth m y
-    dow = dayMonthYearToDayOfWeek dom m y
+    mdm = maxDaysInMonth m y
+    dow = dayMonthYearToDayOfWeek dom (fromEnum m) y
     d' = d - dow
     d'' = if d' < 0 then d' + 7 else d'
     day = dom + d'' + 7 * nth
-
-daysInMonth :: (Show a, Integral a) => a -> a -> a
-daysInMonth m y
-  | m == 12   = if isLeap then 29 else 28
-  | m < 12    = 30 + ((m + m `div` 6) `mod` 2) +  (m `div` 11)
-  | otherwise = error $ "daysInMonth called with invalide month: " ++ show m
-  where
-    isLeap
-       | 0 == y `mod` 100                  = 0 == y `mod` 400
-       | otherwise                         = 0 == y `mod` 4
 
 dayOfWeekFromDays :: Int -> Int
 dayOfWeekFromDays = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
