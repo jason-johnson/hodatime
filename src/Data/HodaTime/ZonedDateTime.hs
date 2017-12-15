@@ -15,6 +15,7 @@ module Data.HodaTime.ZonedDateTime
   -- * Types
    ZonedDateTime
   -- * Constructors
+  ,fromCalendarDateTimeLeniently
   ,fromCalendarDateTimeStrictly
   ,fromCalendarDateTimeAll
   -- * Math
@@ -30,7 +31,7 @@ where
 
 import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), LocalTime)
-import Data.HodaTime.TimeZone.Internal (TimeZone(..), calDateTransitionsFor)
+import Data.HodaTime.TimeZone.Internal (TimeZone(..), TransitionInfo(..), activeLeapsFor, calDateTransitionsFor, nextCalDateTransition)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -49,11 +50,18 @@ instance Exception DateTimeAmbiguousException
 
 -- constructors
 
+-- | Returns the mapping of this 'CalendarDateTime' within the given TimeZone, with "lenient" rules applied such that ambiguous values map to the earlier of the alternatives,
+--   and "skipped" values are shifted forward by the duration of the "gap".
+fromCalendarDateTimeLeniently :: IsCalendarDateTime cal => CalendarDateTime cal -> TimeZone -> ZonedDateTime cal
+fromCalendarDateTimeLeniently = resolve ambiguous skipped
+  where
+    ambiguous zdt _ = zdt
+    skipped _ zdt = zdt
 fromCalendarDateTimeStrictly :: (MonadThrow m, IsCalendarDateTime cal) => CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal)
 fromCalendarDateTimeStrictly cdt = go . fromCalendarDateTimeAll cdt
   where
-    go [zdt] = return zdt
     go [] = throwM $ DateTimeDoesNotExistException
+    go [zdt] = return zdt
     go _ = throwM $ DateTimeAmbiguousException
 
 -- | Return all 'ZonedDateTime' entries for a specific 'CalendarDateTime' in a 'TimeZone'. Normally this would be one, but in the case that a time
@@ -65,6 +73,27 @@ fromCalendarDateTimeAll cdt tz@(TimeZone _ _ calDateM _) = zdts
     instant = toUnadjustedInstant cdt
     zdts = fmap mkZdt . calDateTransitionsFor instant $ calDateM
     mkZdt = ZonedDateTime cdt tz
+
+-- | Takes two functions to determine how to resolve a 'CalendarDateTime' to a 'ZonedDateTime' in the case of ambiguity or skipped times.  The first
+-- function is for the ambigous case and is past the first matching 'ZonedDateTime', followed by the second match. The second function is for the case
+-- that the 'CalendarDateTime' doesn't exist in the 'TimeZone' (e.g. in a spring-forward situation, there will be a missing hour), the first
+-- 'ZonedDateTime' will be the the last time before the gap and the second will be the first time after the gap.
+resolve ::
+  IsCalendarDateTime cal =>
+  (ZonedDateTime cal -> ZonedDateTime cal -> ZonedDateTime cal) ->
+  (ZonedDateTime cal -> ZonedDateTime cal -> ZonedDateTime cal) ->
+  CalendarDateTime cal ->
+  TimeZone ->
+  ZonedDateTime cal
+resolve ambiguous skipped cdt tz@(TimeZone _ _ calDateM _) = go . fmap mkZdt . calDateTransitionsFor instant $ calDateM
+  where
+    instant = toUnadjustedInstant cdt
+    next = mkZdt . nextCalDateTransition instant $ calDateM
+    mkZdt = ZonedDateTime cdt tz
+    go [] = skipped (error "resolve.skipped: fixme") next
+    go [zdt] = zdt
+    go (zdt1:zdt2:[]) = ambiguous zdt1 zdt2
+    go _ = error "misconfiguration: more than 2 dates returns from calDateTransitionsFor"
 
 -- conversion
 

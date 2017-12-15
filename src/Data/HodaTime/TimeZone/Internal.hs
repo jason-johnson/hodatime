@@ -21,6 +21,7 @@ module Data.HodaTime.TimeZone.Internal
   ,emptyCalDateTransitions
   ,addCalDateTransition
   ,calDateTransitionsFor
+  ,nextCalDateTransition
   ,TimeZone(..)
 )
 where
@@ -111,6 +112,10 @@ addCalDateTransition b e = IMap.insert interval
 calDateTransitionsFor :: Instant -> CalDateTransitionsMap -> [TransitionInfo]
 calDateTransitionsFor i = fmap (resolveTI i . snd) . IMap.search (Entry i)
 
+-- TODO: Handle the case where we don't find anything
+nextCalDateTransition :: Instant -> CalDateTransitionsMap -> TransitionInfo
+nextCalDateTransition i ts = resolveTI i . snd . fst . fromMaybe (error "nextCalDateTransition: fixme") . IMap.leastView . snd $ IMap.splitAfter (Entry i) ts
+
 -- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
   TimeZone
@@ -121,3 +126,9 @@ data TimeZone =
       ,leapsMap :: LeapsMap
     }
   deriving (Eq, Show)
+
+-- helper functions
+
+resolveTI :: Instant -> TransExpressionOrInfo -> TransitionInfo
+resolveTI _  (TInfo ti) = ti
+resolveTI _instant (TExp (TransitionExpressionInfo offset standard dst)) = undefined
