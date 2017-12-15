@@ -12,7 +12,6 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,maxDaysInMonth
   ,yearMonthDayToDays
   ,dayOfWeekFromDays
-  ,dayMonthYearToDayOfWeek
   ,nthDayToDayOfMonth
 )
 where
@@ -127,23 +126,18 @@ fromWeekDate minWeekDays wkStartDoW weekNum dow y = do
 
 -- helper functions
 
--- NOTE: Sunday = 0, January = 0
-dayMonthYearToDayOfWeek :: Int -> Int -> Int -> Int
-dayMonthYearToDayOfWeek d month year = (d + (13 * m - 1) `div` 5 + yrhs + (yrhs `div` 4) + (ylhs `div` 4) - 2 * ylhs) `mod` 7
-  where
-    (m, y) = if month < 2 then (month + 11, year - 1) else (month - 1, year)
-    yrhs = y `mod` 100
-    ylhs = y `div` 100
-
 nthDayToDayOfMonth :: Int -> Int -> Month Gregorian -> Int -> Int
-nthDayToDayOfMonth nth d m y = day
+nthDayToDayOfMonth nth day month y = dom + d' + 7 * nth
   where
+    mdm = maxDaysInMonth month y
     dom = if nth < 0 then mdm else 1
-    mdm = maxDaysInMonth m y
-    dow = dayMonthYearToDayOfWeek dom (fromEnum m) y
-    d' = d - dow
-    d'' = if d' < 0 then d' + 7 else d'
-    day = dom + d'' + 7 * nth
+    m = fromEnum month
+    dow = (dom + (13 * m' - 1) `div` 5 + yrhs + (yrhs `div` 4) + (ylhs `div` 4) - 2 * ylhs) `mod` 7
+    d = day - dow
+    d' = if d < 0 then d + 7 else d
+    (m', y') = if m < 2 then (m + 11, y - 1) else (m - 1, y)
+    yrhs = y' `mod` 100
+    ylhs = y' `div` 100
 
 dayOfWeekFromDays :: Int -> Int
 dayOfWeekFromDays = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
