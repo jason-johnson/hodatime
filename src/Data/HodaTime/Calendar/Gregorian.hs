@@ -40,10 +40,10 @@ fromNthDay nth dow m y = do
     startDow = dayOfWeekFromDays days'
     targetDow = fromEnum dow
     adjustment = 7 * multiple + adjust startDow targetDow
-    (days', multiple, adjust, d, days) = frontOrBack (fromEnum nth)
+    (days', multiple, adjust, d, days) = frontOrBack (fromEnum nth - 4)
     frontOrBack nth'
-      | nth' < 5  = (somDays, nth', weekdayDistance, adjustment + 1, somDays + adjustment)
-      | otherwise = (eomDays, nth' - 5, flip weekdayDistance, mdim - adjustment, eomDays - adjustment)
+      | nth' < 0  = (eomDays, nth', flip weekdayDistance, mdim - adjustment, eomDays - adjustment)
+      | otherwise = (somDays, nth', weekdayDistance, adjustment + 1, somDays + adjustment)
 
 fromNthDay' :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
 fromNthDay' nth dow m y = do
@@ -51,10 +51,9 @@ fromNthDay' nth dow m y = do
   guard $ days > invalidDayThresh
   return $ CalendarDate (fromIntegral days) (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
   where
-    nth' = fromEnum nth
-    nth'' = if nth' < 5 then nth' else nth' - 5
+    nth' = fromEnum nth - 4
     mdim = maxDaysInMonth m y
-    d = nthDayToDayOfMonth nth'' (fromEnum dow) m y
+    d = nthDayToDayOfMonth nth' (fromEnum dow) m y
     days = yearMonthDayToDays y m d
 
 -- | Smart constuctor for Gregorian calendar date based on week date.  Note that this method assumes weeks start on Sunday and the first week of the year is the one

@@ -23,15 +23,15 @@ import Control.DeepSeq
 -- CalendarDate
 
 data DayNth =
-    First
+    FourthToLast
+  | ThirdToLast
+  | SecondToLast
+  | Last
+  | First
   | Second
   | Third
   | Fourth
   | Fifth
-  | Last
-  | SecondToLast
-  | ThirdToLast
-  | FourthToLast
     deriving (Eq, Show, Enum)
 
 type Year = Int
