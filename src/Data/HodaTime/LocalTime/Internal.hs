@@ -68,6 +68,7 @@ instance IsCalendar cal => HasLocalTime (CalendarDateTime cal) where
   {-# INLINE second #-}
 
   nanosecond f (CalendarDateTime cd lt) = CalendarDateTime cd <$> nanosecond f lt
+  {-# INLINE nanosecond #-}
 
 -- Constructors
 
