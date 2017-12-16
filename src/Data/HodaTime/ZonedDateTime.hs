@@ -17,12 +17,14 @@ module Data.HodaTime.ZonedDateTime
   -- * Constructors
   ,fromCalendarDateTimeLeniently
   ,fromCalendarDateTimeStrictly
-  ,fromCalendarDateTimeAll
   -- * Math
   -- * Conversion
   ,toLocalDateTime
   ,toLocalDate
   ,toLocalTime
+  -- * Special constructors
+  ,fromCalendarDateTimeAll
+  ,resolve
   -- * Exceptions
   ,DateTimeDoesNotExistException(..)
   ,DateTimeAmbiguousException(..)
