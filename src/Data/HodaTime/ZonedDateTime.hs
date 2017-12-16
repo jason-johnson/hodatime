@@ -30,12 +30,9 @@ module Data.HodaTime.ZonedDateTime
 where
 
 import Data.HodaTime.ZonedDateTime.Internal
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime, at)
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime)
 import Data.HodaTime.LocalTime.Internal (second)
 import Data.HodaTime.TimeZone.Internal (TimeZone(..), TransitionInfo(..), activeLeapsFor, calDateTransitionsFor, aroundCalDateTransition)
-import Data.HodaTime.Duration.Internal (fromSeconds)
-import Data.HodaTime.Instant.Internal (Instant, minus)
-import Data.HodaTime.OffsetDateTime.Internal (Offset(..), adjustInstant)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -64,7 +61,6 @@ fromCalendarDateTimeLeniently = resolve ambiguous skipped
       where
         cdt' = modify (\s -> s + aOff - bOff) second cdt
         modify f l = head . l ((:[]) . f)
-
 
 -- | Returns the mapping of this 'CalendarDateTime' within the given 'TimeZone', with "strict" rules applied such that ambiguous or skipped date times
 --   return the requested failure response (e.g. Nothing, Left, exception, etc.)

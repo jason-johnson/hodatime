@@ -12,6 +12,7 @@ module Data.HodaTime.CalendarDateTime.Internal
   ,HasDate(..)
   ,LocalTime(..)
   ,IsCalendarDateTime(..)
+  ,at
 )
 where
 
@@ -124,3 +125,9 @@ class IsCalendarDateTime cal where
   fromAdjustedInstant :: Instant -> CalendarDateTime cal
   -- | Convert a CalendarDateTime directly to an Instant.  Needed because different calendars use different epochs.  If this ever changes we can revisit this
   toUnadjustedInstant :: CalendarDateTime cal -> Instant
+
+-- constructors
+
+-- | Returns a 'CalendarDateTime' of the 'CalendarDate' at the given 'LocalTime'
+at :: CalendarDate cal -> LocalTime -> CalendarDateTime cal
+at date time = CalendarDateTime date time
