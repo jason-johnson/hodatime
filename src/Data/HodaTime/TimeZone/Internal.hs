@@ -21,7 +21,7 @@ module Data.HodaTime.TimeZone.Internal
   ,emptyCalDateTransitions
   ,addCalDateTransition
   ,calDateTransitionsFor
-  ,nextCalDateTransition
+  ,aroundCalDateTransition
   ,TimeZone(..)
 )
 where
@@ -112,9 +112,16 @@ addCalDateTransition b e = IMap.insert interval
 calDateTransitionsFor :: Instant -> CalDateTransitionsMap -> [TransitionInfo]
 calDateTransitionsFor i = fmap (resolveTI i . snd) . IMap.search (Entry i)
 
--- TODO: Handle the case where we don't find anything
-nextCalDateTransition :: Instant -> CalDateTransitionsMap -> TransitionInfo
-nextCalDateTransition i ts = resolveTI i . snd . fst . fromMaybe (error "nextCalDateTransition: fixme") . IMap.leastView . snd $ IMap.splitAfter (Entry i) ts
+-- TODO: decide what we should be doing with these errors
+aroundCalDateTransition :: Instant -> CalDateTransitionsMap -> (TransitionInfo, TransitionInfo)
+aroundCalDateTransition i ts = (before, after)
+  where
+    before = resolveTI i . snd . go . flip IMap.search ts . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
+    after = resolveTI i . snd . fst . fromMaybe (error "around.after: fixme") . IMap.leastView $ back
+    (front, back) = IMap.splitAfter (Entry i) ts
+    go [] = error "aroundCalDateTransition: no before transitions"
+    go [tei] = tei
+    go _ = error "aroundCalDateTransition: too many before transitions"
 
 -- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =

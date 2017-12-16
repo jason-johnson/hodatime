@@ -30,8 +30,12 @@ module Data.HodaTime.ZonedDateTime
 where
 
 import Data.HodaTime.ZonedDateTime.Internal
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), LocalTime)
-import Data.HodaTime.TimeZone.Internal (TimeZone(..), TransitionInfo(..), activeLeapsFor, calDateTransitionsFor, nextCalDateTransition)
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime, at)
+import Data.HodaTime.LocalTime.Internal (second)
+import Data.HodaTime.TimeZone.Internal (TimeZone(..), TransitionInfo(..), activeLeapsFor, calDateTransitionsFor, aroundCalDateTransition)
+import Data.HodaTime.Duration.Internal (fromSeconds)
+import Data.HodaTime.Instant.Internal (Instant, minus)
+import Data.HodaTime.OffsetDateTime.Internal (Offset(..), adjustInstant)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -50,13 +54,20 @@ instance Exception DateTimeAmbiguousException
 
 -- constructors
 
--- | Returns the mapping of this 'CalendarDateTime' within the given TimeZone, with "lenient" rules applied such that ambiguous values map to the earlier of the alternatives,
+-- | Returns the mapping of this 'CalendarDateTime' within the given 'TimeZone', with "lenient" rules applied such that ambiguous values map to the earlier of the alternatives,
 --   and "skipped" values are shifted forward by the duration of the "gap".
-fromCalendarDateTimeLeniently :: IsCalendarDateTime cal => CalendarDateTime cal -> TimeZone -> ZonedDateTime cal
+fromCalendarDateTimeLeniently :: (IsCalendar cal, IsCalendarDateTime cal) => CalendarDateTime cal -> TimeZone -> ZonedDateTime cal
 fromCalendarDateTimeLeniently = resolve ambiguous skipped
   where
     ambiguous zdt _ = zdt
-    skipped _ zdt = zdt
+    skipped (ZonedDateTime _ _ (TransitionInfo bOff _ _)) (ZonedDateTime cdt tz ti@(TransitionInfo aOff _ _)) = ZonedDateTime cdt' tz ti
+      where
+        cdt' = modify (\s -> s + aOff - bOff) second cdt
+        modify f l = head . l ((:[]) . f)
+
+
+-- | Returns the mapping of this 'CalendarDateTime' within the given 'TimeZone', with "strict" rules applied such that ambiguous or skipped date times
+--   return the requested failure response (e.g. Nothing, Left, exception, etc.)
 fromCalendarDateTimeStrictly :: (MonadThrow m, IsCalendarDateTime cal) => CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal)
 fromCalendarDateTimeStrictly cdt = go . fromCalendarDateTimeAll cdt
   where
@@ -88,9 +99,9 @@ resolve ::
 resolve ambiguous skipped cdt tz@(TimeZone _ _ calDateM _) = go . fmap mkZdt . calDateTransitionsFor instant $ calDateM
   where
     instant = toUnadjustedInstant cdt
-    next = mkZdt . nextCalDateTransition instant $ calDateM
+    (before, after) = aroundCalDateTransition instant $ calDateM
     mkZdt = ZonedDateTime cdt tz
-    go [] = skipped (error "resolve.skipped: fixme") next
+    go [] = skipped (mkZdt before) (mkZdt after)
     go [zdt] = zdt
     go (zdt1:zdt2:[]) = ambiguous zdt1 zdt2
     go _ = error "misconfiguration: more than 2 dates returns from calDateTransitionsFor"
