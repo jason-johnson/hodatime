@@ -22,6 +22,8 @@ module Data.HodaTime.ZonedDateTime
   ,toLocalDateTime
   ,toLocalDate
   ,toLocalTime
+  -- * Accessors
+  ,inDst
   -- * Special constructors
   ,fromCalendarDateTimeAll
   ,resolve
@@ -117,3 +119,9 @@ toLocalDate (ZonedDateTime (CalendarDateTime cd _) _  _) = cd
 -- | Return the 'LocalTime' represented by this 'ZonedDateTime'.
 toLocalTime :: ZonedDateTime cal -> LocalTime
 toLocalTime (ZonedDateTime (CalendarDateTime _ lt) _  _) = lt
+
+-- Accessors
+
+-- | Return a 'Bool' specifying if this 'ZonedDateTime' is currently in Daylight savings time.
+inDst :: ZonedDateTime cal -> Bool
+inDst (ZonedDateTime _ _ (TransitionInfo _ isInDst _)) = isInDst
