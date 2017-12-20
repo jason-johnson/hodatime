@@ -56,24 +56,24 @@ p_offset = do
       optionalDigit = char ':' *> many1 digit
 
 p_transitionExpression :: ExpParser TransitionExpression
-p_transitionExpression = do
-  te <- p_julianExpression <|> p_nthDayExpression
-  time <- option (toHour 2) (char '/' *> p_offset)
-  return . te $ time
+p_transitionExpression = te <*> time
+  where
+    te = p_julianExpression <|> p_nthDayExpression
+    time = option (toHour 2) (char '/' *> p_offset)
 
 p_julianExpression :: ExpParser (Int -> TransitionExpression)
-p_julianExpression = do
-  countLeapDay <- option True (False <$ char 'J')
-  JulianExpression countLeapDay . read <$> many1 digit
+p_julianExpression = JulianExpression <$> cntLp <*> d
+  where
+    cntLp = option True (False <$ char 'J')
+    d = read <$> many1 digit
 
 p_nthDayExpression :: ExpParser (Int -> TransitionExpression)
-p_nthDayExpression = do
-  m <- char 'M' *> p_number
-  nth <- char '.' *> p_number
-  d <- char '.' *> p_number
-  return $ NthDayExpression m nth d
-    where
-      p_number = read <$> many1 digit
+p_nthDayExpression = NthDayExpression <$> m <*> nth <*> d
+  where
+    m = char 'M' *> p_number
+    nth = char '.' *> p_number
+    d = char '.' *> p_number
+    p_number = read <$> many1 digit
 
 -- helper functions
 
