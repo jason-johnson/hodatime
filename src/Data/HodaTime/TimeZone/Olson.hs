@@ -136,9 +136,9 @@ mapTransitionInfos abbrs = fmap toTI
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
 buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> Maybe String -> (UtcTransitionsMap, CalDateTransitionsMap)
-buildTransitionMaps transAndIndexes tInfos _tzString = (utcMap, calDateMap')
+buildTransitionMaps transAndIndexes tInfos tzString = (utcMap', calDateMap')
   where
-    calDateMap' = addCalDateTransition lastEntry Largest lastTI calDateMap -- TODO: At some point we may want to have a special POSIX tInfo for generating these from TZ string
+    (utcMap', calDateMap') = addLastMapEntries tzString lastEntry Largest lastTI utcMap calDateMap
     mkTI t = TInfo $ TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
     defaultTI = mkTI . findDefaultTransInfo $ tInfos
     oneSecond = fromSeconds 1
@@ -160,6 +160,14 @@ applyOffset off i = apply i d
   where
     apply = if off < 0 then minus else add
     d = fromSeconds . abs $ off
+
+addLastMapEntries :: Maybe String -> IntervalEntry Instant -> IntervalEntry Instant -> TransExpressionOrInfo -> UtcTransitionsMap -> CalDateTransitionsMap
+                                -> (UtcTransitionsMap, CalDateTransitionsMap)
+addLastMapEntries Nothing start stop ti utcMap calDateMap = (utcMap, addCalDateTransition start stop ti calDateMap)
+addLastMapEntries (Just tzString) start stop ti utcMap calDateMap = (utcMap', calDateMap')
+  where
+    utcMap' = undefined
+    calDateMap' = undefined -- TODO: add a module to parse POSIX tz string
 
 findDefaultTransInfo :: [TransInfo] -> TransInfo
 findDefaultTransInfo tis = go . filter ((== False) . tiIsDst) $ tis

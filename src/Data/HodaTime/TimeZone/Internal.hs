@@ -37,20 +37,25 @@ import qualified Data.IntervalMap.FingerTree as IMap
 data TZIdentifier = UTC | Zone String
   deriving (Eq, Show)
 
+data TransitionInfo = TransitionInfo { tiUtcOffset :: Int, isDst :: Bool, tiAbbreviation :: String }
+  deriving (Eq, Show)
+
 data TransitionExpression = TransitionExpression
   {
-     teAbbreviation :: String
-    ,teMonth :: Int
+     teMonth :: Int
     ,teNthDay :: Int
     ,teDay :: Int
     ,teSeconds :: Int
   }
   deriving (Eq, Show)
 
-data TransitionExpressionInfo = TransitionExpressionInfo { teUtcOffset :: Int, expression :: TransitionExpression, dstExpression :: TransitionExpression }
-  deriving (Eq, Show)
-
-data TransitionInfo = TransitionInfo { tiUtcOffset :: Int, isDst :: Bool, tiAbbreviation :: String }
+data TransitionExpressionInfo = TransitionExpressionInfo
+  {
+     stdExpression :: TransitionExpression
+    ,dstExpression :: TransitionExpression
+    ,stdTransInfo :: TransitionInfo
+    ,dstTransInfo :: TransitionInfo
+  }
   deriving (Eq, Show)
 
 data TransExpressionOrInfo = TInfo TransitionInfo | TExp TransitionExpressionInfo
@@ -138,4 +143,4 @@ data TimeZone =
 
 resolveTI :: Instant -> TransExpressionOrInfo -> TransitionInfo
 resolveTI _  (TInfo ti) = ti
-resolveTI _instant (TExp (TransitionExpressionInfo offset standard dst)) = undefined
+resolveTI _instant (TExp (TransitionExpressionInfo stdExpr dstExpr stdTI dstTI)) = undefined
