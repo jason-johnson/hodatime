@@ -10,24 +10,28 @@ import Text.Parsec hiding (many, optional, (<|>))
 
 type ExpParser = Parsec String ()
 
-parsePosixString :: String -> TransitionExpressionInfo
+parsePosixString :: String -> TransExpressionOrInfo
 parsePosixString tzStr = case runParser p () tzStr tzStr of
         Left err -> error $ show err
         Right r -> r
     where
         p = p_posixTzString  -- TODO: if this is all there is, replace p with this above
 
-p_posixTzString :: ExpParser TransitionExpressionInfo
+p_posixTzString :: ExpParser TransExpressionOrInfo
 p_posixTzString = do
   stdID <- p_tzIdentifier <?> "Standard TZ identifier"
   stdOffset <- p_offset <?> "TZ Offset"
-  dstID <- p_tzIdentifier <?> "DST TZ identifier"                     -- NOTE: This would actually be optional but we don't handle that
+  p_dstExpression stdID stdOffset <|> (return . TInfo . TransitionInfo stdOffset False $ stdID)
+
+p_dstExpression :: String -> Int -> ExpParser TransExpressionOrInfo
+p_dstExpression stdID stdOffset = do
+  dstID <- p_tzIdentifier
   dstOffset <- option (stdOffset + toHour 1) p_offset
   let stdTI = TransitionInfo stdOffset False stdID
   let dstTI = TransitionInfo dstOffset True dstID
   let stdExpr = TransitionExpression 0 0 0 0
   let dstExpr = TransitionExpression 0 0 0 0
-  return $ TransitionExpressionInfo stdExpr dstExpr stdTI dstTI
+  return . TExp $ TransitionExpressionInfo stdExpr dstExpr stdTI dstTI
 
 p_tzIdentifier :: ExpParser String
 p_tzIdentifier = p_tzSpecialIdentifier <|> p_tzNormalIdentifier
