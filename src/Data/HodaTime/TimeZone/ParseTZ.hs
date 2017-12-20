@@ -11,11 +11,9 @@ import Text.Parsec hiding (many, optional, (<|>))
 type ExpParser = Parsec String ()
 
 parsePosixString :: String -> TransExpressionOrInfo
-parsePosixString tzStr = case runParser p () tzStr tzStr of
+parsePosixString tzStr = case runParser p_posixTzString () tzStr tzStr of
         Left err -> error $ show err
         Right r -> r
-    where
-        p = p_posixTzString  -- TODO: if this is all there is, replace p with this above
 
 p_posixTzString :: ExpParser TransExpressionOrInfo
 p_posixTzString = do
@@ -27,10 +25,10 @@ p_dstExpression :: String -> Int -> ExpParser TransExpressionOrInfo
 p_dstExpression stdID stdOffset = do
   dstID <- p_tzIdentifier
   dstOffset <- option (stdOffset + toHour 1) p_offset
+  stdExpr <- char ',' *> p_transitionExpression
+  dstExpr <- char ',' *> p_transitionExpression
   let stdTI = TransitionInfo stdOffset False stdID
   let dstTI = TransitionInfo dstOffset True dstID
-  let stdExpr = TransitionExpression 0 0 0 0
-  let dstExpr = TransitionExpression 0 0 0 0
   return . TExp $ TransitionExpressionInfo stdExpr dstExpr stdTI dstTI
 
 p_tzIdentifier :: ExpParser String
@@ -49,13 +47,33 @@ p_tzNormalIdentifier = do
 
 p_offset :: ExpParser Int
 p_offset = do
-  sign <- (char '-' *> return negate) <|> (option id (id <$ char '+'))
+  sign <- (negate <$ char '-') <|> (option id (id <$ char '+'))
   hours <- toHour . read <$> many1 digit
   minutes <- option 0 $ (* 60) . read <$> optionalDigit
   seconds <- option 0 $ read <$> optionalDigit
   return . sign $ hours + minutes + seconds
     where
       optionalDigit = char ':' *> many1 digit
+
+p_transitionExpression :: ExpParser TransitionExpression
+p_transitionExpression = do
+  te <- p_julianExpression <|> p_nthDayExpression
+  time <- option (toHour 2) (char '/' *> p_offset)
+  return . te $ time
+
+p_julianExpression :: ExpParser (Int -> TransitionExpression)
+p_julianExpression = do
+  countLeapDay <- option True (False <$ char 'J')
+  JulianExpression countLeapDay . read <$> many1 digit
+
+p_nthDayExpression :: ExpParser (Int -> TransitionExpression)
+p_nthDayExpression = do
+  m <- char 'M' *> p_number
+  nth <- char '.' *> p_number
+  d <- char '.' *> p_number
+  return $ NthDayExpression m nth d
+    where
+      p_number = read <$> many1 digit
 
 -- helper functions
 
