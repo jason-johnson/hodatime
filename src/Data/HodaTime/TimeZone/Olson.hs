@@ -6,6 +6,7 @@ module Data.HodaTime.TimeZone.Olson
 where
 
 import Data.HodaTime.TimeZone.Internal
+import Data.HodaTime.TimeZone.ParseTZ (parsePosixString)
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
@@ -136,22 +137,20 @@ mapTransitionInfos abbrs = fmap toTI
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
 buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> Maybe String -> (UtcTransitionsMap, CalDateTransitionsMap)
-buildTransitionMaps transAndIndexes tInfos tzString = (utcMap', calDateMap')
+buildTransitionMaps transAndIndexes tInfos tzString = addLastMapEntries tzString' lastEntry lastTI utcMap calDateMap
   where
-    (utcMap', calDateMap') = addLastMapEntries tzString lastEntry Largest lastTI utcMap calDateMap
-    mkTI t = TInfo $ TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
+    tzString' = fmap parsePosixString tzString
+    mkTI t = TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
     defaultTI = mkTI . findDefaultTransInfo $ tInfos
     oneSecond = fromSeconds 1
-    initialUtcTransitions = addUtcTransition bigBang defaultTI emptyUtcTransitions
+    initialUtcTransitions = addUtcTransition bigBang (TInfo defaultTI) emptyUtcTransitions
     (utcMap, calDateMap, lastEntry, lastTI) = foldl' go (initialUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
     go (utcM, calDateM, prevEntry, prevTI) (tran, idx) = (utcM', calDateM', Entry localTran, tInfo')
       where
-        utcM' = addUtcTransition tran tInfo' utcM
-        calDateM' = addCalDateTransition prevEntry before prevTI calDateM
+        utcM' = addUtcTransition tran (TInfo tInfo') utcM
+        calDateM' = addCalDateTransition prevEntry before (TInfo prevTI) calDateM
         localTran = applyOffset (tiOffset tInfo) $ tran
-        before = case prevTI of
-          (TInfo ti)  -> Entry . flip minus oneSecond . applyOffset (tiUtcOffset ti) $ tran
-          _           -> error $ "impossible: buildTransitionMaps.go called with TExp"
+        before = Entry . flip minus oneSecond . applyOffset (tiUtcOffset prevTI) $ tran
         tInfo = tInfos !! idx
         tInfo' = mkTI tInfo
 
@@ -161,13 +160,20 @@ applyOffset off i = apply i d
     apply = if off < 0 then minus else add
     d = fromSeconds . abs $ off
 
-addLastMapEntries :: Maybe String -> IntervalEntry Instant -> IntervalEntry Instant -> TransExpressionOrInfo -> UtcTransitionsMap -> CalDateTransitionsMap
+addLastMapEntries :: Maybe TransExpressionOrInfo -> IntervalEntry Instant -> TransitionInfo -> UtcTransitionsMap -> CalDateTransitionsMap
                                 -> (UtcTransitionsMap, CalDateTransitionsMap)
-addLastMapEntries Nothing start stop ti utcMap calDateMap = (utcMap, addCalDateTransition start stop ti calDateMap)
-addLastMapEntries (Just tzString) start stop ti utcMap calDateMap = (utcMap', calDateMap')
+addLastMapEntries Nothing start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest (TInfo ti) calDateMap)
+-- NOTE: If the tzString does not have a time zone specification then the way we process the rest of the file should be correct (TODO: check offset) so we can ignore the string
+addLastMapEntries (Just (TInfo _)) start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest (TInfo ti) calDateMap)
+addLastMapEntries (Just texpr@(TExp (TransitionExpressionInfo stdExpr _ stdTI _))) start ti utcMap calDateMap = (utcMap', calDateMap')
   where
-    utcMap' = undefined
-    calDateMap' = undefined -- TODO: add a module to parse POSIX tz string
+    utcMap' = addUtcTransition end texpr utcMap
+    calDateMap' = addCalDateTransition cdEnd Largest texpr $ addCalDateTransition start before (TInfo ti) calDateMap
+    cdEnd = Entry . applyOffset (tiUtcOffset stdTI) $ end
+    before = Entry . flip minus (fromSeconds 1) . applyOffset (tiUtcOffset ti) $ end
+    end = case start of
+      (Entry trans) -> expressionToInstant trans stdExpr
+      _             -> error "impossible: got non Entry for last valid transition"
 
 findDefaultTransInfo :: [TransInfo] -> TransInfo
 findDefaultTransInfo tis = go . filter ((== False) . tiIsDst) $ tis

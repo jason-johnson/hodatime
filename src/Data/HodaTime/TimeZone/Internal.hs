@@ -9,6 +9,7 @@ module Data.HodaTime.TimeZone.Internal
   ,LeapsMap
   ,IntervalEntry(..)
   ,CalDateTransitionsMap
+  ,TimeZone(..)
   ,emptyUtcTransitions
   ,addUtcTransition
   ,activeTransitionFor
@@ -22,12 +23,13 @@ module Data.HodaTime.TimeZone.Internal
   ,addCalDateTransition
   ,calDateTransitionsFor
   ,aroundCalDateTransition
-  ,TimeZone(..)
+  ,expressionToInstant
 )
 where
 
 import Data.Maybe (fromMaybe)
-import Data.HodaTime.Instant.Internal (Instant)
+import Data.HodaTime.Instant.Internal (Instant(..))
+import Data.HodaTime.Calendar.Gregorian.Internal (daysToYearMonthDay, nthDayToDayOfMonth, yearMonthDayToDays)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Control.Arrow ((>>>), second)
@@ -40,13 +42,15 @@ data TZIdentifier = UTC | Zone String
 data TransitionInfo = TransitionInfo { tiUtcOffset :: Int, isDst :: Bool, tiAbbreviation :: String }
   deriving (Eq, Show)
 
-data TransitionExpression = TransitionExpression
+data TransitionExpression =
+  NthDayExpression
   {
      teMonth :: Int
     ,teNthDay :: Int
     ,teDay :: Int
     ,teSeconds :: Int
   }
+  | JulianExpression { jeCountLeaps :: Bool, jeDay :: Int, jeSeconds :: Int }
   deriving (Eq, Show)
 
 data TransitionExpressionInfo = TransitionExpressionInfo
@@ -144,3 +148,14 @@ data TimeZone =
 resolveTI :: Instant -> TransExpressionOrInfo -> TransitionInfo
 resolveTI _  (TInfo ti) = ti
 resolveTI _instant (TExp (TransitionExpressionInfo stdExpr dstExpr stdTI dstTI)) = undefined
+
+expressionToInstant :: Instant -> TransitionExpression -> Instant
+expressionToInstant (Instant days _ _) = go
+  where
+    y = let (yr, _, _) = daysToYearMonthDay days in fromIntegral yr
+    go (NthDayExpression m nth day s) = Instant days' (fromIntegral s) 0
+      where
+        m' = toEnum m
+        d = nthDayToDayOfMonth nth day m' y
+        days' = fromIntegral $ yearMonthDayToDays y m' d
+    go (JulianExpression cl d s) = undefined
