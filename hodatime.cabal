@@ -42,8 +42,6 @@ library
                    mtl,
                    binary,
                    bytestring,
-                   directory,
-                   filepath,
                    containers,
                    exceptions,
                    fingertree >= 0.1.3 && < 0.1.4,
@@ -51,7 +49,9 @@ library
   if os(windows)
     build-depends: Win32
   if !os(windows)
-    build-depends: unix
+    build-depends: unix,
+                   filepath,
+                   directory
 
   ghc-options:     -Wall
 
