@@ -13,6 +13,7 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,yearMonthDayToDays
   ,nthDayToDayOfMonth
   ,dayOfWeekFromDays
+  ,instantToYearMonthDay
 )
 where
 
@@ -213,3 +214,7 @@ _daysToYearMonthDay' days = (y',m'', fromIntegral d')
     (y,m,d) = decodeEntry cacheTable . fromIntegral $ centuryDays
     (m',d') = if isExtraCycleDay then (1,29) else (m,d)
     (y',m'') = (2000 + centuryYears + fromIntegral y, fromIntegral $ m')
+
+-- here to avoid circular dependancy between Instant and Gregorian
+instantToYearMonthDay :: Instant -> (Word32, Word8, Word8)
+instantToYearMonthDay (Instant days _ _) = daysToYearMonthDay days

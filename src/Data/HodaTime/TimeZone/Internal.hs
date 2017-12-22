@@ -24,12 +24,13 @@ module Data.HodaTime.TimeZone.Internal
   ,calDateTransitionsFor
   ,aroundCalDateTransition
   ,expressionToInstant
+  ,yearExpressionToInstant
 )
 where
 
 import Data.Maybe (fromMaybe)
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Data.HodaTime.Calendar.Gregorian.Internal (daysToYearMonthDay, nthDayToDayOfMonth, yearMonthDayToDays)
+import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Control.Arrow ((>>>), second)
@@ -150,9 +151,13 @@ resolveTI _  (TInfo ti) = ti
 resolveTI _instant (TExp (TransitionExpressionInfo stdExpr dstExpr stdTI dstTI)) = undefined
 
 expressionToInstant :: Instant -> TransitionExpression -> Instant
-expressionToInstant (Instant days _ _) = go
+expressionToInstant inst = yearExpressionToInstant y
   where
-    y = let (yr, _, _) = daysToYearMonthDay days in fromIntegral yr
+    y = let (yr, _, _) = instantToYearMonthDay inst in fromIntegral yr
+
+yearExpressionToInstant :: Int -> TransitionExpression -> Instant
+yearExpressionToInstant y = go
+  where
     go (NthDayExpression m nth day s) = Instant days' (fromIntegral s) 0
       where
         m' = toEnum m

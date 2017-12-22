@@ -19,6 +19,7 @@ import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
 import Data.HodaTime.Instant.Internal (Instant, fromSecondsSinceUnixEpoch, add, minus, bigBang)
 import Data.HodaTime.Duration.Internal (fromSeconds)
+import Data.HodaTime.Calendar.Gregorian.Internal (instantToYearMonthDay)
 
 data ParseException = ParseException String Int
   deriving (Typeable, Show)
@@ -171,8 +172,9 @@ addLastMapEntries (Just texpr@(TExp (TransitionExpressionInfo stdExpr _ stdTI _)
     calDateMap' = addCalDateTransition cdEnd Largest texpr $ addCalDateTransition start before (TInfo ti) calDateMap
     cdEnd = Entry . applyOffset (tiUtcOffset stdTI) $ end
     before = Entry . flip minus (fromSeconds 1) . applyOffset (tiUtcOffset ti) $ end
-    end = case start of
-      (Entry trans) -> expressionToInstant trans stdExpr
+    end = yearExpressionToInstant (y + 1) stdExpr   -- TODO: if we ever find the gap too large, we could add a check here before incrementing the year
+    y = case start of
+      (Entry trans) -> let (yr, _, _) = instantToYearMonthDay trans in fromIntegral yr
       _             -> error "impossible: got non Entry for last valid transition"
 
 findDefaultTransInfo :: [TransInfo] -> TransInfo
