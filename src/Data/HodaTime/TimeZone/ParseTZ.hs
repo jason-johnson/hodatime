@@ -70,7 +70,7 @@ p_julianExpression = JulianExpression <$> cntLp <*> d
 p_nthDayExpression :: ExpParser (Int -> TransitionExpression)
 p_nthDayExpression = NthDayExpression <$> m <*> nth <*> d
   where
-    m =   char 'M' *> p_number
+    m =   char 'M' *> (subtract 1 <$> p_number)
     nth = char '.' *> (adjust <$> p_number)
     d =   char '.' *> p_number
     p_number = read <$> many1 digit
