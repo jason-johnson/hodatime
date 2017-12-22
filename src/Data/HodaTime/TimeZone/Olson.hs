@@ -155,12 +155,6 @@ buildTransitionMaps transAndIndexes tInfos tzString = addLastMapEntries tzString
         tInfo = tInfos !! idx
         tInfo' = mkTI tInfo
 
-applyOffset :: Int -> Instant -> Instant
-applyOffset off i = apply i d
-  where
-    apply = if off < 0 then minus else add
-    d = fromSeconds . abs $ off
-
 addLastMapEntries :: Maybe TransExpressionOrInfo -> IntervalEntry Instant -> TransitionInfo -> UtcTransitionsMap -> CalDateTransitionsMap
                                 -> (UtcTransitionsMap, CalDateTransitionsMap)
 addLastMapEntries Nothing start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest (TInfo ti) calDateMap)
@@ -176,6 +170,12 @@ addLastMapEntries (Just texpr@(TExp (TransitionExpressionInfo stdExpr _ stdTI _)
     y = case start of
       (Entry trans) -> let (yr, _, _) = instantToYearMonthDay trans in fromIntegral yr
       _             -> error "impossible: got non Entry for last valid transition"
+
+applyOffset :: Int -> Instant -> Instant
+applyOffset off i = apply i d
+  where
+    apply = if off < 0 then minus else add
+    d = fromSeconds . abs $ off
 
 findDefaultTransInfo :: [TransInfo] -> TransInfo
 findDefaultTransInfo tis = go . filter ((== False) . tiIsDst) $ tis

@@ -25,11 +25,11 @@ p_dstExpression :: String -> Int -> ExpParser TransExpressionOrInfo
 p_dstExpression stdID stdOffset = do
   dstID <- p_tzIdentifier
   dstOffset <- option (stdOffset + toHour 1) p_offset
-  stdExpr <- char ',' *> p_transitionExpression
-  dstExpr <- char ',' *> p_transitionExpression
+  startExpr <- char ',' *> p_transitionExpression
+  endExpr <- char ',' *> p_transitionExpression
   let stdTI = TransitionInfo stdOffset False stdID
   let dstTI = TransitionInfo dstOffset True dstID
-  return . TExp $ TransitionExpressionInfo stdExpr dstExpr stdTI dstTI
+  return . TExp $ TransitionExpressionInfo startExpr endExpr stdTI dstTI
 
 p_tzIdentifier :: ExpParser String
 p_tzIdentifier = p_tzSpecialIdentifier <|> p_tzNormalIdentifier
@@ -70,10 +70,12 @@ p_julianExpression = JulianExpression <$> cntLp <*> d
 p_nthDayExpression :: ExpParser (Int -> TransitionExpression)
 p_nthDayExpression = NthDayExpression <$> m <*> nth <*> d
   where
-    m = char 'M' *> p_number
-    nth = char '.' *> p_number
-    d = char '.' *> p_number
+    m =   char 'M' *> p_number
+    nth = char '.' *> (adjust <$> p_number)
+    d =   char '.' *> p_number
     p_number = read <$> many1 digit
+    adjust 5 = -1
+    adjust n = n - 1
 
 -- helper functions
 

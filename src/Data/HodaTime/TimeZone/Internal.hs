@@ -56,8 +56,8 @@ data TransitionExpression =
 
 data TransitionExpressionInfo = TransitionExpressionInfo
   {
-     stdExpression :: TransitionExpression
-    ,dstExpression :: TransitionExpression
+     startExpression :: TransitionExpression
+    ,endExpression :: TransitionExpression
     ,stdTransInfo :: TransitionInfo
     ,dstTransInfo :: TransitionInfo
   }
@@ -148,12 +148,17 @@ data TimeZone =
 
 resolveTI :: Instant -> TransExpressionOrInfo -> TransitionInfo
 resolveTI _  (TInfo ti) = ti
-resolveTI _instant (TExp (TransitionExpressionInfo stdExpr dstExpr stdTI dstTI)) = undefined
+resolveTI instant (TExp (TransitionExpressionInfo startExpr endExpr stdTI dstTI)) = ti
+  where
+    start = expressionToInstant instant startExpr
+    ti = if instant < start then stdTI else ti'
+    dst = expressionToInstant instant endExpr
+    ti' = if instant < dst then dstTI else stdTI
 
 expressionToInstant :: Instant -> TransitionExpression -> Instant
-expressionToInstant inst = yearExpressionToInstant y
+expressionToInstant instant = yearExpressionToInstant y
   where
-    y = let (yr, _, _) = instantToYearMonthDay inst in fromIntegral yr
+    y = let (yr, _, _) = instantToYearMonthDay instant in fromIntegral yr
 
 yearExpressionToInstant :: Int -> TransitionExpression -> Instant
 yearExpressionToInstant y = go
