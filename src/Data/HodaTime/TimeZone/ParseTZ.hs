@@ -10,18 +10,18 @@ import Text.Parsec hiding (many, optional, (<|>))
 
 type ExpParser = Parsec String ()
 
-parsePosixString :: String -> TransExpressionOrInfo
+parsePosixString :: String -> (Either TransitionInfo TransitionExpressionInfo)
 parsePosixString tzStr = case runParser p_posixTzString () tzStr tzStr of
         Left err -> error $ show err
         Right r -> r
 
-p_posixTzString :: ExpParser TransExpressionOrInfo
+p_posixTzString :: ExpParser (Either TransitionInfo TransitionExpressionInfo)
 p_posixTzString = do
   stdID <- p_tzIdentifier <?> "Standard TZ identifier"
   stdOffset <- p_offset <?> "TZ Offset"
-  p_dstExpression stdID stdOffset <|> (return . TInfo . TransitionInfo stdOffset False $ stdID)
+  p_dstExpression stdID stdOffset <|> (return . Left . TransitionInfo stdOffset False $ stdID)
 
-p_dstExpression :: String -> Int -> ExpParser TransExpressionOrInfo
+p_dstExpression :: String -> Int -> ExpParser (Either TransitionInfo TransitionExpressionInfo)
 p_dstExpression stdID stdOffset = do
   dstID <- p_tzIdentifier
   dstOffset <- option (stdOffset + toHour 1) p_offset
@@ -29,7 +29,7 @@ p_dstExpression stdID stdOffset = do
   endExpr <- char ',' *> p_transitionExpression
   let stdTI = TransitionInfo stdOffset False stdID
   let dstTI = TransitionInfo dstOffset True dstID
-  return . TExp $ TransitionExpressionInfo startExpr endExpr stdTI dstTI
+  return . Right $ TransitionExpressionInfo startExpr endExpr stdTI dstTI
 
 p_tzIdentifier :: ExpParser String
 p_tzIdentifier = p_tzSpecialIdentifier <|> p_tzNormalIdentifier

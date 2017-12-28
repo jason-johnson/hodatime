@@ -37,7 +37,7 @@ where
 import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime)
 import Data.HodaTime.LocalTime.Internal (second)
-import Data.HodaTime.TimeZone.Internal (TimeZone(..), TransitionInfo(..), activeLeapsFor, calDateTransitionsFor, aroundCalDateTransition)
+import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), activeLeapsFor, calDateTransitionsFor, aroundCalDateTransition)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -65,7 +65,7 @@ fromCalendarDateTimeLeniently = resolve ambiguous skipped
     skipped (ZonedDateTime _ _ (TransitionInfo bOff _ _)) (ZonedDateTime cdt tz ti@(TransitionInfo aOff _ _)) = ZonedDateTime cdt' tz ti
       where
         cdt' = modify (\s -> s + aOff - bOff) second cdt
-        modify f l = head . l ((:[]) . f)
+        modify f l = head . l ((:[]) . f)                 -- TODO: We may want to break down and define the 3 lens primitives we need somewhere
 
 -- | Returns the mapping of this 'CalendarDateTime' within the given 'TimeZone', with "strict" rules applied such that ambiguous or skipped date times
 --   return the requested failure response (e.g. Nothing, Left, exception, etc.)
@@ -80,10 +80,10 @@ fromCalendarDateTimeStrictly cdt = go . fromCalendarDateTimeAll cdt
 -- occurs twice in a zone (i.e. due to daylight savings time change) both would be returned.  Also, if the time does not occur at all, an empty list
 -- will be returned.  This method allows the user to choose exactly what to do in the case of ambigiuty.
 fromCalendarDateTimeAll :: IsCalendarDateTime cal => CalendarDateTime cal -> TimeZone -> [ZonedDateTime cal]
-fromCalendarDateTimeAll cdt tz@(TimeZone _ _ calDateM _) = zdts
+fromCalendarDateTimeAll cdt tz = zdts
   where
     instant = toUnadjustedInstant cdt
-    zdts = fmap mkZdt . calDateTransitionsFor instant $ calDateM
+    zdts = fmap mkZdt . calDateTransitionsFor instant $ tz
     mkZdt = ZonedDateTime cdt tz
 
 -- | Takes two functions to determine how to resolve a 'CalendarDateTime' to a 'ZonedDateTime' in the case of ambiguity or skipped times.  The first
@@ -96,11 +96,11 @@ resolve ::
   (ZonedDateTime cal -> ZonedDateTime cal -> ZonedDateTime cal) ->
   CalendarDateTime cal ->
   TimeZone ->
-  ZonedDateTime cal
-resolve ambiguous skipped cdt tz@(TimeZone _ _ calDateM _) = go . fmap mkZdt . calDateTransitionsFor instant $ calDateM
+  ZonedDateTime cal -- TODO: This function should probably allow failure
+resolve ambiguous skipped cdt tz = go . fmap mkZdt . calDateTransitionsFor instant $ tz
   where
     instant = toUnadjustedInstant cdt
-    (before, after) = aroundCalDateTransition instant $ calDateM
+    (before, after) = aroundCalDateTransition instant $ tz
     mkZdt = ZonedDateTime cdt tz
     go [] = skipped (mkZdt before) (mkZdt after)
     go [zdt] = zdt
@@ -127,5 +127,6 @@ toLocalTime (ZonedDateTime (CalendarDateTime _ lt) _  _) = lt
 inDst :: ZonedDateTime cal -> Bool
 inDst (ZonedDateTime _ _ (TransitionInfo _ isInDst _)) = isInDst
 
+-- | Return a 'String' representing the abbreviation for the TimeZone this 'ZonedDateTime' is currently in.
 zoneAbbreviation :: ZonedDateTime cal -> String
 zoneAbbreviation (ZonedDateTime _ _ (TransitionInfo _ _ abbr)) = abbr

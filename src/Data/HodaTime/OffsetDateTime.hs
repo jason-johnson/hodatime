@@ -36,7 +36,7 @@ fromCalendarDateTimeWithOffset cdt offset = do
 
 makeFixedTimeZone :: Offset -> IO (TimeZone, TransitionInfo)
 makeFixedTimeZone offset = do
-  (utcM, calDateM, leapsM, tInfo) <- fixedOffsetZone tzName (fromIntegral . offsetSeconds $ offset)
-  return $ (TimeZone (Zone tzName) utcM calDateM leapsM, tInfo)
+  (utcM, calDateM, leapsM, tExprDetails, tInfo) <- fixedOffsetZone tzName (fromIntegral . offsetSeconds $ offset)
+  return $ (TimeZone (Zone tzName) utcM calDateM leapsM tExprDetails, tInfo)
     where
       tzName = toStringRep offset

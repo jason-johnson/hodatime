@@ -28,13 +28,14 @@ instance Exception ParseException
 
 data Header = Header String Char Int Int Int Int Int Int
 
+-- TODO: Does having this still make sense?  Isn't it exactly like TransitionInfo now?
 data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
   deriving (Eq, Show)
 
 reservedSectionSize :: Int
 reservedSectionSize = 15
 
-getTransitions :: MonadThrow m => L.ByteString -> m (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
+getTransitions :: MonadThrow m => L.ByteString -> m (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails)
 getTransitions bs = case runGetOrFail getTransitions' bs of
   Left (_, consumed, msg) -> throwM $ ParseException msg (fromIntegral consumed)
   Right (_, _, xs) -> return xs
@@ -50,8 +51,8 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
       tzString <- getTZString version
       finished <- isEmpty
       unless finished $ fail "unprocessed data still in olson file"
-      let (utcM, calDateM) = buildTransitionMaps (zip transitions indexes) tInfos tzString
-      return (utcM, calDateM, leapsM)
+      let (utcM, calDateM, tExprDetails) = buildTransitionMaps (zip transitions indexes) tInfos tzString
+      return (utcM, calDateM, leapsM, tExprDetails)
 
 -- Get combinators
 
@@ -137,36 +138,37 @@ mapTransitionInfos abbrs = fmap toTI
     toTI (gmt, isdst, offset) = TransInfo gmt isdst $ getAbbr offset abbrs
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
-buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> Maybe String -> (UtcTransitionsMap, CalDateTransitionsMap)
-buildTransitionMaps transAndIndexes tInfos tzString = addLastMapEntries tzString' lastEntry lastTI utcMap calDateMap
+buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> Maybe String -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
+buildTransitionMaps transAndIndexes tInfos tzString = (utcMap, calDateMap', tExprDetails)
   where
+    (calDateMap', tExprDetails) = addLastCalDateEntry tzString' lastEntry lastTI calDateMap
     tzString' = fmap parsePosixString tzString
     mkTI t = TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
     defaultTI = mkTI . findDefaultTransInfo $ tInfos
     oneSecond = fromSeconds 1
-    initialUtcTransitions = addUtcTransition bigBang (TInfo defaultTI) emptyUtcTransitions
+    initialUtcTransitions = addUtcTransition bigBang defaultTI emptyUtcTransitions
     (utcMap, calDateMap, lastEntry, lastTI) = foldl' go (initialUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
     go (utcM, calDateM, prevEntry, prevTI) (tran, idx) = (utcM', calDateM', Entry localTran, tInfo')
       where
-        utcM' = addUtcTransition tran (TInfo tInfo') utcM
-        calDateM' = addCalDateTransition prevEntry before (TInfo prevTI) calDateM
+        utcM' = addUtcTransition tran tInfo' utcM
+        calDateM' = addCalDateTransition prevEntry before prevTI calDateM
         localTran = applyOffset (tiOffset tInfo) $ tran
-        before = Entry . flip minus oneSecond . applyOffset (tiUtcOffset prevTI) $ tran
+        before = Entry . flip minus oneSecond . applyOffset (tiUtcOffset prevTI) $ tran  -- TODO: Should subtract nanosecond here
         tInfo = tInfos !! idx
         tInfo' = mkTI tInfo
 
-addLastMapEntries :: Maybe TransExpressionOrInfo -> IntervalEntry Instant -> TransitionInfo -> UtcTransitionsMap -> CalDateTransitionsMap
-                                -> (UtcTransitionsMap, CalDateTransitionsMap)
-addLastMapEntries Nothing start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest (TInfo ti) calDateMap)
--- NOTE: If the tzString does not have a time zone specification then the way we process the rest of the file should be correct (TODO: check offset) so we can ignore the string
-addLastMapEntries (Just (TInfo _)) start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest (TInfo ti) calDateMap)
-addLastMapEntries (Just texpr@(TExp (TransitionExpressionInfo stdExpr _ stdTI _))) start ti utcMap calDateMap = (utcMap', calDateMap')
+addLastCalDateEntry :: Maybe (Either TransitionInfo TransitionExpressionInfo) -> IntervalEntry Instant -> TransitionInfo -> CalDateTransitionsMap
+                                -> (CalDateTransitionsMap, Maybe TransitionExpressionDetails)
+addLastCalDateEntry Nothing start ti calDateMap = (addCalDateTransition start Largest ti calDateMap, Nothing)
+-- NOTE: If the tzString does not have a time zone specification then the way we process the rest of the file should be correct (TODO: check offset) so we can ignore it
+addLastCalDateEntry (Just (Left _)) start ti calDateMap = (addCalDateTransition start Largest ti calDateMap, Nothing)
+addLastCalDateEntry (Just (Right texpr@(TransitionExpressionInfo stdExpr _ stdTI _))) start ti calDateMap = (calDateMap', Just tExprDetails)
   where
-    utcMap' = addUtcTransition end texpr utcMap
-    calDateMap' = addCalDateTransition cdEnd Largest texpr $ addCalDateTransition start before (TInfo ti) calDateMap
-    cdEnd = Entry . applyOffset (tiUtcOffset stdTI) $ end
-    before = Entry . flip minus (fromSeconds 1) . applyOffset (tiUtcOffset ti) $ end
-    end = yearExpressionToInstant (y + 1) stdExpr   -- TODO: if we ever find the gap too large, we could add a check here before incrementing the year
+    calDateMap' = addCalDateTransition start before ti calDateMap
+    tExprDetails = TransitionExpressionDetails cdExprStart texpr
+    cdExprStart = applyOffset (tiUtcOffset stdTI) $ exprStart
+    before = Entry . flip minus (fromSeconds 1) . applyOffset (tiUtcOffset ti) $ exprStart  -- TODO: Should subtract nanosecond here
+    exprStart = yearExpressionToInstant (y + 1) stdExpr   -- TODO: if we ever find the gap too large, we could add a check here before incrementing the year
     y = case start of
       (Entry trans) -> let (yr, _, _) = instantToYearMonthDay trans in fromIntegral yr
       _             -> error "impossible: got non Entry for last valid transition"

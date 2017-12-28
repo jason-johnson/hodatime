@@ -4,7 +4,7 @@ module Data.HodaTime.TimeZone.Internal
   ,TransitionInfo(..)
   ,TransitionExpression(..)
   ,TransitionExpressionInfo(..)
-  ,TransExpressionOrInfo(..)
+  ,TransitionExpressionDetails(..)
   ,UtcTransitionsMap
   ,LeapsMap
   ,IntervalEntry(..)
@@ -33,7 +33,6 @@ import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Control.Arrow ((>>>), second)
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
 import qualified Data.IntervalMap.FingerTree as IMap
 
@@ -63,24 +62,28 @@ data TransitionExpressionInfo = TransitionExpressionInfo
   }
   deriving (Eq, Show)
 
-data TransExpressionOrInfo = TInfo TransitionInfo | TExp TransitionExpressionInfo
+data TransitionExpressionDetails = TransitionExpressionDetails { firstExpressionInstant :: Instant, transitionExpression :: TransitionExpressionInfo }
   deriving (Eq, Show)
 
 -- UTC instant to transition
 
-type UtcTransitionsMap = Map Instant TransExpressionOrInfo
+type UtcTransitionsMap = Map Instant TransitionInfo
 
 emptyUtcTransitions :: UtcTransitionsMap
 emptyUtcTransitions = Map.empty
 
-addUtcTransition :: Instant -> TransExpressionOrInfo -> UtcTransitionsMap -> UtcTransitionsMap
+addUtcTransition :: Instant -> TransitionInfo -> UtcTransitionsMap -> UtcTransitionsMap
 addUtcTransition = Map.insert
 
-activeTransitionFor :: Instant -> UtcTransitionsMap -> TransitionInfo
-activeTransitionFor i utcM = resolveTI i . snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- TODO: The findMin case should be impossible actually
+activeTransitionFor :: Instant -> TimeZone -> TransitionInfo
+activeTransitionFor i (TimeZone _ utcM _ _ tds)
+  | hasExplicitTransition i tds = snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- TODO: The findMin case should be impossible actually
+  | otherwise                   = undefined
 
-nextTransition :: Instant -> UtcTransitionsMap -> (Instant, TransitionInfo)
-nextTransition i ts = fromMaybe (Map.findMax ts) >>> second (resolveTI i) $ Map.lookupGT i ts
+nextTransition :: Instant -> TimeZone -> (Instant, TransitionInfo)
+nextTransition i (TimeZone _ utcM _ _ tds)
+  | hasExplicitTransition i tds = fromMaybe (Map.findMax utcM) $ Map.lookupGT i utcM
+  | otherwise                   = undefined
 
 -- Leap seconds
 
@@ -109,29 +112,32 @@ data IntervalEntry a =
   | Largest
   deriving (Eq, Ord, Show)
 
-type CalDateTransitionsMap = IntervalMap (IntervalEntry Instant) TransExpressionOrInfo
+type CalDateTransitionsMap = IntervalMap (IntervalEntry Instant) TransitionInfo
 
 emptyCalDateTransitions :: CalDateTransitionsMap
 emptyCalDateTransitions = IMap.empty
 
-addCalDateTransition :: IntervalEntry Instant -> IntervalEntry Instant -> TransExpressionOrInfo -> CalDateTransitionsMap -> CalDateTransitionsMap
+addCalDateTransition :: IntervalEntry Instant -> IntervalEntry Instant -> TransitionInfo -> CalDateTransitionsMap -> CalDateTransitionsMap
 addCalDateTransition b e = IMap.insert interval
   where
     interval = Interval b e
 
-calDateTransitionsFor :: Instant -> CalDateTransitionsMap -> [TransitionInfo]
-calDateTransitionsFor i = fmap (resolveTI i . snd) . IMap.search (Entry i)
+calDateTransitionsFor :: Instant -> TimeZone -> [TransitionInfo]
+calDateTransitionsFor i (TimeZone _ _ cdtMap _ tds)
+  | hasExplicitTransition i tds = fmap snd . IMap.search (Entry i) $ cdtMap
+  | otherwise                   = undefined
 
 -- TODO: decide what we should be doing with these errors
-aroundCalDateTransition :: Instant -> CalDateTransitionsMap -> (TransitionInfo, TransitionInfo)
-aroundCalDateTransition i ts = (before, after)
-  where
-    before = resolveTI i . snd . go . flip IMap.search ts . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
-    after = resolveTI i . snd . fst . fromMaybe (error "around.after: fixme") . IMap.leastView $ back
-    (front, back) = IMap.splitAfter (Entry i) ts
-    go [] = error "aroundCalDateTransition: no before transitions"
-    go [tei] = tei
-    go _ = error "aroundCalDateTransition: too many before transitions"
+aroundCalDateTransition :: Instant -> TimeZone -> (TransitionInfo, TransitionInfo)
+aroundCalDateTransition i (TimeZone _ _ cdtMap _ tds) = fromExpressionDetails i tds (before, after) toExprTIs
+    where
+      toExprTIs (TransitionExpressionInfo _ _ stdTI dstTI) = (stdTI, dstTI)   -- NOTE: Only possible answer since gap only happens switching to DST
+      before = snd . go . flip IMap.search cdtMap . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
+      after = snd . fst . fromMaybe (error "around.after: fixme") . IMap.leastView $ back
+      (front, back) = IMap.splitAfter (Entry i) cdtMap
+      go [] = error "aroundCalDateTransition: no before transitions"
+      go [tei] = tei
+      go _ = error "aroundCalDateTransition: too many before transitions"
 
 -- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
@@ -141,11 +147,23 @@ data TimeZone =
       ,utcTransitionsMap :: UtcTransitionsMap
       ,calDateTransitionsMap :: CalDateTransitionsMap
       ,leapsMap :: LeapsMap
+      ,transitionExpressionDetails :: Maybe TransitionExpressionDetails
     }
   deriving (Eq, Show)
 
 -- helper functions
 
+-- TODO: replace uses of this function with fromExpressionDetails
+hasExplicitTransition :: Instant -> Maybe TransitionExpressionDetails -> Bool
+hasExplicitTransition i tds = fromExpressionDetails i tds True (const False)
+
+fromExpressionDetails :: Instant -> Maybe TransitionExpressionDetails -> a -> (TransitionExpressionInfo -> a) -> a
+fromExpressionDetails _ Nothing def _ = def
+fromExpressionDetails i (Just (TransitionExpressionDetails fei tei)) def f
+  | i < fei = def
+  | otherwise = f tei
+
+{-
 resolveTI :: Instant -> TransExpressionOrInfo -> TransitionInfo
 resolveTI _  (TInfo ti) = ti
 resolveTI instant (TExp (TransitionExpressionInfo startExpr endExpr stdTI dstTI)) = ti
@@ -154,6 +172,7 @@ resolveTI instant (TExp (TransitionExpressionInfo startExpr endExpr stdTI dstTI)
     ti = if instant < start then stdTI else ti'
     dst = expressionToInstant instant endExpr
     ti' = if instant < dst then dstTI else stdTI
+-}
 
 expressionToInstant :: Instant -> TransitionExpression -> Instant
 expressionToInstant instant = yearExpressionToInstant y
@@ -168,4 +187,4 @@ yearExpressionToInstant y = go
         m' = toEnum m
         d = nthDayToDayOfMonth nth day m' y
         days' = fromIntegral $ yearMonthDayToDays y m' d
-    go (JulianExpression cl d s) = undefined
+    go (JulianExpression cly d s) = error "need julian year day function"
