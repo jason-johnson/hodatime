@@ -46,7 +46,10 @@ p_tzNormalIdentifier = do
   return $ start ++ rest
 
 p_offset :: ExpParser Int
-p_offset = do
+p_offset = negate <$> p_time
+
+p_time :: ExpParser Int
+p_time = do
   sign <- (negate <$ char '-') <|> (option id (id <$ char '+'))
   hours <- toHour . read <$> many1 digit
   minutes <- option 0 $ (* 60) . read <$> optionalDigit
@@ -59,7 +62,7 @@ p_transitionExpression :: ExpParser TransitionExpression
 p_transitionExpression = te <*> time
   where
     te = p_julianExpression <|> p_nthDayExpression
-    time = option (toHour 2) (char '/' *> p_offset)
+    time = option (toHour 2) (char '/' *> p_time)
 
 p_julianExpression :: ExpParser (Int -> TransitionExpression)
 p_julianExpression = JulianExpression <$> cntLp <*> d
