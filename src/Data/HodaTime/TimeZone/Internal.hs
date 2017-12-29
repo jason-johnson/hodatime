@@ -29,8 +29,9 @@ module Data.HodaTime.TimeZone.Internal
 where
 
 import Data.Maybe (fromMaybe)
-import Data.HodaTime.Instant.Internal (Instant(..))
+import Data.HodaTime.Instant.Internal (Instant(..), minus)
 import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
+import Data.HodaTime.Duration.Internal (fromNanoseconds)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
@@ -123,9 +124,11 @@ addCalDateTransition b e = IMap.insert interval
     interval = Interval b e
 
 calDateTransitionsFor :: Instant -> TimeZone -> [TransitionInfo]
-calDateTransitionsFor i (TimeZone _ _ cdtMap _ tds)
-  | hasExplicitTransition i tds = fmap snd . IMap.search (Entry i) $ cdtMap
-  | otherwise                   = undefined
+calDateTransitionsFor i (TimeZone _ _ cdtMap _ tds) = fromExpressionDetails i tds tInfos toExprTIs
+  where
+    search = fmap snd . IMap.search (Entry i)
+    tInfos = search cdtMap
+    toExprTIs = search . transExprInfoToMap i
 
 -- TODO: decide what we should be doing with these errors
 aroundCalDateTransition :: Instant -> TimeZone -> (TransitionInfo, TransitionInfo)
@@ -163,16 +166,16 @@ fromExpressionDetails i (Just (TransitionExpressionDetails fei tei)) def f
   | i < fei = def
   | otherwise = f tei
 
-{-
-resolveTI :: Instant -> TransExpressionOrInfo -> TransitionInfo
-resolveTI _  (TInfo ti) = ti
-resolveTI instant (TExp (TransitionExpressionInfo startExpr endExpr stdTI dstTI)) = ti
+transExprInfoToMap :: Instant -> TransitionExpressionInfo -> CalDateTransitionsMap
+transExprInfoToMap i (TransitionExpressionInfo startExpr endExpr stdTI dstTI) = mkMap entries mempty
   where
-    start = expressionToInstant instant startExpr
-    ti = if instant < start then stdTI else ti'
-    dst = expressionToInstant instant endExpr
-    ti' = if instant < dst then dstTI else stdTI
--}
+    mkMap [] m = m
+    mkMap ((b, e, ti):xs) m = mkMap xs $ addCalDateTransition b e ti m
+    entries = [(Smallest, Entry beforeStart, stdTI), (Entry start, Entry beforeEnd, dstTI), (Entry end, Largest, stdTI)]
+    start = expressionToInstant i startExpr
+    beforeStart = flip minus (fromNanoseconds 1) start
+    end = expressionToInstant i endExpr
+    beforeEnd = flip minus (fromNanoseconds 1) end
 
 expressionToInstant :: Instant -> TransitionExpression -> Instant
 expressionToInstant instant = yearExpressionToInstant y
