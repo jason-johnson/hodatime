@@ -29,9 +29,9 @@ module Data.HodaTime.TimeZone.Internal
 where
 
 import Data.Maybe (fromMaybe)
-import Data.HodaTime.Instant.Internal (Instant(..), minus)
+import Data.HodaTime.Instant.Internal (Instant(..), add, minus)
 import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
-import Data.HodaTime.Duration.Internal (fromNanoseconds)
+import Data.HodaTime.Duration.Internal (fromNanoseconds, fromSeconds)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
@@ -171,10 +171,13 @@ transExprInfoToMap i (TransitionExpressionInfo startExpr endExpr stdTI dstTI) = 
   where
     mkMap [] m = m
     mkMap ((b, e, ti):xs) m = mkMap xs $ addCalDateTransition b e ti m
-    entries = [(Smallest, Entry beforeStart, stdTI), (Entry start, Entry beforeEnd, dstTI), (Entry end, Largest, stdTI)]
+    entries = [(Smallest, Entry beforeStart, stdTI), (Entry start', Entry beforeEnd, dstTI), (Entry end', Largest, stdTI)]
+    offsetGap = fromSeconds $ tiUtcOffset dstTI - tiUtcOffset stdTI
     start = expressionToInstant i startExpr
+    start' = start `add` offsetGap
     beforeStart = flip minus (fromNanoseconds 1) start
     end = expressionToInstant i endExpr
+    end' = end `minus` offsetGap
     beforeEnd = flip minus (fromNanoseconds 1) end
 
 expressionToInstant :: Instant -> TransitionExpression -> Instant
