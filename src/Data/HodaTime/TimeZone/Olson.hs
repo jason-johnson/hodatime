@@ -28,10 +28,6 @@ instance Exception ParseException
 
 data Header = Header String Char Int Int Int Int Int Int
 
--- TODO: Does having this still make sense?  Isn't it exactly like TransitionInfo now?
-data TransInfo = TransInfo { tiOffset :: Int, tiIsDst :: Bool, abbr :: String }
-  deriving (Eq, Show)
-
 reservedSectionSize :: Int
 reservedSectionSize = 15
 
@@ -90,7 +86,7 @@ getLeapInfo getInt = do
   lOffset <- getInt32
   return (instant, lOffset)
 
-getPayload :: Get Int -> Header -> Get ([Instant], [Int], [TransInfo], LeapsMap)
+getPayload :: Get Int -> Header -> Get ([Instant], [Int], [TransitionInfo], LeapsMap)
 getPayload getInt (Header _ _ isGmtCount isStdCount leapCount transCount typeCount abbrLen) = do
   transitions <- replicateM transCount $ fromSecondsSinceUnixEpoch <$> getInt
   indexes <- replicateM transCount getInt8
@@ -132,29 +128,27 @@ getTZString version
 
 -- helper fucntions
 
-mapTransitionInfos :: String -> [(Int, Bool, Int)] -> [TransInfo]
+mapTransitionInfos :: String -> [(Int, Bool, Int)] -> [TransitionInfo]
 mapTransitionInfos abbrs = fmap toTI
   where
-    toTI (gmt, isdst, offset) = TransInfo gmt isdst $ getAbbr offset abbrs
+    toTI (gmt, isdst, offset) = TransitionInfo gmt isdst $ getAbbr offset abbrs
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
-buildTransitionMaps :: [(Instant, Int)] -> [TransInfo] -> Maybe String -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
+buildTransitionMaps :: [(Instant, Int)] -> [TransitionInfo] -> Maybe String -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 buildTransitionMaps transAndIndexes tInfos tzString = (utcMap, calDateMap', tExprDetails)
   where
     (calDateMap', tExprDetails) = addLastCalDateEntry tzString' lastEntry lastTI calDateMap
     tzString' = fmap parsePosixString tzString
-    mkTI t = TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
-    defaultTI = mkTI . findDefaultTransInfo $ tInfos
+    defaultTI = findDefaultTransInfo $ tInfos
     initialUtcTransitions = addUtcTransition bigBang defaultTI emptyUtcTransitions
     (utcMap, calDateMap, lastEntry, lastTI) = foldl' go (initialUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
-    go (utcM, calDateM, prevEntry, prevTI) (tran, idx) = (utcM', calDateM', Entry localTran, tInfo')
+    go (utcM, calDateM, prevEntry, prevTI) (tran, idx) = (utcM', calDateM', Entry localTran, tInfo)
       where
-        utcM' = addUtcTransition tran tInfo' utcM
+        utcM' = addUtcTransition tran tInfo utcM
         calDateM' = addCalDateTransition prevEntry before prevTI calDateM
-        localTran = applyOffset (tiOffset tInfo) $ tran
+        localTran = applyOffset (tiUtcOffset tInfo) $ tran
         before = Entry . flip minus (fromNanoseconds 1) . applyOffset (tiUtcOffset prevTI) $ tran
         tInfo = tInfos !! idx
-        tInfo' = mkTI tInfo
 
 addLastCalDateEntry :: Maybe (Either TransitionInfo TransitionExpressionInfo) -> IntervalEntry Instant -> TransitionInfo -> CalDateTransitionsMap
                                 -> (CalDateTransitionsMap, Maybe TransitionExpressionDetails)
@@ -178,7 +172,7 @@ applyOffset off i = apply i d
     apply = if off < 0 then minus else add
     d = fromSeconds . abs $ off
 
-findDefaultTransInfo :: [TransInfo] -> TransInfo
+findDefaultTransInfo :: [TransitionInfo] -> TransitionInfo
 findDefaultTransInfo tis = go . filter ((== False) . tiIsDst) $ tis
   where
     go [] = head tis

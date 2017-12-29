@@ -39,7 +39,7 @@ import qualified Data.IntervalMap.FingerTree as IMap
 data TZIdentifier = UTC | Zone String
   deriving (Eq, Show)
 
-data TransitionInfo = TransitionInfo { tiUtcOffset :: Int, isDst :: Bool, tiAbbreviation :: String }
+data TransitionInfo = TransitionInfo { tiUtcOffset :: Int, tiIsDst :: Bool, tiAbbreviation :: String }
   deriving (Eq, Show)
 
 data TransitionExpression =
