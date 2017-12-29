@@ -18,7 +18,7 @@ import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
 import Data.HodaTime.Instant.Internal (Instant, fromSecondsSinceUnixEpoch, add, minus, bigBang)
-import Data.HodaTime.Duration.Internal (fromSeconds)
+import Data.HodaTime.Duration.Internal (fromSeconds, fromNanoseconds)
 import Data.HodaTime.Calendar.Gregorian.Internal (instantToYearMonthDay)
 
 data ParseException = ParseException String Int
@@ -145,7 +145,6 @@ buildTransitionMaps transAndIndexes tInfos tzString = (utcMap, calDateMap', tExp
     tzString' = fmap parsePosixString tzString
     mkTI t = TransitionInfo (tiOffset t) (tiIsDst t) (abbr t)
     defaultTI = mkTI . findDefaultTransInfo $ tInfos
-    oneSecond = fromSeconds 1
     initialUtcTransitions = addUtcTransition bigBang defaultTI emptyUtcTransitions
     (utcMap, calDateMap, lastEntry, lastTI) = foldl' go (initialUtcTransitions, emptyCalDateTransitions, Smallest, defaultTI) transAndIndexes
     go (utcM, calDateM, prevEntry, prevTI) (tran, idx) = (utcM', calDateM', Entry localTran, tInfo')
@@ -153,7 +152,7 @@ buildTransitionMaps transAndIndexes tInfos tzString = (utcMap, calDateMap', tExp
         utcM' = addUtcTransition tran tInfo' utcM
         calDateM' = addCalDateTransition prevEntry before prevTI calDateM
         localTran = applyOffset (tiOffset tInfo) $ tran
-        before = Entry . flip minus oneSecond . applyOffset (tiUtcOffset prevTI) $ tran  -- TODO: Should subtract nanosecond here
+        before = Entry . flip minus (fromNanoseconds 1) . applyOffset (tiUtcOffset prevTI) $ tran
         tInfo = tInfos !! idx
         tInfo' = mkTI tInfo
 
@@ -167,7 +166,7 @@ addLastCalDateEntry (Just (Right texpr@(TransitionExpressionInfo stdExpr _ stdTI
     calDateMap' = addCalDateTransition start before ti calDateMap
     tExprDetails = TransitionExpressionDetails cdExprStart texpr
     cdExprStart = applyOffset (tiUtcOffset stdTI) $ exprStart
-    before = Entry . flip minus (fromSeconds 1) . applyOffset (tiUtcOffset ti) $ exprStart  -- TODO: Should subtract nanosecond here
+    before = Entry . flip minus (fromNanoseconds 1) . applyOffset (tiUtcOffset ti) $ exprStart
     exprStart = yearExpressionToInstant (y + 1) stdExpr   -- TODO: if we ever find the gap too large, we could add a check here before incrementing the year
     y = case start of
       (Entry trans) -> let (yr, _, _) = instantToYearMonthDay trans in fromIntegral yr
