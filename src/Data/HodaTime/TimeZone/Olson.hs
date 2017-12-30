@@ -80,12 +80,6 @@ getHeader = do
   [ttisgmtcnt, ttisstdcnt, leapcnt, transcnt, ttypecnt, abbrlen] <- replicateM 6 getUInt32
   return $ Header magic version ttisgmtcnt ttisstdcnt leapcnt transcnt ttypecnt abbrlen
 
-getLeapInfo :: Get Int -> Get (Instant, Int)
-getLeapInfo getInt = do
-  instant <- fromSecondsSinceUnixEpoch <$> getInt
-  lOffset <- getInt32
-  return (instant, lOffset)
-
 getPayload :: Get Int -> Header -> Get ([Instant], [Int], [TransitionInfo])
 getPayload getInt (Header _ _ isGmtCount isStdCount leapCount transCount typeCount abbrLen) = do
   transitions <- replicateM transCount $ fromSecondsSinceUnixEpoch <$> getInt
