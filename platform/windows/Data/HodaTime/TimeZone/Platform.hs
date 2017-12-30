@@ -2,7 +2,6 @@
 module Data.HodaTime.TimeZone.Platform
 (
    loadUTC
-  ,fixedOffsetZone
   ,loadLocalZone
   ,loadTimeZone
 )
@@ -49,13 +48,6 @@ instance Storable REG_TZI_FORMAT where
 
 loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 loadUTC = loadTimeZone "UTC"
-
-fixedOffsetZone :: String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, TransitionInfo)
-fixedOffsetZone tzName offset = return (utcM, calDateM, Nothing, tInfo)
-  where
-    utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
-    calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
-    tInfo = TransitionInfo offset False tzName
 
 loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, String)
 loadLocalZone = do

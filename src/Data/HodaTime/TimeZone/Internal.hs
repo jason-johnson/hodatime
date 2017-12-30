@@ -17,13 +17,14 @@ module Data.HodaTime.TimeZone.Internal
   ,addCalDateTransition
   ,calDateTransitionsFor
   ,aroundCalDateTransition
+  ,fixedOffsetZone
   ,expressionToInstant
   ,yearExpressionToInstant
 )
 where
 
 import Data.Maybe (fromMaybe)
-import Data.HodaTime.Instant.Internal (Instant(..), add, minus)
+import Data.HodaTime.Instant.Internal (Instant(..), add, minus, bigBang)
 import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
 import Data.HodaTime.Duration.Internal (fromNanoseconds, fromSeconds)
 import Data.Map.Strict (Map)
@@ -127,6 +128,15 @@ data TimeZone =
       ,transitionExpressionDetails :: Maybe TransitionExpressionDetails
     }
   deriving (Eq, Show)
+
+-- constructors
+
+fixedOffsetZone :: String -> Int -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, TransitionInfo)
+fixedOffsetZone tzName offset = (utcM, calDateM, Nothing, tInfo)
+    where
+      utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
+      calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
+      tInfo = TransitionInfo offset False tzName
 
 -- helper functions
 

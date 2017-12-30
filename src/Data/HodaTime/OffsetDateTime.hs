@@ -14,8 +14,7 @@ import Data.HodaTime.OffsetDateTime.Internal
 import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, IsCalendarDateTime(..))
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
-import Data.HodaTime.TimeZone.Internal (TimeZone(..), TZIdentifier(..), TransitionInfo)
-import Data.HodaTime.TimeZone.Platform (fixedOffsetZone)
+import Data.HodaTime.TimeZone.Internal (TimeZone(..), TZIdentifier(..), TransitionInfo, fixedOffsetZone)
 
 -- | Create an 'OffsetDateTime' from an 'Instant' and an 'Offset'.
 fromInstantWithOffset :: IsCalendarDateTime cal => Instant -> Offset -> OffsetDateTime cal

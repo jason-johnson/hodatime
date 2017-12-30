@@ -1,7 +1,6 @@
 module Data.HodaTime.TimeZone.Unix
 (
    loadUTC
-  ,fixedOffsetZone
   ,loadLocalZone
   ,loadTimeZone
   ,defaultLoadZoneFromOlsonFile
@@ -10,7 +9,6 @@ where
 
 import Data.HodaTime.TimeZone.Internal
 import Data.HodaTime.TimeZone.Olson
-import Data.HodaTime.Instant.Internal (bigBang)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 import qualified Data.ByteString.Lazy.Char8 as BS
@@ -38,13 +36,6 @@ type LoadZoneFromOlsonFile = FilePath -> IO (UtcTransitionsMap, CalDateTransitio
 
 loadUTC :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 loadUTC loadZoneFromOlsonFile = loadTimeZone loadZoneFromOlsonFile "UTC"
-
-fixedOffsetZone :: String -> Int -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, TransitionInfo)
-fixedOffsetZone tzName offset = (utcM, calDateM, Nothing, tInfo)
-    where
-      utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
-      calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
-      tInfo = TransitionInfo offset False tzName
 
 loadTimeZone :: LoadZoneFromOlsonFile -> String -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 loadTimeZone loadZoneFromOlsonFile tzName = do
