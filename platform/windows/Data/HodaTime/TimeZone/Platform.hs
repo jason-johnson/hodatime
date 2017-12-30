@@ -56,9 +56,9 @@ loadLocalZone = do
   return (utcM, calDateM, transExprDetails, zone)
 
 loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
-loadTimeZone "UTC" = do
-  (utcM, calDateM, transExprDet, _) <- fixedOffsetZone "UTC" 0 
-  return (utcM, calDateM, transExprDet)
+loadTimeZone "UTC" = return (utcM, calDateM, transExprDet)
+  where
+    (utcM, calDateM, transExprDet, _) = fixedOffsetZone "UTC" 0 
 loadTimeZone zone = do
   (stdAbbr, dstAbbr, tzi) <- readTziForZone zone
   return (mempty, mempty, mkExpressionDetails stdAbbr dstAbbr tzi)
