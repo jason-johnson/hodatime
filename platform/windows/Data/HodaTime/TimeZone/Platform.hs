@@ -9,7 +9,6 @@ module Data.HodaTime.TimeZone.Platform
 where
 
 import Data.HodaTime.TimeZone.Internal
-import qualified Data.HodaTime.TimeZone.Internal as TZ
 import Data.HodaTime.Instant.Internal (bigBang)
 
 import Control.Exception (bracket)
