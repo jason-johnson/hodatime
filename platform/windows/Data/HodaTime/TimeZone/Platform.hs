@@ -69,21 +69,21 @@ loadTimeZone "UTC" = do
   (utcM, calDateM, leapsM, transExprDet, _) <- fixedOffsetZone "UTC" 0 
   return (utcM, calDateM, leapsM, transExprDet)
 loadTimeZone zone = do
-  tzi <- readTziForZone zone
-  return (mempty, mempty, mempty, mkExpressionDetails tzi)
+  (stdAbbr, dstAbbr, tzi) <- readTziForZone zone
+  return (mempty, mempty, mempty, mkExpressionDetails stdAbbr dstAbbr tzi)
 
 -- conversion from Windows types
 
-mkExpressionDetails :: REG_TZI_FORMAT -> Maybe TransitionExpressionDetails
-mkExpressionDetails (REG_TZI_FORMAT bias stdBias dstBias end start) = Just $ TransitionExpressionDetails bigBang exprInfo
+mkExpressionDetails :: String -> String -> REG_TZI_FORMAT -> Maybe TransitionExpressionDetails
+mkExpressionDetails stdAbbr dstAbbr (REG_TZI_FORMAT bias stdBias dstBias end start) = Just $ TransitionExpressionDetails bigBang exprInfo
   where
     exprInfo = TransitionExpressionInfo startExpr endExpr stdTI dstTI
     startExpr = systemTimeToNthDayExpression start
     endExpr = systemTimeToNthDayExpression end
     stdOff = 60 * (negate . fromIntegral $ bias + stdBias)
     dstOff = stdOff + 60 * (negate . fromIntegral $ dstBias)
-    stdTI = TransitionInfo stdOff False "Unknown Std"
-    dstTI = TransitionInfo dstOff True "Unknown Dst"
+    stdTI = TransitionInfo stdOff False stdAbbr
+    dstTI = TransitionInfo dstOff True dstAbbr
 
 systemTimeToNthDayExpression :: SYSTEMTIME -> TransitionExpression
 systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) = NthDayExpression (fromIntegral m - 1) (adjust . fromIntegral $ nth) (fromIntegral d) s'
@@ -102,13 +102,16 @@ readLocalZoneName =
       op = regOpenKeyEx hKEY_LOCAL_MACHINE hive kEY_QUERY_VALUE
       hive = "SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation"
 
-readTziForZone :: String -> IO REG_TZI_FORMAT
+readTziForZone :: String -> IO (String, String, REG_TZI_FORMAT)
 readTziForZone zone =
   bracket op regCloseKey $ \key ->
   allocaBytes sz $ \ptr -> do
+    std <- regQueryValue key (Just "Std")
+    dst <- regQueryValue key (Just "Dlt")
     rvt <- regQueryValueEx key "TZI" ptr sz
     putStrLn $ "sizeOf timezone = " ++ show sz
-    verifyAndPeak rvt ptr
+    tzi <- verifyAndPeak rvt ptr
+    return (std, dst, tzi)
     where
       sz = sizeOf (undefined :: REG_TZI_FORMAT)
       op = regOpenKeyEx hKEY_LOCAL_MACHINE hive kEY_QUERY_VALUE
