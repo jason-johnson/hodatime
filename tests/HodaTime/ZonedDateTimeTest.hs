@@ -53,7 +53,7 @@ zoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
   [
      testCase "March 26 2017 2:10:15.30 -> March 26 2017 3:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 26 March 2017 3
     ,testCase "October 29 2017 2:10:15.30 -> October 29 2017 2:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 29 October 2017 2
-    ,testCase "March 27 2039 2:10:15.30 -> March 27 2039 2:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 27 March 2039 3
+    ,testCase "March 27 2039 2:10:15.30 -> March 27 2039 3:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 27 March 2039 3
     ,testCase "October 30 2039 2:10:15.30 -> October 30 2039 2:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 30 October 2039 2
   ]
   where
