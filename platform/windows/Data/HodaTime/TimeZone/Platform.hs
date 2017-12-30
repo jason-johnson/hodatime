@@ -47,29 +47,29 @@ instance Storable REG_TZI_FORMAT where
     <*> peekByteOff buf 12
     <*> peekByteOff buf (12 + sizeOf (undefined :: SYSTEMTIME))
 
-loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails)
+loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 loadUTC = loadTimeZone "UTC"
 
-fixedOffsetZone :: String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails, TransitionInfo)
-fixedOffsetZone tzName offset = return (utcM, calDateM, mempty, Nothing, tInfo)
+fixedOffsetZone :: String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, TransitionInfo)
+fixedOffsetZone tzName offset = return (utcM, calDateM, Nothing, tInfo)
   where
     utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
     calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
     tInfo = TransitionInfo offset False tzName
 
-loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails, String)
+loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, String)
 loadLocalZone = do
   zone <- readLocalZoneName
-  (utcM, calDateM, leapsM, transExprDetails) <- loadTimeZone zone
-  return (utcM, calDateM, leapsM, transExprDetails, zone)
+  (utcM, calDateM, transExprDetails) <- loadTimeZone zone
+  return (utcM, calDateM, transExprDetails, zone)
 
-loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails)
+loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 loadTimeZone "UTC" = do
-  (utcM, calDateM, leapsM, transExprDet, _) <- fixedOffsetZone "UTC" 0 
-  return (utcM, calDateM, leapsM, transExprDet)
+  (utcM, calDateM, transExprDet, _) <- fixedOffsetZone "UTC" 0 
+  return (utcM, calDateM, transExprDet)
 loadTimeZone zone = do
   (stdAbbr, dstAbbr, tzi) <- readTziForZone zone
-  return (mempty, mempty, mempty, mkExpressionDetails stdAbbr dstAbbr tzi)
+  return (mempty, mempty, mkExpressionDetails stdAbbr dstAbbr tzi)
 
 -- conversion from Windows types
 

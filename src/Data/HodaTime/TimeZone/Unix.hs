@@ -32,35 +32,31 @@ data TZoneDBCorruptException = TZoneDBCorruptException
 
 instance Exception TZoneDBCorruptException
 
-type LoadZoneFromOlsonFile = FilePath -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails)
-type LoadLeaps = LeapsMap -> IO LeapsMap
+type LoadZoneFromOlsonFile = FilePath -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 
 -- interface
 
-loadUTC :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails)
+loadUTC :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 loadUTC loadZoneFromOlsonFile = loadTimeZone loadZoneFromOlsonFile "UTC"
 
-fixedOffsetZone :: LoadLeaps -> String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails, TransitionInfo)
-fixedOffsetZone loadLeaps tzName offset = do
-  leapM' <- loadLeaps leapM
-  return (utcM, calDateM, leapM', Nothing, tInfo)
+fixedOffsetZone :: String -> Int -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, TransitionInfo)
+fixedOffsetZone tzName offset = (utcM, calDateM, Nothing, tInfo)
     where
       utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
       calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
-      leapM = addLeapTransition bigBang 0 emptyLeapsMap
       tInfo = TransitionInfo offset False tzName
 
-loadTimeZone :: LoadZoneFromOlsonFile -> String -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails)
+loadTimeZone :: LoadZoneFromOlsonFile -> String -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 loadTimeZone loadZoneFromOlsonFile tzName = do
   loadZoneFromOlsonFile $ tzdbDir </> tzName
 
-loadLocalZone :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails, String)
+loadLocalZone :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, String)
 loadLocalZone loadZoneFromOlsonFile = do
   let file = "/etc" </> "localtime"
   tzPath <- readSymbolicLink $ file
   let tzName = timeZoneFromPath $ tzPath
-  (utcM, calDateM, leaps, tExprDetails)  <- loadZoneFromOlsonFile file
-  return (utcM, calDateM, leaps, tExprDetails, tzName)
+  (utcM, calDateM, tExprDetails)  <- loadZoneFromOlsonFile file
+  return (utcM, calDateM, tExprDetails, tzName)
 
 -- helper functions
 
@@ -72,8 +68,8 @@ defaultLoadZoneFromOlsonFile file = do
   exists <- doesFileExist $ file
   unless exists (throwIO TimeZoneDoesNotExistException)
   bs <- BS.readFile $ file
-  (utcM, calDateM, leapM, tExprDetails) <- getTransitions bs
-  return (utcM, calDateM, leapM, tExprDetails)
+  (utcM, calDateM, tExprDetails) <- getTransitions bs
+  return (utcM, calDateM, tExprDetails)
 
 -- helper functions
 

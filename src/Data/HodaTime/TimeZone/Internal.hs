@@ -6,7 +6,6 @@ module Data.HodaTime.TimeZone.Internal
   ,TransitionExpressionInfo(..)
   ,TransitionExpressionDetails(..)
   ,UtcTransitionsMap
-  ,LeapsMap
   ,IntervalEntry(..)
   ,CalDateTransitionsMap
   ,TimeZone(..)
@@ -14,11 +13,6 @@ module Data.HodaTime.TimeZone.Internal
   ,addUtcTransition
   ,activeTransitionFor
   ,nextTransition
-  ,emptyLeapsMap
-  ,importLeaps
-  ,addLeapTransition
-  ,mergeLeapMaps
-  ,activeLeapsFor
   ,emptyCalDateTransitions
   ,addCalDateTransition
   ,calDateTransitionsFor
@@ -77,33 +71,14 @@ addUtcTransition :: Instant -> TransitionInfo -> UtcTransitionsMap -> UtcTransit
 addUtcTransition = Map.insert
 
 activeTransitionFor :: Instant -> TimeZone -> TransitionInfo
-activeTransitionFor i (TimeZone _ utcM _ _ tds)
+activeTransitionFor i (TimeZone _ utcM _ tds)
   | hasExplicitTransition i tds = snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- TODO: The findMin case should be impossible actually
   | otherwise                   = undefined
 
 nextTransition :: Instant -> TimeZone -> (Instant, TransitionInfo)
-nextTransition i (TimeZone _ utcM _ _ tds)
+nextTransition i (TimeZone _ utcM _ tds)
   | hasExplicitTransition i tds = fromMaybe (Map.findMax utcM) $ Map.lookupGT i utcM
   | otherwise                   = undefined
-
--- Leap seconds
-
-type LeapsMap = Map Instant Int
-
-emptyLeapsMap :: LeapsMap
-emptyLeapsMap = Map.empty
-
-importLeaps :: [(Instant, Int)] -> LeapsMap
-importLeaps = Map.fromList
-
-addLeapTransition :: Instant -> Int -> LeapsMap -> LeapsMap
-addLeapTransition = Map.insert
-
-mergeLeapMaps :: LeapsMap -> LeapsMap -> LeapsMap
-mergeLeapMaps = Map.union
-
-activeLeapsFor :: Instant -> LeapsMap -> Int
-activeLeapsFor i leapsM = fromMaybe 0 $ fmap snd $ Map.lookupLE i leapsM
 
 -- CalendarDate to transition
 
@@ -124,7 +99,7 @@ addCalDateTransition b e = IMap.insert interval
     interval = Interval b e
 
 calDateTransitionsFor :: Instant -> TimeZone -> [TransitionInfo]
-calDateTransitionsFor i (TimeZone _ _ cdtMap _ tds) = fromExpressionDetails i tds tInfos toExprTIs
+calDateTransitionsFor i (TimeZone _ _ cdtMap tds) = fromExpressionDetails i tds tInfos toExprTIs
   where
     search = fmap snd . IMap.search (Entry i)
     tInfos = search cdtMap
@@ -132,7 +107,7 @@ calDateTransitionsFor i (TimeZone _ _ cdtMap _ tds) = fromExpressionDetails i td
 
 -- TODO: decide what we should be doing with these errors
 aroundCalDateTransition :: Instant -> TimeZone -> (TransitionInfo, TransitionInfo)
-aroundCalDateTransition i (TimeZone _ _ cdtMap _ tds) = fromExpressionDetails i tds (before, after) toExprTIs
+aroundCalDateTransition i (TimeZone _ _ cdtMap tds) = fromExpressionDetails i tds (before, after) toExprTIs
     where
       toExprTIs (TransitionExpressionInfo _ _ stdTI dstTI) = (stdTI, dstTI)   -- NOTE: Only possible answer since gap only happens switching to DST
       before = snd . go . flip IMap.search cdtMap . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
@@ -149,7 +124,6 @@ data TimeZone =
        zoneName :: TZIdentifier
       ,utcTransitionsMap :: UtcTransitionsMap
       ,calDateTransitionsMap :: CalDateTransitionsMap
-      ,leapsMap :: LeapsMap
       ,transitionExpressionDetails :: Maybe TransitionExpressionDetails
     }
   deriving (Eq, Show)

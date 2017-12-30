@@ -37,7 +37,7 @@ where
 import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime)
 import Data.HodaTime.LocalTime.Internal (second)
-import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), activeLeapsFor, calDateTransitionsFor, aroundCalDateTransition)
+import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)

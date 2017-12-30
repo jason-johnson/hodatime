@@ -31,7 +31,7 @@ data Header = Header String Char Int Int Int Int Int Int
 reservedSectionSize :: Int
 reservedSectionSize = 15
 
-getTransitions :: MonadThrow m => L.ByteString -> m (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, Maybe TransitionExpressionDetails)
+getTransitions :: MonadThrow m => L.ByteString -> m (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 getTransitions bs = case runGetOrFail getTransitions' bs of
   Left (_, consumed, msg) -> throwM $ ParseException msg (fromIntegral consumed)
   Right (_, _, xs) -> return xs
@@ -43,12 +43,12 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
       unless
         (isGmtCount == isStdCount && isStdCount == typeCount)
         (fail $ "format issue: sizes don't match: ttisgmtcnt = " ++ show isGmtCount ++ ", ttisstdcnt = " ++ show isStdCount ++ ", ttypecnt = " ++ show typeCount)
-      (transitions, indexes, tInfos, leapsM) <- getPayload getInt header'
+      (transitions, indexes, tInfos) <- getPayload getInt header'
       tzString <- getTZString version
       finished <- isEmpty
       unless finished $ fail "unprocessed data still in olson file"
       let (utcM, calDateM, tExprDetails) = buildTransitionMaps (zip transitions indexes) tInfos tzString
-      return (utcM, calDateM, leapsM, tExprDetails)
+      return (utcM, calDateM, tExprDetails)
 
 -- Get combinators
 
@@ -86,17 +86,15 @@ getLeapInfo getInt = do
   lOffset <- getInt32
   return (instant, lOffset)
 
-getPayload :: Get Int -> Header -> Get ([Instant], [Int], [TransitionInfo], LeapsMap)
+getPayload :: Get Int -> Header -> Get ([Instant], [Int], [TransitionInfo])
 getPayload getInt (Header _ _ isGmtCount isStdCount leapCount transCount typeCount abbrLen) = do
   transitions <- replicateM transCount $ fromSecondsSinceUnixEpoch <$> getInt
   indexes <- replicateM transCount getInt8
   types <- replicateM typeCount $ (,,) <$> getInt32 <*> getBool <*> getInt8
   abbrs <- (toString . B.unpack) <$> getByteString abbrLen
-  leaps <- replicateM leapCount $ getLeapInfo getInt
-  skip $ isStdCount + isGmtCount
+  skip $ leapCount + isStdCount + isGmtCount
   let tInfos = mapTransitionInfos abbrs types
-  let leapM = addLeapTransition bigBang 0 $ importLeaps leaps
-  return (transitions, indexes, tInfos, leapM)
+  return (transitions, indexes, tInfos)
 getCorrectHeader :: Header -> Get (Get Int, Header)
 getCorrectHeader header@(Header _ version isGmtCount isStdCount leapCount transCount typeCount abbrLen)
   | version == '\NUL'                 = return (getInt32, header)
