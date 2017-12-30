@@ -85,7 +85,7 @@ library
                    Data.HodaTime.CalendarDateTime.Internal,
                    Data.HodaTime.Instant.Internal,
                    Data.HodaTime.Instant.Platform,
-                   Data.HodaTime.OffsetDateTime.Internal,
+                   Data.HodaTime.Offset.Internal,
                    Data.HodaTime.TimeZone.Internal,
                    Data.HodaTime.TimeZone.Platform,
                    Data.HodaTime.ZonedDateTime.Internal

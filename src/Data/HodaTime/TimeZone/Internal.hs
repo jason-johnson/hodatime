@@ -25,8 +25,9 @@ where
 
 import Data.Maybe (fromMaybe)
 import Data.HodaTime.Instant.Internal (Instant(..), add, minus, bigBang)
-import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
+import Data.HodaTime.Offset.Internal (Offset(..))
 import Data.HodaTime.Duration.Internal (fromNanoseconds, fromSeconds)
+import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
@@ -35,7 +36,7 @@ import qualified Data.IntervalMap.FingerTree as IMap
 data TZIdentifier = UTC | Zone String
   deriving (Eq, Show)
 
-data TransitionInfo = TransitionInfo { tiUtcOffset :: Int, tiIsDst :: Bool, tiAbbreviation :: String }
+data TransitionInfo = TransitionInfo { tiUtcOffset :: Offset, tiIsDst :: Bool, tiAbbreviation :: String }
   deriving (Eq, Show)
 
 data TransitionExpression =
@@ -131,7 +132,7 @@ data TimeZone =
 
 -- constructors
 
-fixedOffsetZone :: String -> Int -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, TransitionInfo)
+fixedOffsetZone :: String -> Offset -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, TransitionInfo)
 fixedOffsetZone tzName offset = (utcM, calDateM, Nothing, tInfo)
     where
       utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
@@ -155,8 +156,9 @@ transExprInfoToMap i (TransitionExpressionInfo startExpr endExpr stdTI dstTI) = 
   where
     mkMap [] m = m
     mkMap ((b, e, ti):xs) m = mkMap xs $ addCalDateTransition b e ti m
+    toOffsetDuration (Offset lsecs) (Offset rsecs) = fromSeconds $ lsecs - rsecs
     entries = [(Smallest, Entry beforeStart, stdTI), (Entry start', Entry beforeEnd, dstTI), (Entry end', Largest, stdTI)]
-    offsetGap = fromSeconds $ tiUtcOffset dstTI - tiUtcOffset stdTI
+    offsetGap = toOffsetDuration (tiUtcOffset dstTI) (tiUtcOffset stdTI)
     start = expressionToInstant i startExpr
     start' = start `add` offsetGap
     beforeStart = flip minus (fromNanoseconds 1) start

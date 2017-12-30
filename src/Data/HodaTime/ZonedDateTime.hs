@@ -38,6 +38,7 @@ import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime)
 import Data.HodaTime.LocalTime.Internal (second)
 import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
+import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -62,7 +63,7 @@ fromCalendarDateTimeLeniently :: (IsCalendar cal, IsCalendarDateTime cal) => Cal
 fromCalendarDateTimeLeniently = resolve ambiguous skipped
   where
     ambiguous zdt _ = zdt
-    skipped (ZonedDateTime _ _ (TransitionInfo bOff _ _)) (ZonedDateTime cdt tz ti@(TransitionInfo aOff _ _)) = ZonedDateTime cdt' tz ti
+    skipped (ZonedDateTime _ _ (TransitionInfo (Offset bOff) _ _)) (ZonedDateTime cdt tz ti@(TransitionInfo (Offset aOff) _ _)) = ZonedDateTime cdt' tz ti
       where
         cdt' = modify (\s -> s + aOff - bOff) second cdt
         modify f l = head . l ((:[]) . f)                 -- TODO: We may want to break down and define the 3 lens primitives we need somewhere

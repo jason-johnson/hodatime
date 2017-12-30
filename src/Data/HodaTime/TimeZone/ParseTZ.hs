@@ -5,6 +5,7 @@ module Data.HodaTime.TimeZone.ParseTZ
 where
 
 import Data.HodaTime.TimeZone.Internal
+import Data.HodaTime.Offset.Internal (Offset(..))
 import Control.Applicative
 import Text.Parsec hiding (many, optional, (<|>))
 
@@ -21,10 +22,10 @@ p_posixTzString = do
   stdOffset <- p_offset <?> "TZ Offset"
   p_dstExpression stdID stdOffset <|> (return . Left . TransitionInfo stdOffset False $ stdID)
 
-p_dstExpression :: String -> Int -> ExpParser (Either TransitionInfo TransitionExpressionInfo)
-p_dstExpression stdID stdOffset = do
+p_dstExpression :: String -> Offset -> ExpParser (Either TransitionInfo TransitionExpressionInfo)
+p_dstExpression stdID stdOffset@(Offset stdOffsetSecs) = do
   dstID <- p_tzIdentifier
-  dstOffset <- option (stdOffset + toHour 1) p_offset
+  dstOffset <- option (Offset $ stdOffsetSecs + toHour 1) p_offset
   startExpr <- char ',' *> p_transitionExpression
   endExpr <- char ',' *> p_transitionExpression
   let stdTI = TransitionInfo stdOffset False stdID
@@ -45,8 +46,8 @@ p_tzNormalIdentifier = do
   rest <- many . noneOf $ ":,+-" ++ ['0'..'9']
   return $ start ++ rest
 
-p_offset :: ExpParser Int
-p_offset = negate <$> p_time
+p_offset :: ExpParser Offset
+p_offset = Offset . negate <$> p_time
 
 p_time :: ExpParser Int
 p_time = do
