@@ -109,7 +109,6 @@ readTziForZone zone =
     std <- regQueryValue key (Just "Std")
     dst <- regQueryValue key (Just "Dlt")
     rvt <- regQueryValueEx key "TZI" ptr sz
-    putStrLn $ "sizeOf timezone = " ++ show sz
     tzi <- verifyAndPeak rvt ptr
     return (std, dst, tzi)
     where
