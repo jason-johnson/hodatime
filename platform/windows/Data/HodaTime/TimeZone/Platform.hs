@@ -9,6 +9,7 @@ where
 
 import Data.HodaTime.TimeZone.Internal
 import Data.HodaTime.Instant.Internal (bigBang)
+import Data.HodaTime.Offset.Internal (Offset(..))
 
 import Control.Exception (bracket)
 import System.Win32.Types (LONG)
@@ -58,7 +59,7 @@ loadLocalZone = do
 loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
 loadTimeZone "UTC" = return (utcM, calDateM, transExprDet)
   where
-    (utcM, calDateM, transExprDet, _) = fixedOffsetZone "UTC" 0 
+    (utcM, calDateM, transExprDet, _) = fixedOffsetZone "UTC" (Offset 0)
 loadTimeZone zone = do
   (stdAbbr, dstAbbr, tzi) <- readTziForZone zone
   return (mempty, mempty, mkExpressionDetails stdAbbr dstAbbr tzi)
@@ -71,10 +72,10 @@ mkExpressionDetails stdAbbr dstAbbr (REG_TZI_FORMAT bias stdBias dstBias end sta
     exprInfo = TransitionExpressionInfo startExpr endExpr stdTI dstTI
     startExpr = systemTimeToNthDayExpression start
     endExpr = systemTimeToNthDayExpression end
-    stdOff = 60 * (negate . fromIntegral $ bias + stdBias)
-    dstOff = stdOff + 60 * (negate . fromIntegral $ dstBias)
-    stdTI = TransitionInfo stdOff False stdAbbr
-    dstTI = TransitionInfo dstOff True dstAbbr
+    stdOffSecs = 60 * (negate . fromIntegral $ bias + stdBias)
+    dstOffSecs = stdOffSecs + 60 * (negate . fromIntegral $ dstBias)
+    stdTI = TransitionInfo (Offset stdOffSecs) False stdAbbr
+    dstTI = TransitionInfo (Offset dstOffSecs) True dstAbbr
 
 systemTimeToNthDayExpression :: SYSTEMTIME -> TransitionExpression
 systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) = NthDayExpression (fromIntegral m - 1) (adjust . fromIntegral $ nth) (fromIntegral d) s'
