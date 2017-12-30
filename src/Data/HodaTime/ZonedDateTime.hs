@@ -17,6 +17,7 @@ module Data.HodaTime.ZonedDateTime
   -- * Constructors
   ,fromCalendarDateTimeLeniently
   ,fromCalendarDateTimeStrictly
+  ,fromInstant
   -- * Math
   -- * Conversion
   ,toLocalDateTime
@@ -37,8 +38,9 @@ where
 import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime)
 import Data.HodaTime.LocalTime.Internal (second)
-import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
+import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
+import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition, activeTransitionFor)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -86,6 +88,14 @@ fromCalendarDateTimeAll cdt tz = zdts
     instant = toUnadjustedInstant cdt
     zdts = fmap mkZdt . calDateTransitionsFor instant $ tz
     mkZdt = ZonedDateTime cdt tz
+
+fromInstant :: IsCalendarDateTime cal => Instant -> TimeZone -> ZonedDateTime cal
+fromInstant instant tz = ZonedDateTime cdt tz ti
+  where
+    ti = activeTransitionFor instant tz
+    offset = tiUtcOffset ti
+    instant' = adjustInstant offset instant
+    cdt = fromAdjustedInstant instant'
 
 -- | Takes two functions to determine how to resolve a 'CalendarDateTime' to a 'ZonedDateTime' in the case of ambiguity or skipped times.  The first
 -- function is for the ambigous case and is past the first matching 'ZonedDateTime', followed by the second match. The second function is for the case
