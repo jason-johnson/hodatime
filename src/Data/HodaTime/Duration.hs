@@ -32,7 +32,7 @@ import Data.HodaTime.Duration.Internal
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Instant (difference)
 import qualified Data.HodaTime.Instant as I (add)
-import Data.HodaTime.Constants (secondsPerDay, secondsPerHour)
+import Data.HodaTime.Constants (secondsPerHour)
 
 -- | Duration of standard weeks (a standard week is assumed to be exactly 7 24 hour days)
 fromStandardWeeks :: Int -> Duration

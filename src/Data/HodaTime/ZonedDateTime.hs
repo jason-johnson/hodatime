@@ -89,6 +89,7 @@ fromCalendarDateTimeAll cdt tz = zdts
     zdts = fmap mkZdt . calDateTransitionsFor instant $ tz
     mkZdt = ZonedDateTime cdt tz
 
+-- | Returns the 'ZonedDateTime' represented by the passed 'Instant' within the given 'TimeZone'.  This is always an unambiguous conversion.
 fromInstant :: IsCalendarDateTime cal => Instant -> TimeZone -> ZonedDateTime cal
 fromInstant instant tz = ZonedDateTime cdt tz ti
   where

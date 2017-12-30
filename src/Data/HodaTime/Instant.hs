@@ -23,7 +23,6 @@ module Data.HodaTime.Instant
   -- * Conversion
   ,inTimeZone
   -- * Debug - to be removed
-  ,LTI.fromInstant  -- TODO:  REMOVE THIS!  This is only exported for testing, remove it immediately after fixing fromSecondsSinceUnixEpoch
 )
 where
 
@@ -31,7 +30,6 @@ import Data.HodaTime.Instant.Internal
 import Data.HodaTime.Instant.Platform (now)
 import Data.HodaTime.TimeZone.Internal (TimeZone)
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
-import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant, Hour)    -- Made to warn so we don't forget to remove this stuff
 
 -- Conversion
 
