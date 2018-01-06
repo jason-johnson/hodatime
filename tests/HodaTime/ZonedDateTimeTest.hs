@@ -12,7 +12,7 @@ import Test.Tasty.HUnit
 import Control.Monad (join)
 
 import HodaTime.Util
-import Data.HodaTime.ZonedDateTime (fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, toLocalDateTime, zoneAbbreviation)
+import Data.HodaTime.ZonedDateTime (fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, toCalendarDateTime, zoneAbbreviation)
 import Data.HodaTime.TimeZone (timeZone)
 import Data.HodaTime.Calendar.Gregorian (Month(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
@@ -45,7 +45,7 @@ calDateProps = testGroup "CalendarDateTime conversion"
       tz <- run (timeZone zone)
       let cdt = at <$> G.calendarDate d (toEnum mon) y <*> localTime h m s 0
       let zdt = join $ flip fromCalendarDateTimeStrictly tz <$> cdt
-      let cdt' = toLocalDateTime <$> zdt
+      let cdt' = toCalendarDateTime <$> zdt
       QCM.assert $ cdt == cdt'
 
 zoneTransitionUnits :: TestTree
@@ -65,7 +65,7 @@ zoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
     ensureHour zone expectedAbbr d m y h = do
       zdt <- mkDate zone d m y
       let abbr = maybe "<INVALID>" zoneAbbreviation zdt
-      let cdt = toLocalDateTime <$> zdt
+      let cdt = toCalendarDateTime <$> zdt
       let cdtExpected = at <$> G.calendarDate d m y <*> toLocalTime h
       assertEqual "Zone abbreviation" expectedAbbr abbr
       assertEqual "" cdtExpected cdt
