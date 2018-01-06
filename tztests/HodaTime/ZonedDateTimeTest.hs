@@ -7,7 +7,8 @@ where
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromCalendarDateTimeLeniently, toCalendarDate, toLocalTime, inDst, zoneAbbreviation)
+import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromCalendarDateTimeLeniently, fromInstant, toCalendarDate, toLocalTime, inDst, zoneAbbreviation)
+import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (timeZone)
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import Data.HodaTime.Calendar.Gregorian (Month(..))
@@ -19,7 +20,8 @@ import Data.List (intercalate)
 import Control.Applicative (Const(..))
 
 zonedDateTimeTests :: TestTree
-zonedDateTimeTests = testGroup "ZonedDateTime Tests" [unitTests, fromCalendarDateTimeLeniently2017Tests, fromCalendarDateTimeLeniently2039Tests]
+--zonedDateTimeTests = testGroup "ZonedDateTime Tests" [unitTests, fromCalendarDateTimeLeniently2017Tests, fromCalendarDateTimeLeniently2039Tests, fromInstantTests]
+zonedDateTimeTests = testGroup "ZonedDateTime Tests" [unitTests, fromInstantTests]
 
 -- top level tests
 
@@ -34,6 +36,9 @@ fromCalendarDateTimeLeniently2017Tests = testGroup "fromCalendarDateTimeLenientl
 fromCalendarDateTimeLeniently2039Tests :: TestTree
 fromCalendarDateTimeLeniently2039Tests = testGroup "fromCalendarDateTimeLeniently 2039 tests" $ test_fromCalendarDateTimeLenientlyFor 2039
 
+fromInstantTests :: TestTree
+fromInstantTests = testGroup "fromInstant tests" test_fromInstant
+
 -- test functions
 
 test_fromCalendarDateTimeLenientlyFor :: Year -> [TestTree]
@@ -46,14 +51,30 @@ test_fromCalendarDateTimeLenientlyFor y = do
   let caseStr = datestr ++ "T" ++ timestr
   return . testCase caseStr $ test_getDates y m d h 11 12
 
+test_fromInstant :: [TestTree]
+test_fromInstant = do
+  let secs = 60 * 60 * 24
+  let start = 1435707825
+  let end = start + secs
+  epoch <- [start..end]
+  let caseStr = show epoch
+  return . testCase caseStr $ test_getEpochs epoch
+
+-- helper functions
+
+test_getEpochs :: Int -> Assertion
+test_getEpochs e = do
+  let zone = "Europe/Zurich"
+  htDate <- getDateStringFromInstant zone e
+  date <- getDateStringFromCmdEpoch zone e
+  assertEqual "date mismatch" date htDate
+
 test_getDates :: Int -> G.Month G.Gregorian -> Int -> Int -> Int -> Int -> Assertion
 test_getDates y m d h mm s = do
   let zone = "Europe/Zurich"
   htDate <- getDateStringFromCalendarDateTimeLeniently zone y m d h mm s
   date <- getDateStringFromCmdDateString zone y m d h mm s
   assertEqual "date mismatch" date htDate
-
--- helper functions
 
 getDateStringFromCalendarDateTimeLeniently :: String -> Year -> G.Month G.Gregorian -> DayOfMonth -> Hour -> Minute -> Second -> IO String
 getDateStringFromCalendarDateTimeLeniently tz y m d h mm s = do
@@ -63,15 +84,33 @@ getDateStringFromCalendarDateTimeLeniently tz y m d h mm s = do
   return . maybe "<INVALID>" toString $ zdt
 
 getDateStringFromCmdDateString :: String -> Int -> G.Month G.Gregorian -> Int -> Int -> Int -> Int -> IO String
-getDateStringFromCmdDateString tz y m d h mm sec = readCreateProcess process ""
+getDateStringFromCmdDateString tz y m d h mm sec = readMkDateProcess env' args
   where
-    process = proc' { env = Just env' }
-    proc' = proc "mk_date" ["-a", "l", datetime]
+    args = ["-a", "l", datetime]
     m' = (+1) . fromEnum $ m
     date = intercalate "-" [show y, show m', show d]
     time = intercalate ":" [show h, show mm, show sec]
     datetime = "--datetime=" ++ date ++ " " ++ time
     env' = [("TZ", tz)]
+
+getDateStringFromInstant :: String -> Int -> IO String
+getDateStringFromInstant tz epoch = do
+  zone <- timeZone tz
+  let instant = fromSecondsSinceUnixEpoch epoch
+  let zdt = fromInstant instant zone
+  return . toString $ zdt
+
+getDateStringFromCmdEpoch :: String -> Int -> IO String
+getDateStringFromCmdEpoch tz epoch = readMkDateProcess env' args
+  where
+    env' = [("TZ", tz)]
+    args = ["-e", show epoch]
+
+readMkDateProcess :: [(String, String)] -> [String] -> IO String
+readMkDateProcess env' cmdArgs = readCreateProcess process ""
+  where
+    process = proc' { env = Just env' }
+    proc' = proc "mk_date" cmdArgs
 
 showDD :: Int -> String
 showDD x = if x < 10 then "0" ++ show x else show x
