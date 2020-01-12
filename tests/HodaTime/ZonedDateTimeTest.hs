@@ -59,7 +59,7 @@ zoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
   ]
   where
     startZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
-    normZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CEST"
+    normZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CET"
     summerZone = if SysInfo.os == "mingw32" then "W. Europe Summer Time" else "CEST"
     toLocalTime h = localTime h 10 15 30
     mkDate zone d m y h = do
