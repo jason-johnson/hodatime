@@ -17,4 +17,4 @@ data ZonedDateTime cal = ZonedDateTime { zdtCalendarDateTime :: CalendarDateTime
 
 -- TODO: We need functions that help construct this type.  Some of those functions probably need to be in OffsetDateTime so we can hide details of
 -- TODO: CalendarDateTime from this module.  What we're trying to do is make sure the OffsetDateTime has the time set to the local time zone
--- TODO: and that the offset part tells us how far we are from UTC
+-- TODO: and that the offset part tells us how far we are from UTC.  Nanos tell us how far we are into the current day
