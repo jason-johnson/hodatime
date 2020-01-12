@@ -10,6 +10,7 @@ import Test.QuickCheck.Monadic (monadicIO, run)
 import qualified Test.QuickCheck.Monadic as QCM
 import Test.Tasty.HUnit
 import Control.Monad (join)
+import qualified System.Info as SysInfo
 
 import HodaTime.Util
 import Data.HodaTime.ZonedDateTime (fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, toCalendarDateTime, zoneAbbreviation)
@@ -51,12 +52,15 @@ calDateProps = testGroup "CalendarDateTime conversion"
 zoneTransitionUnits :: TestTree
 zoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
   [
-     testCase "March 26 2017 2:10:15.30 -> March 26 2017 3:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 26 March 2017 3
-    ,testCase "October 29 2017 2:10:15.30 -> October 29 2017 2:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 29 October 2017 2
-    ,testCase "March 27 2039 2:10:15.30 -> March 27 2039 3:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 27 March 2039 3
-    ,testCase "October 30 2039 2:10:15.30 -> October 30 2039 2:10:15.30 CEST" $ ensureHour "Europe/Zurich" "CEST" 30 October 2039 2
+     testCase "March 26 2017 2:10:15.30 -> March 26 2017 3:10:15.30 CEST" $ ensureHour startZone summerZone 26 March 2017 3
+    ,testCase "October 29 2017 2:10:15.30 -> October 29 2017 2:10:15.30 CEST" $ ensureHour startZone summerZone 29 October 2017 2
+    ,testCase "March 27 2039 2:10:15.30 -> March 27 2039 3:10:15.30 CEST" $ ensureHour startZone summerZone 27 March 2039 3
+    ,testCase "October 30 2039 2:10:15.30 -> October 30 2039 2:10:15.30 CEST" $ ensureHour startZone summerZone 30 October 2039 2
   ]
   where
+    startZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
+    normZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CEST"
+    summerZone = if SysInfo.os == "mingw32" then "W. Europe Summer Time" else "CEST"
     toLocalTime h = localTime h 10 15 30
     mkDate zone d m y = do
       tz <- timeZone zone
