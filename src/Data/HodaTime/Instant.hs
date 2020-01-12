@@ -26,6 +26,9 @@ module Data.HodaTime.Instant
 )
 where
 
+-- TODO - BUG: now is based on calling gettimeofday.  The question is if this returns a number with leap seconds removed or not.  If it does not then we will have
+-- TODO - BUG: an issue if we go:  now -> ZoneDateTime -> Instant   because the last conversion will remove leap seconds.
+
 import Data.HodaTime.Instant.Internal
 import Data.HodaTime.Instant.Platform (now)
 import Data.HodaTime.TimeZone.Internal (TimeZone)
