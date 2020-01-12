@@ -47,6 +47,9 @@ import Data.Typeable (Typeable)
 
 -- exceptions
 
+-- TODO: find a way to get the offending CalendarDateTime into the exception so that if this is thrown in deeply nested code users can figure out
+-- TODO: which date caused it.  The current problem is that "instance Exception" doesn't work if there is a type variable, even if the data type
+-- TODO: itself is typeable
 data DateTimeDoesNotExistException = DateTimeDoesNotExistException
   deriving (Typeable, Show)
 
