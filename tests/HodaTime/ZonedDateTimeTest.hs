@@ -52,22 +52,22 @@ calDateProps = testGroup "CalendarDateTime conversion"
 zoneTransitionUnits :: TestTree
 zoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
   [
-     testCase "March 26 2017 2:10:15.30 -> March 26 2017 3:10:15.30 CEST" $ ensureHour startZone summerZone 26 March 2017 3
-    ,testCase "October 29 2017 2:10:15.30 -> October 29 2017 2:10:15.30 CEST" $ ensureHour startZone summerZone 29 October 2017 2
-    ,testCase "March 27 2039 2:10:15.30 -> March 27 2039 3:10:15.30 CEST" $ ensureHour startZone summerZone 27 March 2039 3
-    ,testCase "October 30 2039 2:10:15.30 -> October 30 2039 2:10:15.30 CEST" $ ensureHour startZone summerZone 30 October 2039 2
+     testCase "March 26 2017 2:10:15.30 -> March 26 2017 3:10:15.30 CEST" $ ensureHour 2 startZone summerZone 26 March 2017 3
+    ,testCase "October 29 2017 3:10:15.30 -> October 29 2017 2:10:15.30 CET" $ ensureHour 3 startZone normZone 29 October 2017 2
+    ,testCase "March 27 2039 2:10:15.30 -> March 27 2039 3:10:15.30 CEST" $ ensureHour 2 startZone summerZone 27 March 2039 3
+    ,testCase "October 30 2039 3:10:15.30 -> October 30 2039 2:10:15.30 CET" $ ensureHour 3 startZone normZone 30 October 2039 2
   ]
   where
     startZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
     normZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CEST"
     summerZone = if SysInfo.os == "mingw32" then "W. Europe Summer Time" else "CEST"
     toLocalTime h = localTime h 10 15 30
-    mkDate zone d m y = do
+    mkDate zone d m y h = do
       tz <- timeZone zone
-      let cdt = at <$> G.calendarDate d m y <*> toLocalTime 2
+      let cdt = at <$> G.calendarDate d m y <*> toLocalTime h
       return $ flip fromCalendarDateTimeLeniently tz <$> cdt
-    ensureHour zone expectedAbbr d m y h = do
-      zdt <- mkDate zone d m y
+    ensureHour tzh zone expectedAbbr d m y h = do
+      zdt <- mkDate zone d m y tzh
       let abbr = maybe "<INVALID>" zoneAbbreviation zdt
       let cdt = toCalendarDateTime <$> zdt
       let cdtExpected = at <$> G.calendarDate d m y <*> toLocalTime h
