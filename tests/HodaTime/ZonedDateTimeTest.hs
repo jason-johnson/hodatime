@@ -54,9 +54,9 @@ lenientZoneTransitionUnits :: TestTree
 lenientZoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
   [
      testCase "March 26 2017 2:10:15.30 -> March 26 2017 3:10:15.30 CEST" $ ensureHour startZone resultZone 26 March 2017 3
-    ,testCase "October 29 2017 3:10:15.30 -> October 29 2017 2:10:15.30 CEST" $ ensureHour startZone resultZone 29 October 2017 2
+    ,testCase "October 29 2017 2:10:15.30 -> October 29 2017 2:10:15.30 CEST" $ ensureHour startZone resultZone 29 October 2017 2
     ,testCase "March 27 2039 2:10:15.30 -> March 27 2039 3:10:15.30 CEST" $ ensureHour startZone resultZone 27 March 2039 3
-    ,testCase "October 30 2039 3:10:15.30 -> October 30 2039 2:10:15.30 CEST" $ ensureHour startZone resultZone 30 October 2039 2
+    ,testCase "October 30 2039 2:10:15.30 -> October 30 2039 2:10:15.30 CEST" $ ensureHour startZone resultZone 30 October 2039 2
   ]
   where
     startZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
@@ -77,22 +77,29 @@ lenientZoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
 allZoneTransitionUnits :: TestTree
 allZoneTransitionUnits = testGroup "fromCalendarDateTimeAll"
   [
-     testCase "March 26 2017 2:10:15.30 -> []" $ ensureHours startZone [] 26 March 2017 []
-    ,testCase "October 29 2017 3:10:15.30 -> [October 29 2017: 2:10:15.30 CEST, 2:10:15.30 CET]" $ ensureHours startZone [summerZone, normZone] 29 October 2017 [2,2]
-    ,testCase "March 27 2039 2:10:15.30 -> []" $ ensureHours startZone [] 27 March 2039 []
-    ,testCase "October 30 2039 3:10:15.30 -> [October 30 2039: 2:10:15.30 CEST, 2:10:15.30 CET]" $ ensureHours startZone [summerZone, normZone] 30 October 2039 [2,2]
+     testCase "March 26 2017 2:10:15.30 -> []" $ ensureHours startEuZone [] 26 March 2017 []
+    ,testCase "October 29 2017 2:10:15.30 -> [October 29 2017: 2:10:15.30 CEST, 2:10:15.30 CET]" $ ensureHours startEuZone [summerEuZone, normEuZone] 29 October 2017 [2,2]
+    ,testCase "March 27 2039 2:10:15.30 -> []" $ ensureHours startEuZone [] 27 March 2039 []
+    ,testCase "October 30 2039 2:10:15.30 -> [October 30 2039: 2:10:15.30 CEST, 2:10:15.30 CET]" $ ensureHours startEuZone [summerEuZone, normEuZone] 30 October 2039 [2,2]
+
+    ,testCase "April 2 2006 2:10:15.30 -> []" $ ensureHours startUsZone [] 2 April 2006 []
+    ,testCase "October 29 2006 1:10:15.30 -> [October 29 2006: 1:10:15.30 CDT, 1:10:15.30 CST]" $ ensureHours' 1 startUsZone [summerUsZone, normUsZone] 29 October 2006 [1,1]
   ]
   where
-    startZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
-    normZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CET"
-    summerZone = if SysInfo.os == "mingw32" then "W. Europe Summer Time" else "CEST"
+    startEuZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
+    startUsZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "US/Central"
+    normEuZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CET"
+    normUsZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CST"
+    summerEuZone = if SysInfo.os == "mingw32" then "W. Europe Summer Time" else "CEST"
+    summerUsZone = if SysInfo.os == "mingw32" then "W. Europe Summer Time" else "CDT"
     toLocalTime h = localTime h 10 15 30
-    mkDates zone d m y = do
+    mkDates h zone d m y = do
       tz <- timeZone zone
-      let cdt = at <$> G.calendarDate d m y <*> toLocalTime 2
+      let cdt = at <$> G.calendarDate d m y <*> toLocalTime h
       return $ flip fromCalendarDateTimeAll tz <$> cdt
-    ensureHours zone expectedAbbrs d m y hs = do
-      zdts <- mkDates zone d m y
+    ensureHours zone expectedAbbrs d m y hs = ensureHours' 2 zone expectedAbbrs d m y hs
+    ensureHours' hour zone expectedAbbrs d m y hs = do
+      zdts <- mkDates hour zone d m y
       let abbrs = maybe [] (zoneAbbreviation <$>) zdts
       let cdts = maybe [] (toCalendarDateTime <$>) zdts
       let cdtExpecteds = catMaybes $ (\x -> at <$> G.calendarDate d m y <*> toLocalTime x) <$> hs
