@@ -87,11 +87,11 @@ allZoneTransitionUnits = testGroup "fromCalendarDateTimeAll"
   ]
   where
     startEuZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
-    startUsZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "US/Central"
+    startUsZone = if SysInfo.os == "mingw32" then "Central Standard Time" else "US/Central"
     normEuZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CET"
-    normUsZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CST"
+    normUsZone = if SysInfo.os == "mingw32" then "Central Standard Time" else "CST"
     summerEuZone = if SysInfo.os == "mingw32" then "W. Europe Summer Time" else "CEST"
-    summerUsZone = if SysInfo.os == "mingw32" then "W. Europe Summer Time" else "CDT"
+    summerUsZone = if SysInfo.os == "mingw32" then "Central Summer Time" else "CDT"
     toLocalTime h = localTime h 10 15 30
     mkDates h zone d m y = do
       tz <- timeZone zone
