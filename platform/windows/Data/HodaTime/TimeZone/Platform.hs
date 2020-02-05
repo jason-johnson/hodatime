@@ -75,8 +75,8 @@ mkExpressionDetails stdAbbr dstAbbr (REG_TZI_FORMAT bias stdBias dstBias end sta
 systemTimeToNthDayExpression :: SYSTEMTIME -> TransitionExpression
 systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) = NthDayExpression (fromIntegral m - 1) (adjust . fromIntegral $ nth) (fromIntegral d) s'
   where
-    adjust 5 = -1
-    adjust n = n - 1
+    adjust 5 = -1                     -- In the registry, 5 actually means last which is -1 for us
+    adjust n = n - 1                  -- Switch start nth to zero based
     s' = h' + mm' + fromIntegral s
     h' = fromIntegral h * 60 * 60
     mm' = fromIntegral mm * 60
