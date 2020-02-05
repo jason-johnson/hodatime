@@ -33,12 +33,7 @@ instance Storable REG_TZI_FORMAT where
   sizeOf _ = sizeOf (undefined :: LONG) * 3 + sizeOf (undefined :: SYSTEMTIME) * 2
   alignment _ = 4
 
-  poke buf (REG_TZI_FORMAT b sb db sd dd) = do
-    pokeByteOff buf 0 b
-    pokeByteOff buf 4 sb
-    pokeByteOff buf 8 db
-    pokeByteOff buf 12 sd
-    pokeByteOff buf(12 + sizeOf (undefined :: SYSTEMTIME)) dd
+  poke _ _ = error "poke not implemented"
 
   peek buf = REG_TZI_FORMAT
     <$> peekByteOff buf 0
@@ -81,7 +76,7 @@ systemTimeToNthDayExpression :: SYSTEMTIME -> TransitionExpression
 systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) = NthDayExpression (fromIntegral m - 1) (adjust . fromIntegral $ nth) (fromIntegral d) s'
   where
     adjust 5 = -1
-    adjust n = n
+    adjust n = n - 1
     s' = h' + mm' + fromIntegral s
     h' = fromIntegral h * 60 * 60
     mm' = fromIntegral mm * 60
