@@ -9,14 +9,14 @@ where
 import Data.HodaTime.TimeZone.Internal
 import qualified Data.HodaTime.TimeZone.Unix as U
 
-loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
+loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap)
 loadUTC = U.loadUTC loadZoneFromOlsonFile
 
-loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, String)
+loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, String)
 loadLocalZone = U.loadLocalZone loadZoneFromOlsonFile
 
-loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
+loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap)
 loadTimeZone = U.loadTimeZone loadZoneFromOlsonFile
 
-loadZoneFromOlsonFile :: FilePath -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
+loadZoneFromOlsonFile :: FilePath -> IO (UtcTransitionsMap, CalDateTransitionsMap)
 loadZoneFromOlsonFile = U.defaultLoadZoneFromOlsonFile
