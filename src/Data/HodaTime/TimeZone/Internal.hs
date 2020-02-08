@@ -125,17 +125,20 @@ calDateTransitionsFor i (TimeZone _ _ cdtMap) = concatMap (fromTransInfo i f (:[
     search = IMap.search (Entry i)
     f = fmap snd . search . buildFixedTransIMap
 
--- TODO: decide what we should be doing with these errors
+-- TODO: this function need major cleanup, this implementation is really nasty and almost certainly unsafe
 aroundCalDateTransition :: Instant -> TimeZone -> (TransitionInfo, TransitionInfo)
-aroundCalDateTransition i (TimeZone _ _ cdtMap) = error "" -- fromTransitionInfo i (before, after) toExprTIs
+aroundCalDateTransition i (TimeZone _ _ cdtMap) = go . fmap snd . IMap.search (Entry i) $ cdtMap
     where
-      toExprTIs (TransitionExpressionInfo _ _ stdTI dstTI) = (stdTI, dstTI)   -- NOTE: Only possible answer since gap only happens switching to DST
-      before = snd . go . flip IMap.search cdtMap . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
-      after = snd . fst . fromMaybe (error "around.after: fixme") . IMap.leastView $ back
+      go [] = (before, after)
+      go [(TransitionInfoExpression (TransitionExpressionInfo _ _ stdTI dstTI))] = (stdTI, dstTI) -- NOTE: Should be the only way this happens
+      go x = error $ "aroundCalDateTransition: unexpected search result" ++ show x
+      before = fromTransInfo i bomb id . snd . go' . flip IMap.search cdtMap . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
+      after = fromTransInfo i bomb id . snd . fst . fromMaybe (error "around.after: fixme") . IMap.leastView $ back
       (front, back) = IMap.splitAfter (Entry i) cdtMap
-      go [] = error "aroundCalDateTransition: no before transitions"
-      go [tei] = tei
-      go _ = error "aroundCalDateTransition: too many before transitions"
+      go' [] = error "aroundCalDateTransition: no before transitions"
+      go' [tei] = tei
+      go' _ = error "aroundCalDateTransition: too many before transitions"
+      bomb = error "aroundCalDateTransition: got expression when fixed expected"
 
 -- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
