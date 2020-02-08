@@ -4,17 +4,18 @@ module Data.HodaTime.TimeZone.Internal
   ,TransitionInfo(..)
   ,TransitionExpression(..)
   ,TransitionExpressionInfo(..)
-  ,TransitionExpressionDetails(..)
   ,UtcTransitionsMap
   ,IntervalEntry(..)
   ,CalDateTransitionsMap
   ,TimeZone(..)
   ,emptyUtcTransitions
   ,addUtcTransition
+  ,addUtcTransitionExpression
   ,activeTransitionFor
   ,nextTransition
   ,emptyCalDateTransitions
   ,addCalDateTransition
+  ,addCalDateTransitionExpression
   ,calDateTransitionsFor
   ,aroundCalDateTransition
   ,fixedOffsetZone
@@ -25,7 +26,7 @@ where
 
 import Data.Maybe (fromMaybe)
 import Data.HodaTime.Instant.Internal (Instant(..), add, minus, bigBang)
-import Data.HodaTime.Offset.Internal (Offset(..))
+import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
 import Data.HodaTime.Duration.Internal (fromNanoseconds, fromSeconds)
 import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
 import Data.Map.Strict (Map)
@@ -59,28 +60,41 @@ data TransitionExpressionInfo = TransitionExpressionInfo
   }
   deriving (Eq, Show)
 
-data TransitionExpressionDetails = TransitionExpressionDetails { firstExpressionInstant :: Instant, transitionExpression :: TransitionExpressionInfo }
-  deriving (Eq, Show)
+data TransitionInfoOrExp = 
+    TransitionInfoFixed TransitionInfo
+  | TransitionInfoExpression TransitionExpressionInfo
+    deriving (Eq, Show)
 
 -- UTC instant to transition
 
-type UtcTransitionsMap = Map Instant TransitionInfo
+type UtcTransitionsMap = Map Instant TransitionInfoOrExp
 
 emptyUtcTransitions :: UtcTransitionsMap
 emptyUtcTransitions = Map.empty
 
 addUtcTransition :: Instant -> TransitionInfo -> UtcTransitionsMap -> UtcTransitionsMap
-addUtcTransition = Map.insert
+addUtcTransition i fti = Map.insert i (TransitionInfoFixed fti)
+
+addUtcTransitionExpression :: Instant -> TransitionExpressionInfo -> UtcTransitionsMap -> UtcTransitionsMap
+addUtcTransitionExpression i texp = Map.insert i (TransitionInfoExpression texp)
 
 activeTransitionFor :: Instant -> TimeZone -> TransitionInfo
-activeTransitionFor i (TimeZone _ utcM _ tds)
-  | hasExplicitTransition i tds = snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- TODO: The findMin case should be impossible actually
-  | otherwise                   = undefined
+activeTransitionFor i (TimeZone _ utcM _) = fromTransInfo i f id . snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- NOTE: The findMin case should be impossible
+  where
+    f (dstStart, dstEnd, stdTI, dstTI) = if i <= dstStart' || i > dstEnd' then stdTI else dstTI
+      where
+        dstStart' = adjustInstant (tiUtcOffset stdTI) dstStart
+        dstEnd' = adjustInstant (tiUtcOffset dstTI) dstEnd
 
+-- TODO: We would need to get the next year to complete this function but let's see if it's actually used before doing more work
 nextTransition :: Instant -> TimeZone -> (Instant, TransitionInfo)
-nextTransition i (TimeZone _ utcM _ tds)
-  | hasExplicitTransition i tds = fromMaybe (Map.findMax utcM) $ Map.lookupGT i utcM
-  | otherwise                   = undefined
+nextTransition i (TimeZone _ utcM _) = f . fromMaybe (Map.findMax utcM) $ Map.lookupGT i utcM
+  where
+    f (i', ti) = fromTransInfo i g (\ti' -> (i', ti')) ti
+    g (dstStart, dstEnd, stdTI, dstTI) = if i < dstStart' then (dstStart', dstTI) else if i < dstEnd' then (dstEnd', stdTI) else error "nextTransition: need next year"
+      where
+        dstStart' = adjustInstant (tiUtcOffset stdTI) dstStart
+        dstEnd' = adjustInstant (tiUtcOffset dstTI) dstEnd
 
 -- CalendarDate to transition
 
@@ -90,26 +104,30 @@ data IntervalEntry a =
   | Largest
   deriving (Eq, Ord, Show)
 
-type CalDateTransitionsMap = IntervalMap (IntervalEntry Instant) TransitionInfo
+type CalDateTransitionsMap = IntervalMap (IntervalEntry Instant) TransitionInfoOrExp
 
 emptyCalDateTransitions :: CalDateTransitionsMap
 emptyCalDateTransitions = IMap.empty
 
 addCalDateTransition :: IntervalEntry Instant -> IntervalEntry Instant -> TransitionInfo -> CalDateTransitionsMap -> CalDateTransitionsMap
-addCalDateTransition b e = IMap.insert interval
+addCalDateTransition b e fti = IMap.insert interval (TransitionInfoFixed fti)
+  where
+    interval = Interval b e
+
+addCalDateTransitionExpression :: IntervalEntry Instant -> IntervalEntry Instant -> TransitionExpressionInfo -> CalDateTransitionsMap -> CalDateTransitionsMap
+addCalDateTransitionExpression b e texp = IMap.insert interval (TransitionInfoExpression texp)
   where
     interval = Interval b e
 
 calDateTransitionsFor :: Instant -> TimeZone -> [TransitionInfo]
-calDateTransitionsFor i (TimeZone _ _ cdtMap tds) = fromExpressionDetails i tds tInfos toExprTIs
+calDateTransitionsFor i (TimeZone _ _ cdtMap) = concatMap (fromTransInfo i f (:[]) . snd) . search $ cdtMap
   where
-    search = fmap snd . IMap.search (Entry i)
-    tInfos = search cdtMap
-    toExprTIs = search . transExprInfoToMap i
+    search = IMap.search (Entry i)
+    f = fmap snd . search . buildFixedTransIMap
 
 -- TODO: decide what we should be doing with these errors
 aroundCalDateTransition :: Instant -> TimeZone -> (TransitionInfo, TransitionInfo)
-aroundCalDateTransition i (TimeZone _ _ cdtMap tds) = fromExpressionDetails i tds (before, after) toExprTIs
+aroundCalDateTransition i (TimeZone _ _ cdtMap) = error "" -- fromTransitionInfo i (before, after) toExprTIs
     where
       toExprTIs (TransitionExpressionInfo _ _ stdTI dstTI) = (stdTI, dstTI)   -- NOTE: Only possible answer since gap only happens switching to DST
       before = snd . go . flip IMap.search cdtMap . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
@@ -126,14 +144,13 @@ data TimeZone =
        zoneName :: TZIdentifier
       ,utcTransitionsMap :: UtcTransitionsMap
       ,calDateTransitionsMap :: CalDateTransitionsMap
-      ,transitionExpressionDetails :: Maybe TransitionExpressionDetails
     }
   deriving (Eq, Show)
 
 -- constructors
 
-fixedOffsetZone :: String -> Offset -> (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, TransitionInfo)
-fixedOffsetZone tzName offset = (utcM, calDateM, Nothing, tInfo)
+fixedOffsetZone :: String -> Offset -> (UtcTransitionsMap, CalDateTransitionsMap, TransitionInfo)
+fixedOffsetZone tzName offset = (utcM, calDateM, tInfo)
     where
       utcM = addUtcTransition bigBang tInfo emptyUtcTransitions
       calDateM = addCalDateTransition Smallest Largest tInfo emptyCalDateTransitions
@@ -141,28 +158,24 @@ fixedOffsetZone tzName offset = (utcM, calDateM, Nothing, tInfo)
 
 -- helper functions
 
--- TODO: replace uses of this function with fromExpressionDetails
-hasExplicitTransition :: Instant -> Maybe TransitionExpressionDetails -> Bool
-hasExplicitTransition i tds = fromExpressionDetails i tds True (const False)
+fromTransInfo :: Instant -> ((Instant, Instant, TransitionInfo, TransitionInfo) -> a) -> (TransitionInfo -> a) -> TransitionInfoOrExp -> a
+fromTransInfo _ _ f (TransitionInfoFixed ti) = f ti
+fromTransInfo i f _ (TransitionInfoExpression (TransitionExpressionInfo startExpr endExpr stdTI dstTI)) = f (dstStart, dstEnd, stdTI, dstTI)
+  where
+    dstStart = expressionToInstant i startExpr
+    dstEnd = expressionToInstant i endExpr
 
-fromExpressionDetails :: Instant -> Maybe TransitionExpressionDetails -> a -> (TransitionExpressionInfo -> a) -> a
-fromExpressionDetails _ Nothing def _ = def
-fromExpressionDetails i (Just (TransitionExpressionDetails fei tei)) def f
-  | i < fei = def
-  | otherwise = f tei
-
-transExprInfoToMap :: Instant -> TransitionExpressionInfo -> CalDateTransitionsMap
-transExprInfoToMap i (TransitionExpressionInfo startExpr endExpr stdTI dstTI) = mkMap entries mempty
+buildFixedTransIMap :: (Instant, Instant, TransitionInfo, TransitionInfo) -> IntervalMap (IntervalEntry Instant) TransitionInfo
+buildFixedTransIMap (start, end, stdTI, dstTI) = mkMap entries mempty
   where
     mkMap [] m = m
-    mkMap ((b, e, ti):xs) m = mkMap xs $ addCalDateTransition b e ti m
+    mkMap ((b, e, ti):xs) m = mkMap xs $ addEntry b e ti m
+    addEntry b e ti = IMap.insert (Interval b e) ti
     toOffsetDuration (Offset lsecs) (Offset rsecs) = fromSeconds $ lsecs - rsecs
     entries = [(Smallest, Entry beforeStart, stdTI), (Entry start', Entry beforeEnd, dstTI), (Entry end', Largest, stdTI)]
     offsetGap = toOffsetDuration (tiUtcOffset dstTI) (tiUtcOffset stdTI)
-    start = expressionToInstant i startExpr
     start' = start `add` offsetGap
     beforeStart = flip minus (fromNanoseconds 1) start
-    end = expressionToInstant i endExpr
     end' = end `minus` offsetGap
     beforeEnd = flip minus (fromNanoseconds 1) end
 
@@ -179,4 +192,4 @@ yearExpressionToInstant y = go
         m' = toEnum m
         d = nthDayToDayOfMonth nth day m' y
         days' = fromIntegral $ yearMonthDayToDays y m' d
-    go (JulianExpression cly d s) = error "need julian year day function"
+    go (JulianExpression _cly _d _s) = error "need julian year day function"

@@ -42,28 +42,30 @@ instance Storable REG_TZI_FORMAT where
     <*> peekByteOff buf 12
     <*> peekByteOff buf (12 + sizeOf (undefined :: SYSTEMTIME))
 
-loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
+loadUTC :: IO (UtcTransitionsMap, CalDateTransitionsMap)
 loadUTC = loadTimeZone "UTC"
 
-loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails, String)
+loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, String)
 loadLocalZone = do
   zone <- readLocalZoneName
-  (utcM, calDateM, transExprDetails) <- loadTimeZone zone
-  return (utcM, calDateM, transExprDetails, zone)
+  (utcM, calDateM) <- loadTimeZone zone
+  return (utcM, calDateM, zone)
 
-loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap, Maybe TransitionExpressionDetails)
-loadTimeZone "UTC" = return (utcM, calDateM, transExprDet)
+loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap)
+loadTimeZone "UTC" = return (utcM, calDateM)
   where
-    (utcM, calDateM, transExprDet, _) = fixedOffsetZone "UTC" (Offset 0)
+    (utcM, calDateM, _) = fixedOffsetZone "UTC" (Offset 0)
 loadTimeZone zone = do
   (stdAbbr, dstAbbr, tzi) <- readTziForZone zone
-  return (mempty, mempty, mkExpressionDetails stdAbbr dstAbbr tzi)
+  return $ mkExpressionDetails stdAbbr dstAbbr tzi
 
 -- conversion from Windows types
 
-mkExpressionDetails :: String -> String -> REG_TZI_FORMAT -> Maybe TransitionExpressionDetails
-mkExpressionDetails stdAbbr dstAbbr (REG_TZI_FORMAT bias stdBias dstBias end start) = Just $ TransitionExpressionDetails bigBang exprInfo
+mkExpressionDetails :: String -> String -> REG_TZI_FORMAT -> (UtcTransitionsMap, CalDateTransitionsMap)
+mkExpressionDetails stdAbbr dstAbbr (REG_TZI_FORMAT bias stdBias dstBias end start) = (utcM, cdtM)
   where
+    utcM = addUtcTransitionExpression bigBang exprInfo emptyUtcTransitions
+    cdtM = addCalDateTransitionExpression Smallest Largest exprInfo emptyCalDateTransitions
     exprInfo = TransitionExpressionInfo startExpr endExpr stdTI dstTI
     startExpr = systemTimeToNthDayExpression start
     endExpr = systemTimeToNthDayExpression end

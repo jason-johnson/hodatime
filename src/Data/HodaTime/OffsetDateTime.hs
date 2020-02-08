@@ -37,7 +37,7 @@ fromCalendarDateTimeWithOffset cdt offset = OffsetDateTime $ ZonedDateTime cdt t
 -- helper functions
 
 makeFixedTimeZone :: Offset -> (TimeZone, TransitionInfo)
-makeFixedTimeZone offset = (TimeZone (Zone tzName) utcM calDateM tExprDetails, tInfo)
+makeFixedTimeZone offset = (TimeZone (Zone tzName) utcM calDateM, tInfo)
   where
     tzName = toStringRep offset
-    (utcM, calDateM, tExprDetails, tInfo) = fixedOffsetZone tzName offset
+    (utcM, calDateM, tInfo) = fixedOffsetZone tzName offset
