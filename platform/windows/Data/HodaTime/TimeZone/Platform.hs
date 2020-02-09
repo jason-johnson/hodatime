@@ -8,11 +8,16 @@ module Data.HodaTime.TimeZone.Platform
 where
 
 import Data.HodaTime.TimeZone.Internal
-import Data.HodaTime.Instant.Internal (bigBang)
+import Data.HodaTime.Instant.Internal (Instant(..), bigBang, minus)
 import Data.HodaTime.Offset.Internal (Offset(..))
+import Data.HodaTime.Duration.Internal (fromNanoseconds)
+import Data.HodaTime.Calendar.Gregorian.Internal (yearMonthDayToDays)
 
+import Data.Char (isDigit)
+import Data.List (sortOn, foldl')
+import Control.Monad (forM)
 import Control.Exception (bracket)
-import System.Win32.Types (LONG)
+import System.Win32.Types (LONG, HKEY)
 import System.Win32.Registry
 import System.Win32.Time (SYSTEMTIME(..))
 import Foreign.Marshal.Alloc (allocaBytes)
@@ -57,22 +62,39 @@ loadTimeZone "UTC" = return (utcM, calDateM)
     (utcM, calDateM, _) = fixedOffsetZone "UTC" (Offset 0)
 loadTimeZone zone = do
   (stdAbbr, dstAbbr, tzi) <- readTziForZone zone
-  return $ mkExpressionDetails stdAbbr dstAbbr tzi
+  dynTzis <- readDynamicDstForZone zone
+  return $ mkZoneMaps stdAbbr dstAbbr tzi dynTzis
 
 -- conversion from Windows types
 
-mkExpressionDetails :: String -> String -> REG_TZI_FORMAT -> (UtcTransitionsMap, CalDateTransitionsMap)
-mkExpressionDetails stdAbbr dstAbbr (REG_TZI_FORMAT bias stdBias dstBias end start) = (utcM, cdtM)
+mkZoneMaps :: String -> String -> REG_TZI_FORMAT -> [(Int, REG_TZI_FORMAT)] -> (UtcTransitionsMap, CalDateTransitionsMap)
+mkZoneMaps stdAbbr dstAbbr defaultTzi dynTzis = (utcMap, calDateMap')
   where
-    utcM = addUtcTransitionExpression bigBang exprInfo emptyUtcTransitions
-    cdtM = addCalDateTransitionExpression Smallest Largest exprInfo emptyCalDateTransitions
-    exprInfo = TransitionExpressionInfo startExpr endExpr stdTI dstTI
-    startExpr = systemTimeToNthDayExpression start
-    endExpr = systemTimeToNthDayExpression end
-    stdOffSecs = 60 * (negate . fromIntegral $ bias + stdBias)
-    dstOffSecs = stdOffSecs + 60 * (negate . fromIntegral $ dstBias)
-    stdTI = TransitionInfo (Offset stdOffSecs) False stdAbbr
-    dstTI = TransitionInfo (Offset dstOffSecs) True dstAbbr
+    dynTzis' = sortOn fst dynTzis
+    getStartTi [] = tziToExprInfo defaultTzi
+    getStartTi ((_, tzi):_) = tziToExprInfo tzi
+    tl [] = []
+    tl (_:xs) = xs
+    startTI = getStartTi dynTzis'
+    initialUtcM = addUtcTransitionExpression bigBang startTI emptyUtcTransitions
+    calDateMap' = addCalDateTransitionExpression lastEntry Largest lastExpr calDateMap
+    (utcMap, calDateMap, lastEntry, lastExpr) = foldl' go (initialUtcM, emptyCalDateTransitions, Smallest, startTI) $ tl dynTzis'
+    go (utcM, calDateM, prevEntry, prevExpr) (y, tzi) = (utcM', calDateM', Entry tran, expr)
+      where
+        expr = tziToExprInfo tzi
+        m = toEnum 0
+        tran = Instant (fromIntegral $ yearMonthDayToDays y m 1) 0 0
+        utcM' = addUtcTransitionExpression tran expr utcM
+        calDateM' = addCalDateTransitionExpression prevEntry before prevExpr calDateM
+        before = Entry . flip minus (fromNanoseconds 1) $ tran
+    tziToExprInfo (REG_TZI_FORMAT bias stdBias dstBias end start) = TransitionExpressionInfo startExpr endExpr stdTI dstTI
+      where
+        startExpr = systemTimeToNthDayExpression start
+        endExpr = systemTimeToNthDayExpression end
+        stdTI = TransitionInfo (Offset stdOffSecs) False stdAbbr
+        dstTI = TransitionInfo (Offset dstOffSecs) True dstAbbr
+        stdOffSecs = 60 * (negate . fromIntegral $ bias + stdBias)
+        dstOffSecs = stdOffSecs + 60 * (negate . fromIntegral $ dstBias)
 
 systemTimeToNthDayExpression :: SYSTEMTIME -> TransitionExpression
 systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) = NthDayExpression (fromIntegral m - 1) (adjust . fromIntegral $ nth) (fromIntegral d) s'
@@ -93,17 +115,44 @@ readLocalZoneName =
 
 readTziForZone :: String -> IO (String, String, REG_TZI_FORMAT)
 readTziForZone zone =
-  bracket op regCloseKey $ \key ->
-  allocaBytes sz $ \ptr -> do
+  bracket op regCloseKey $ \key -> do
     std <- regQueryValue key (Just "Std")
     dst <- regQueryValue key (Just "Dlt")
-    rvt <- regQueryValueEx key "TZI" ptr sz
-    tzi <- verifyAndPeak rvt ptr
+    tzi <- readTzi key "TZI"
     return (std, dst, tzi)
     where
-      sz = sizeOf (undefined :: REG_TZI_FORMAT)
       op = regOpenKeyEx hKEY_LOCAL_MACHINE hive kEY_QUERY_VALUE
       hive = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\" ++ zone
-      verifyAndPeak rvt ptr
+
+readDynamicDstForZone :: String -> IO [(Int, REG_TZI_FORMAT)]
+readDynamicDstForZone zone = do
+  hasDyn <- hasDynDst
+  if hasDyn
+  then 
+    bracket (op dynDstHive) regCloseKey $ \dstKey -> do
+      vals <- regEnumKeyVals dstKey
+      let years = foldr toYear [] vals
+      forM years $ \y -> do
+        tzi <- readTzi dstKey y
+        return (read y, tzi)
+  else return []
+  where
+    hasDynDst = bracket (op tzHive) regCloseKey $ \key -> do
+                  dyn <- regEnumKeys key
+                  return $ length dyn == 1 && dyn !! 0 == "Dynamic DST"
+    toYear (y, _, _) xs | all isDigit y = y:xs
+                        | otherwise = xs
+    op hive = regOpenKeyEx hKEY_LOCAL_MACHINE hive kEY_READ
+    tzHive = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\" ++ zone
+    dynDstHive = tzHive ++ "\\Dynamic DST"
+
+readTzi :: HKEY -> String -> IO REG_TZI_FORMAT
+readTzi key p =
+  allocaBytes sz $ \ptr -> do
+    rvt <- regQueryValueEx key p ptr sz
+    verifyAndPeak rvt ptr
+  where
+    sz = sizeOf (undefined :: REG_TZI_FORMAT)
+    verifyAndPeak rvt ptr
         | rvt == rEG_BINARY = peek . castPtr $ ptr
         | otherwise         = error $ "registry corrupt: TZI variable was non-binary type: " ++ show rvt
