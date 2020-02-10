@@ -54,7 +54,7 @@ test_fromCalendarDateTimeLenientlyFor y = do
 test_fromInstant :: [TestTree]
 test_fromInstant = do
   let secs = 60 * 60 * 24
-  let start = 1435707825
+  let start = 1445734400
   let end = start + secs
   epoch <- [start..end]
   let caseStr = show epoch
