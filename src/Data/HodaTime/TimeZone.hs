@@ -26,17 +26,17 @@ import Data.HodaTime.TimeZone.Platform
 -- | Load the UTC time zone
 utc :: IO TimeZone
 utc = do
-  (utcM, calDateM, tExprDetails) <- loadUTC
-  return $ TimeZone UTC utcM calDateM tExprDetails
+  (utcM, calDateM) <- loadUTC
+  return $ TimeZone UTC utcM calDateM
 
 -- | Load the specified time zone.  The time zone name should be in the standard format (e.g. "Europe/Paris")
 timeZone :: String -> IO TimeZone
 timeZone tzName = do
-  (utcM, calDateM, tExprDetails) <- loadTimeZone tzName
-  return $ TimeZone (Zone tzName) utcM calDateM tExprDetails
+  (utcM, calDateM) <- loadTimeZone tzName
+  return $ TimeZone (Zone tzName) utcM calDateM
 
 -- | Load the locally configured time zone (operating system configuration dependant)
 localZone :: IO TimeZone
 localZone = do
-  (utcM, calDateM, tExprDetails, tzName) <- loadLocalZone
-  return $ TimeZone (Zone tzName) utcM calDateM tExprDetails
+  (utcM, calDateM, tzName) <- loadLocalZone
+  return $ TimeZone (Zone tzName) utcM calDateM

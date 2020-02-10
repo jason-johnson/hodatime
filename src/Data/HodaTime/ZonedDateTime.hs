@@ -20,8 +20,8 @@ module Data.HodaTime.ZonedDateTime
   ,fromInstant
   -- * Math
   -- * Conversion
-  ,toLocalDateTime
-  ,toLocalDate
+  ,toCalendarDateTime
+  ,toCalendarDate
   ,toLocalTime
   -- * Accessors
   ,inDst
@@ -47,6 +47,9 @@ import Data.Typeable (Typeable)
 
 -- exceptions
 
+-- TODO: find a way to get the offending CalendarDateTime into the exception so that if this is thrown in deeply nested code users can figure out
+-- TODO: which date caused it.  The current problem is that "instance Exception" doesn't work if there is a type variable, even if the data type
+-- TODO: itself is typeable
 data DateTimeDoesNotExistException = DateTimeDoesNotExistException
   deriving (Typeable, Show)
 
@@ -122,12 +125,12 @@ resolve ambiguous skipped cdt tz = go . fmap mkZdt . calDateTransitionsFor insta
 -- conversion
 
 -- | Return the 'CalendarDateTime' represented by this 'ZonedDateTime'.
-toLocalDateTime :: ZonedDateTime cal -> CalendarDateTime cal
-toLocalDateTime (ZonedDateTime cdt _  _) = cdt
+toCalendarDateTime :: ZonedDateTime cal -> CalendarDateTime cal
+toCalendarDateTime (ZonedDateTime cdt _  _) = cdt
 
 -- | Return the 'CalendarDate' represented by this 'ZonedDateTime'.
-toLocalDate :: ZonedDateTime cal -> CalendarDate cal
-toLocalDate (ZonedDateTime (CalendarDateTime cd _) _  _) = cd
+toCalendarDate :: ZonedDateTime cal -> CalendarDate cal
+toCalendarDate (ZonedDateTime (CalendarDateTime cd _) _  _) = cd
 
 -- | Return the 'LocalTime' represented by this 'ZonedDateTime'.
 toLocalTime :: ZonedDateTime cal -> LocalTime
