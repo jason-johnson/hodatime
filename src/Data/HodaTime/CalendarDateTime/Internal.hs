@@ -38,6 +38,9 @@ type Year = Int
 type DayOfMonth = Int
 type WeekNumber = Int
 
+-- TODO: We may want to add a "cycle" field to the calendarDate that counts 400 year cyles.  This would allow days to be non-negative
+--       and it would mean that one table can translate all possible days since they repeat each cycle
+
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
 -- Note: We keep the date in 2 formats, redundantly.  We depend on lazy evaluation to only produce the portion that is actually used
 data CalendarDate calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdMonth :: Word8, cdYear :: Word32 }
