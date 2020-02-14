@@ -15,6 +15,7 @@ import Data.HodaTime.Calendar.Gregorian (Month(..))
 import Data.HodaTime.LocalTime (localTime, hour, minute, second, Hour, Minute, Second)
 import Data.HodaTime.CalendarDateTime (at, year, month, day, CalendarDate, Year, DayOfMonth)
 
+import qualified System.Info as SysInfo
 import System.Process (readCreateProcess, proc, env)
 import Data.List (intercalate)
 import Control.Applicative (Const(..))
@@ -64,14 +65,14 @@ test_fromInstant = do
 
 test_getEpochs :: Int -> Assertion
 test_getEpochs e = do
-  let zone = "Europe/Zurich"
+  let zone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
   htDate <- getDateStringFromInstant zone e
   date <- getDateStringFromCmdEpoch zone e
   assertEqual "date mismatch" date htDate
 
 test_getDates :: Int -> G.Month G.Gregorian -> Int -> Int -> Int -> Int -> Assertion
 test_getDates y m d h mm s = do
-  let zone = "Europe/Zurich"
+  let zone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
   htDate <- getDateStringFromCalendarDateTimeLeniently zone y m d h mm s
   date <- getDateStringFromCmdDateString zone y m d h mm s
   assertEqual "date mismatch" date htDate
