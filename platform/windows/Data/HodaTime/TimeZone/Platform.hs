@@ -89,18 +89,19 @@ mkZoneMaps stdAbbr dstAbbr defaultTzi dynTzis = (utcMap, calDateMap')
         before = Entry . flip minus (fromNanoseconds 1) $ tran
     tziToExprInfo (REG_TZI_FORMAT bias stdBias dstBias end start) = TransitionExpressionInfo startExpr endExpr stdTI dstTI
       where
-        startExpr = systemTimeToNthDayExpression start
-        endExpr = systemTimeToNthDayExpression end
+        startExpr = systemTimeToNthDayExpression start stdOffSecs
+        endExpr = systemTimeToNthDayExpression end dstOffSecs
         stdTI = TransitionInfo (Offset stdOffSecs) False stdAbbr
         dstTI = TransitionInfo (Offset dstOffSecs) True dstAbbr
         stdOffSecs = 60 * (negate . fromIntegral $ bias + stdBias)
         dstOffSecs = stdOffSecs + 60 * (negate . fromIntegral $ dstBias)
 
-systemTimeToNthDayExpression :: SYSTEMTIME -> TransitionExpression
-systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) = NthDayExpression (fromIntegral m - 1) (adjust . fromIntegral $ nth) (fromIntegral d) s'
+systemTimeToNthDayExpression :: SYSTEMTIME -> Int -> TransitionExpression
+systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) offsetSecs = NthDayExpression (fromIntegral m - 1) (adjust . fromIntegral $ nth) (fromIntegral d) s''
   where
     adjust 5 = -1                     -- In the registry, 5 actually means last which is -1 for us
     adjust n = n - 1                  -- Switch start nth to zero based
+    s'' = s' - offsetSecs             -- Windows times are always local, so convert back to UTC
     s' = h' + mm' + fromIntegral s
     h' = fromIntegral h * 60 * 60
     mm' = fromIntegral mm * 60

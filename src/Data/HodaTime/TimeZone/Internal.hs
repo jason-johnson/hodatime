@@ -81,21 +81,14 @@ addUtcTransitionExpression i texp = Map.insert i (TransitionInfoExpression texp)
 activeTransitionFor :: Instant -> TimeZone -> TransitionInfo
 activeTransitionFor i (TimeZone _ utcM _) = fromTransInfo i f id . snd . fromMaybe (Map.findMin utcM) $ Map.lookupLE i utcM     -- NOTE: The findMin case should be impossible
   where
-    f (dstStart, dstEnd, stdTI, dstTI) = if i <= dstStart' || i >= dstEnd' then stdTI else dstTI
-      where
-        -- In windows, the start and end expressions are in local time, not UTC
-        dstStart' = adjustInstant (negateOffset $ tiUtcOffset stdTI) dstStart
-        dstEnd' = adjustInstant (negateOffset $ tiUtcOffset dstTI) dstEnd
+    f (dstStart, dstEnd, stdTI, dstTI) = if i <= dstStart || i >= dstEnd then stdTI else dstTI
 
 -- TODO: We would need to get the next year to complete this function but let's see if it's actually used before doing more work
 nextTransition :: Instant -> TimeZone -> (Instant, TransitionInfo)
 nextTransition i (TimeZone _ utcM _) = f . fromMaybe (Map.findMax utcM) $ Map.lookupGT i utcM
   where
     f (i', ti) = fromTransInfo i g (\ti' -> (i', ti')) ti
-    g (dstStart, dstEnd, stdTI, dstTI) = if i < dstStart' then (dstStart', dstTI) else if i < dstEnd' then (dstEnd', stdTI) else error "nextTransition: need next year"
-      where
-        dstStart' = adjustInstant (negateOffset $ tiUtcOffset stdTI) dstStart
-        dstEnd' = adjustInstant (negateOffset $ tiUtcOffset dstTI) dstEnd
+    g (dstStart, dstEnd, stdTI, dstTI) = if i < dstStart then (dstStart, dstTI) else if i < dstEnd then (dstEnd, stdTI) else error "nextTransition: need next year"
 
 -- CalendarDate to transition
 
