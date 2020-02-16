@@ -25,9 +25,9 @@ module Data.HodaTime.TimeZone.Internal
 where
 
 import Data.Maybe (fromMaybe)
-import Data.HodaTime.Instant.Internal (Instant(..), add, minus, bigBang)
+import Data.HodaTime.Instant.Internal (Instant(..), minus, bigBang)
 import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
-import Data.HodaTime.Duration.Internal (fromNanoseconds, fromSeconds)
+import Data.HodaTime.Duration.Internal (fromNanoseconds)
 import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -162,19 +162,21 @@ fromTransInfo i f _ (TransitionInfoExpression (TransitionExpressionInfo startExp
     dstStart = expressionToInstant i startExpr
     dstEnd = expressionToInstant i endExpr
 
+-- NOTE: We have to store expressions in the year they take effect so this is the first place we can resolve
+--       the actual map.  Otherwise we'd have to create two per year
 buildFixedTransIMap :: (Instant, Instant, TransitionInfo, TransitionInfo) -> IntervalMap (IntervalEntry Instant) TransitionInfo
 buildFixedTransIMap (start, end, stdTI, dstTI) = mkMap entries mempty
   where
     mkMap [] m = m
     mkMap ((b, e, ti):xs) m = mkMap xs $ addEntry b e ti m
     addEntry b e ti = IMap.insert (Interval b e) ti
-    toOffsetDuration (Offset lsecs) (Offset rsecs) = fromSeconds $ lsecs - rsecs
     entries = [(Smallest, Entry beforeStart, stdTI), (Entry start', Entry beforeEnd, dstTI), (Entry end', Largest, stdTI)]
-    offsetGap = toOffsetDuration (tiUtcOffset dstTI) (tiUtcOffset stdTI)
-    start' = start `add` offsetGap
-    beforeStart = flip minus (fromNanoseconds 1) start
-    end' = end `minus` offsetGap
-    beforeEnd = flip minus (fromNanoseconds 1) end
+    (start', beforeStart) = adjust start dstTI stdTI
+    (end', beforeEnd) = adjust end stdTI dstTI
+    adjust tran ti prevTI = (x, beforeX)
+      where
+        x = adjustInstant (tiUtcOffset ti) tran
+        beforeX = flip minus (fromNanoseconds 1) . adjustInstant (tiUtcOffset prevTI) $ tran
 
 expressionToInstant :: Instant -> TransitionExpression -> Instant
 expressionToInstant instant = yearExpressionToInstant y
@@ -190,6 +192,3 @@ yearExpressionToInstant y = go
         d = nthDayToDayOfMonth nth day m' y
         days' = fromIntegral $ yearMonthDayToDays y m' d
     go (JulianExpression _cly _d _s) = error "need julian year day function"
-
-negateOffset :: Offset -> Offset
-negateOffset (Offset secs) = Offset $ negate secs
