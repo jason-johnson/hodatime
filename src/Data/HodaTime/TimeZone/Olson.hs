@@ -128,9 +128,9 @@ mapTransitionInfos abbrs = fmap toTI
     getAbbr offset = takeWhile (/= '\NUL') . drop offset
 
 buildTransitionMaps :: [(Instant, Int)] -> [TransitionInfo] -> Maybe String -> (UtcTransitionsMap, CalDateTransitionsMap)
-buildTransitionMaps transAndIndexes tInfos tzString = (utcMap, calDateMap')
+buildTransitionMaps transAndIndexes tInfos tzString = (utcMap', calDateMap')
   where
-    calDateMap' = addLastCalDateEntry tzString' lastEntry lastTI calDateMap
+    (utcMap', calDateMap') = addLastMapEntries tzString' lastEntry lastTI utcMap calDateMap
     tzString' = fmap parsePosixString tzString
     defaultTI = findDefaultTransInfo $ tInfos
     initialUtcTransitions = addUtcTransition bigBang defaultTI emptyUtcTransitions
@@ -143,13 +143,14 @@ buildTransitionMaps transAndIndexes tInfos tzString = (utcMap, calDateMap')
         before = Entry . flip minus (fromNanoseconds 1) . adjustInstant (tiUtcOffset prevTI) $ tran
         tInfo = tInfos !! idx
 
-addLastCalDateEntry :: Maybe (Either TransitionInfo TransitionExpressionInfo) -> IntervalEntry Instant -> TransitionInfo -> CalDateTransitionsMap
-                                -> CalDateTransitionsMap
-addLastCalDateEntry Nothing start ti calDateMap = addCalDateTransition start Largest ti calDateMap
+addLastMapEntries :: Maybe (Either TransitionInfo TransitionExpressionInfo) -> IntervalEntry Instant -> TransitionInfo ->
+                      UtcTransitionsMap -> CalDateTransitionsMap -> (UtcTransitionsMap, CalDateTransitionsMap)
+addLastMapEntries Nothing start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest ti calDateMap)
 -- NOTE: If the tzString does not have a time zone specification then the way we process the rest of the file should be correct (TODO: check offset) so we can ignore it
-addLastCalDateEntry (Just (Left _)) start ti calDateMap = addCalDateTransition start Largest ti calDateMap
-addLastCalDateEntry (Just (Right texpr@(TransitionExpressionInfo stdExpr _ stdTI _))) start ti calDateMap = calDateMap''
+addLastMapEntries (Just (Left _)) start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest ti calDateMap)
+addLastMapEntries (Just (Right texpr@(TransitionExpressionInfo stdExpr _ stdTI _))) start ti utcMap calDateMap = (utcMap', calDateMap'')
   where
+    utcMap' = utcMap
     calDateMap' = addCalDateTransition start before ti calDateMap
     calDateMap'' = addCalDateTransitionExpression (Entry cdExprStart) Largest texpr calDateMap'
     cdExprStart = adjustInstant (tiUtcOffset stdTI) $ exprStart
