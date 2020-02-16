@@ -71,14 +71,14 @@ mkZoneMaps :: String -> String -> REG_TZI_FORMAT -> [(Int, REG_TZI_FORMAT)] -> (
 mkZoneMaps stdAbbr dstAbbr defaultTzi dynTzis = (utcMap, calDateMap')
   where
     dynTzis' = sortOn fst dynTzis
-    getStartTi [] = tziToExprInfo defaultTzi
-    getStartTi ((_, tzi):_) = tziToExprInfo tzi
+    getInitialExpr [] = tziToExprInfo defaultTzi
+    getInitialExpr ((_, tzi):_) = tziToExprInfo tzi
     tl [] = []
     tl (_:xs) = xs
-    startTI = getStartTi dynTzis'
-    initialUtcM = addUtcTransitionExpression bigBang startTI emptyUtcTransitions
+    initialExpr = getInitialExpr dynTzis'
+    initialUtcM = addUtcTransitionExpression bigBang initialExpr emptyUtcTransitions
     calDateMap' = addCalDateTransitionExpression lastEntry Largest lastExpr calDateMap
-    (utcMap, calDateMap, lastEntry, lastExpr) = foldl' go (initialUtcM, emptyCalDateTransitions, Smallest, startTI) $ tl dynTzis'
+    (utcMap, calDateMap, lastEntry, lastExpr) = foldl' go (initialUtcM, emptyCalDateTransitions, Smallest, initialExpr) $ tl dynTzis'
     go (utcM, calDateM, prevEntry, prevExpr) (y, tzi) = (utcM', calDateM', Entry tran, expr)
       where
         expr = tziToExprInfo tzi
