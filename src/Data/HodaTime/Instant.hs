@@ -32,10 +32,11 @@ where
 import Data.HodaTime.Instant.Internal
 import Data.HodaTime.Instant.Platform (now)
 import Data.HodaTime.TimeZone.Internal (TimeZone)
-import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
+import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..), fromInstant)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendarDateTime)
 
 -- Conversion
 
 -- | Convert 'Instant' to a 'ZonedDateTime' in the specified time zone.  The calendar must be derivable or specified in the type explicitly
-inTimeZone :: Instant -> TimeZone -> ZonedDateTime cal
-inTimeZone _instant _tz = undefined
+inTimeZone :: IsCalendarDateTime cal => Instant -> TimeZone -> ZonedDateTime cal
+inTimeZone instant tz = fromInstant instant tz
