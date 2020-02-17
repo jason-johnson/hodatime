@@ -22,15 +22,18 @@ p_posixTzString = do
   stdOffset <- p_offset <?> "TZ Offset"
   p_dstExpression stdID stdOffset <|> (return . Left . TransitionInfo stdOffset False $ stdID)
 
+-- NOTE: Transition times have to be UTC for the returned expressions
 p_dstExpression :: String -> Offset -> ExpParser (Either TransitionInfo TransitionExpressionInfo)
 p_dstExpression stdID stdOffset@(Offset stdOffsetSecs) = do
   dstID <- p_tzIdentifier
   dstOffset <- option (Offset $ stdOffsetSecs + toHour 1) p_offset
-  startExpr <- char ',' *> p_transitionExpression
-  endExpr <- char ',' *> p_transitionExpression
+  startExpr <- char ',' *> p_transitionExpression stdOffsetSecs
+  endExpr <- char ',' *> p_transitionExpression (toOffsetSecs dstOffset)
   let stdTI = TransitionInfo stdOffset False stdID
   let dstTI = TransitionInfo dstOffset True dstID
   return . Right $ TransitionExpressionInfo startExpr endExpr stdTI dstTI
+  where
+    toOffsetSecs (Offset secs) = secs
 
 p_tzIdentifier :: ExpParser String
 p_tzIdentifier = p_tzSpecialIdentifier <|> p_tzNormalIdentifier
@@ -59,11 +62,13 @@ p_time = do
     where
       optionalDigit = char ':' *> many1 digit
 
-p_transitionExpression :: ExpParser TransitionExpression
-p_transitionExpression = te <*> time
+-- NOTE: Remove offset seconds to get to UTC time
+p_transitionExpression :: Int -> ExpParser TransitionExpression
+p_transitionExpression offsetSecs = te <*> time'
   where
     te = p_julianExpression <|> p_nthDayExpression
     time = option (toHour 2) (char '/' *> p_time)
+    time' = (\x -> x - offsetSecs) <$> time
 
 p_julianExpression :: ExpParser (Int -> TransitionExpression)
 p_julianExpression = JulianExpression <$> cntLp <*> d
