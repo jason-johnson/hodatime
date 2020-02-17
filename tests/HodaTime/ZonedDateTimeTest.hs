@@ -90,6 +90,8 @@ allZoneTransitionUnits = testGroup "fromCalendarDateTimeAll"
     ,testCase "November 4 2007 1:10:15.30 -> [November 4 2007: 1:10:15.30 CDT, 1:10:15.30 CST]" $ ensureHours' 1 startUsZone [summerUsZone, normUsZone] 4 November 2007 [1,1]
     ,testCase "March 9 2008 2:10:15.30 -> []" $ ensureHours startUsZone [] 9 March 2008 []
     ,testCase "November 2 2008 1:10:15.30 -> [November 2 2008: 1:10:15.30 CDT, 1:10:15.30 CST]" $ ensureHours' 1 startUsZone [summerUsZone, normUsZone] 2 November 2008 [1,1]
+    ,testCase "March 13 2039 2:10:15.30 -> []" $ ensureHours startUsZone [] 13 March 2039 []
+    ,testCase "November 6 2039 1:10:15.30 -> [November 6 2039: 1:10:15.30 CDT, 1:10:15.30 CST]" $ ensureHours' 1 startUsZone [summerUsZone, normUsZone] 6 November 2039 [1,1]
   ]
   where
     startEuZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
