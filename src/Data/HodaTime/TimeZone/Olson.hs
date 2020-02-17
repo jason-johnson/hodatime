@@ -148,15 +148,15 @@ addLastMapEntries :: Maybe (Either TransitionInfo TransitionExpressionInfo) -> I
 addLastMapEntries Nothing start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest ti calDateMap)
 -- NOTE: If the tzString does not have a time zone specification then the way we process the rest of the file should be correct (TODO: check offset) so we can ignore it
 addLastMapEntries (Just (Left _)) start ti utcMap calDateMap = (utcMap, addCalDateTransition start Largest ti calDateMap)
-addLastMapEntries (Just (Right texpr@(TransitionExpressionInfo _ _ stdTI _))) lastTran ti utcMap calDateMap = (utcMap', calDateMap'')
+addLastMapEntries (Just (Right texpr@(TransitionExpressionInfo _ _ stdTI _))) prevTran prevTI utcMap calDateMap = (utcMap', calDateMap'')
   where
-    utcMap' = utcMap
-    calDateMap' = addCalDateTransition lastTran before ti calDateMap
+    utcMap' = addUtcTransitionExpression exprStart texpr utcMap
+    calDateMap' = addCalDateTransition prevTran before prevTI calDateMap
     calDateMap'' = addCalDateTransitionExpression (Entry exprStart) Largest texpr calDateMap'
     before = Entry . flip minus (fromNanoseconds 1) $ exprStart
     exprStart = adjustInstant (tiUtcOffset stdTI) $ Instant yearStart 0 0  -- time changes are usually once per year
     yearStart = fromIntegral $ yearMonthDayToDays (y+1) (toEnum 0) 1
-    y = case lastTran of
+    y = case prevTran of
       (Entry trans) -> let (yr, _, _) = instantToYearMonthDay trans in fromIntegral yr
       _             -> error "impossible: got non Entry for last valid transition"
 
