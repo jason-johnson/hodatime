@@ -3,6 +3,7 @@ module Data.HodaTime.TimeZone.Platform
    loadUTC
   ,loadLocalZone
   ,loadTimeZone
+  ,loadAvailableZones
 )
 where
 
@@ -20,3 +21,6 @@ loadTimeZone = U.loadTimeZone loadZoneFromOlsonFile
 
 loadZoneFromOlsonFile :: FilePath -> IO (UtcTransitionsMap, CalDateTransitionsMap)
 loadZoneFromOlsonFile = U.defaultLoadZoneFromOlsonFile
+
+loadAvailableZones :: IO [String]
+loadAvailableZones = U.loadAvailableZones
