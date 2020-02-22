@@ -1,6 +1,7 @@
 module Data.HodaTime.TimeZone.Olson
 (
    getTransitions
+  ,isOlsonFile
   ,ParseException(..)
 )
 where
@@ -50,6 +51,15 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
       unless finished $ fail "unprocessed data still in olson file"
       let (utcM, calDateM) = buildTransitionMaps (zip transitions indexes) tInfos tzString
       return (utcM, calDateM)
+
+isOlsonFile :: L.ByteString -> Bool
+isOlsonFile bs = case runGetOrFail getMagic bs of
+  Left _ -> False         -- If we can't load it for any reason, we wouldn't be able to use it as a time zone
+  Right (_, _, x) -> x
+  where
+    getMagic = do
+      (Header magic _ _ _ _ _ _ _) <- getHeader
+      return $ magic == "TZif"
 
 -- Get combinators
 

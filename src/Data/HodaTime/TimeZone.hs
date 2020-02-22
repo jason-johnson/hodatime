@@ -17,6 +17,7 @@ module Data.HodaTime.TimeZone
   ,utc
   ,localZone
   ,timeZone
+  ,availableZones
 )
 where
 
@@ -29,7 +30,7 @@ utc = do
   (utcM, calDateM) <- loadUTC
   return $ TimeZone UTC utcM calDateM
 
--- | Load the specified time zone.  The time zone name should be in the standard format (e.g. "Europe/Paris")
+-- | Load the specified time zone.  The time zone name should be in the format returned by `availableZones`
 timeZone :: String -> IO TimeZone
 timeZone tzName = do
   (utcM, calDateM) <- loadTimeZone tzName
@@ -40,3 +41,7 @@ localZone :: IO TimeZone
 localZone = do
   (utcM, calDateM, tzName) <- loadLocalZone
   return $ TimeZone (Zone tzName) utcM calDateM
+
+-- | List all time zones available to hodatime
+availableZones :: IO [String]
+availableZones = loadAvailableZones
