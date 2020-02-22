@@ -4,6 +4,7 @@ module Data.HodaTime.TimeZone.Platform
    loadUTC
   ,loadLocalZone
   ,loadTimeZone
+  ,loadAvailableZones
 )
 where
 
@@ -65,6 +66,9 @@ loadTimeZone zone = do
   dynTzis <- readDynamicDstForZone zone
   return $ mkZoneMaps stdAbbr dstAbbr tzi dynTzis
 
+loadAvailableZones :: IO [String]
+loadAvailableZones = readAllZoneNames
+
 -- conversion from Windows types
 
 mkZoneMaps :: String -> String -> REG_TZI_FORMAT -> [(Int, REG_TZI_FORMAT)] -> (UtcTransitionsMap, CalDateTransitionsMap)
@@ -113,6 +117,14 @@ readLocalZoneName =
     where
       op = regOpenKeyEx hKEY_LOCAL_MACHINE hive kEY_QUERY_VALUE
       hive = "SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation"
+
+readAllZoneNames :: IO [String]
+readAllZoneNames =
+  bracket op regCloseKey $ \key ->
+  regEnumKeys key
+    where
+      op = regOpenKeyEx hKEY_LOCAL_MACHINE hive kEY_READ
+      hive = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones"
 
 readTziForZone :: String -> IO (String, String, REG_TZI_FORMAT)
 readTziForZone zone =
