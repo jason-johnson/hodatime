@@ -18,6 +18,9 @@ module Data.HodaTime.Pattern.Internal
   ,formatToString
   ,(%)
   ,colon
+  ,pat_hour
+  ,pat_minute
+  ,pat_second
 )
 where
 
@@ -80,14 +83,14 @@ data ParseFailedException = ParseFailedException String
 
 instance Exception ParseFailedException
 
--- let t = "53:25:" in parse (p_second x' <* char ':' >>= \xx -> p_minute xx <* char ':') t t
--- parse ((p_second <* char ':') <> p_minute) "40:20" 
+-- parse ((p_hour <* char ':') <> p_minute <> (char ':' *> p_second)) "10:20:30" 
+--        >>= return . ($ d) >>= formatToString ((f_hour % colon) `mappend` f_minute `mappend` (colon % f_second))
 
 instance Semigroup (Parser (a -> a)) where
   (<>) m n = (\f g -> \x -> g . f $ x) <$> m <*> n
 
-parse :: MonadThrow m => Parser a -> SourceName -> m a
-parse p s = case runParser p () s s of
+parseOld :: MonadThrow m => Parser a -> SourceName -> m a
+parseOld p s = case runParser p () s s of
         Left err -> throwM . ParseFailedException $ show err
         Right r -> return r
 
@@ -123,12 +126,40 @@ p_hour_12 = p_lens (p_a <|> p_b) hour "hour: 00-12"
     p_b = f <$> char '1' <*> oneOf ['0'..'2']
     f a b = read [a,b]
 
--- Parser is   MonadThrow m => a -> m LocalTime    but the problem is, how do we ensure that enough parts are in the pattern, or how do we default them if missing
--- Actually, we don't have to at compile time because we have the m type to return errors with the pattern
+-- Pattern
+
+data Pattern a = Pattern
+  {
+     patParse :: Parser (a -> a)
+    ,patFormat :: Format String (a -> String)
+  }
+
+instance Semigroup (Pattern a) where
+  (Pattern parse1 format1) <> (Pattern parse2 format2) = Pattern par fmt
+    where
+      par = (\f g -> \x -> g . f $ x) <$> parse1 <*> parse2
+      fmt = format1 `mappend` format2
+
+parse :: MonadThrow m => Pattern a -> SourceName -> m (a -> a)
+parse (Pattern p _) s =
+  case runParser p () s s of
+    Left err -> throwM . ParseFailedException $ show err
+    Right r -> return r
+
+--  (<>) m n = (\f g -> \x -> g . f $ x) <$> m <*> n
+
+pat_hour :: Pattern LocalTime
+pat_hour = Pattern p_hour f_hour
+
+pat_minute :: Pattern LocalTime
+pat_minute = Pattern p_minute f_minute
+
+pat_second :: Pattern LocalTime
+pat_second = Pattern p_second f_second
 
 -- Codec stuff used for examples
 
-data PatternFor r w b a = Pattern
+data PatternFor r w b a = PatternJ
   {
      patternRead :: r a
     ,patternWrite :: b -> w a
@@ -136,12 +167,12 @@ data PatternFor r w b a = Pattern
   deriving (Functor)
 
 instance (Applicative r, Applicative w) => Applicative (PatternFor r w b) where
-  pure x = Pattern
+  pure x = PatternJ
             {
                patternRead = pure x
               ,patternWrite = \_ -> pure x
             }
-  f <*> x = Pattern
+  f <*> x = PatternJ
               {
                  patternRead = patternRead f <*> patternRead x
                 ,patternWrite = \c -> patternWrite f c <*> patternWrite x c
@@ -149,15 +180,15 @@ instance (Applicative r, Applicative w) => Applicative (PatternFor r w b) where
 
 instance (Monad r, Monad w) => Monad (PatternFor r w b) where
   return = pure
-  m >>= f = Pattern
+  m >>= f = PatternJ
               {
                  patternRead = patternRead m >>= \x -> patternRead (f x)
                 ,patternWrite = \c -> patternWrite m c >>= \x -> patternWrite (f x) c
               }
 
 instance (Functor r, Functor w) => Profunctor (PatternFor r w) where
-  dimap fRead fWrite (Pattern readPat  writePat) =
-    Pattern
+  dimap fRead fWrite (PatternJ readPat  writePat) =
+    PatternJ
       {
          patternRead = fmap fWrite readPat
         ,patternWrite = fmap fWrite . writePat . fRead
