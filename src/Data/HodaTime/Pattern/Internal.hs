@@ -3,24 +3,16 @@
 
 module Data.HodaTime.Pattern.Internal
 (
-   PatternFor(..)
-  ,Profunctor(..)
-  ,char
-  ,f_hour
-  ,f_minute
-  ,f_second
-  ,p_hour
-  ,p_hour_12
-  ,p_minute
-  ,p_second
-  ,parse
-  ,(<>)
-  ,formatToString
-  ,(%)
-  ,colon
+   parse'
+  ,format
+  ,(<>)         -- TODO: Remove
+  ,(<%)
+ -- ,(%>)
   ,pat_hour
+  ,pat_hour_12
   ,pat_minute
   ,pat_second
+  ,pat_char
 )
 where
 
@@ -38,21 +30,11 @@ import Text.Parsec hiding (many, optional, (<|>), parse)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
 
--- NOTE: The profunctor from Profunctors package brings in more than 10 dependancies to support things we're not going to be using
-class Profunctor p where
-  dimap :: (a -> b) -> (c -> d) -> p b c -> p a d
-  dimap f g = lmap f . rmap g
-  {-# INLINE dimap #-}
-
-  lmap :: (a -> b) -> p b c -> p a c
-  lmap f = dimap f id
-  {-# INLINE lmap #-}
-  
-  rmap :: (b -> c) -> p a b -> p a c
-  rmap = dimap id
-  {-# INLINE rmap #-}
-
-  {-# MINIMAL dimap | (lmap, rmap) #-}
+-- x = maybe (error "duh") id $ localTime 1 2 3 0
+-- d = maybe (error "duh") id $ localTime 0 0 0 0
+-- pat = pat_hour <% pat_char ':' <> pat_minute <% pat_char ':' <> pat_second
+-- parse' pat "01:01:01" d
+-- format pat x
 
 -- Formatting
 
@@ -71,9 +53,6 @@ f_minute = left 2 '0' %. f_lens minute
 f_second :: Format r (LocalTime -> r)
 f_second = left 2 '0' %. f_lens second
 
-colon :: Format r r
-colon = now (fromString ":")
-
 -- Parsing
 
 type Parser a = Parsec String () a
@@ -82,17 +61,6 @@ data ParseFailedException = ParseFailedException String
   deriving (Typeable, Show)
 
 instance Exception ParseFailedException
-
--- parse ((p_hour <* char ':') <> p_minute <> (char ':' *> p_second)) "10:20:30" 
---        >>= return . ($ d) >>= formatToString ((f_hour % colon) `mappend` f_minute `mappend` (colon % f_second))
-
-instance Semigroup (Parser (a -> a)) where
-  (<>) m n = (\f g -> \x -> g . f $ x) <$> m <*> n
-
-parseOld :: MonadThrow m => Parser a -> SourceName -> m a
-parseOld p s = case runParser p () s s of
-        Left err -> throwM . ParseFailedException $ show err
-        Right r -> return r
 
 p_sixty :: Parser Int
 p_sixty = f <$> oneOf ['0'..'5'] <*> digit
@@ -128,68 +96,61 @@ p_hour_12 = p_lens (p_a <|> p_b) hour "hour: 00-12"
 
 -- Pattern
 
-data Pattern a = Pattern
+type Parser2 a r = Parsec r () a
+
+data Pattern a b r = Pattern
   {
-     patParse :: Parser (a -> a)
-    ,patFormat :: Format String (a -> String)
+     _patParse :: Parser2 a r
+    ,_patFormat :: Format r b
   }
 
-instance Semigroup (Pattern a) where
+(<%) :: Pattern a b r -> Pattern c r r -> Pattern a b r
+(Pattern parse1 format1) <% (Pattern parse2 format2) = Pattern par fmt
+  where
+    par = parse1 <* parse2
+    fmt = format1 % format2
+
+-- (%>) :: Pattern c r r -> Pattern a b r -> Pattern a b r
+-- (Pattern parse1 format1) %> (Pattern parse2 format2) = Pattern par fmt
+--  where
+--    par = parse1 *> parse2
+--    fmt = (format1 :: Format r r) % format2
+
+-- BUG: The above fails with
+-- Expected type: Format r1 r1
+-- Actual type: Format r r
+
+instance Semigroup (Pattern (a -> a) (b -> r) r) where
   (Pattern parse1 format1) <> (Pattern parse2 format2) = Pattern par fmt
     where
       par = (\f g -> \x -> g . f $ x) <$> parse1 <*> parse2
       fmt = format1 `mappend` format2
 
-parse :: MonadThrow m => Pattern a -> SourceName -> m (a -> a)
-parse (Pattern p _) s =
+-- TODO: We want to have a function parse which gets a default a to use
+
+parse' :: MonadThrow m => Pattern (a -> a) b String -> SourceName -> a -> m a
+parse' (Pattern p _) s def =
   case runParser p () s s of
     Left err -> throwM . ParseFailedException $ show err
-    Right r -> return r
+    Right r -> return . r $ def
 
---  (<>) m n = (\f g -> \x -> g . f $ x) <$> m <*> n
+format :: Pattern a r String -> r
+format (Pattern _ fmt) = formatToString fmt
 
-pat_hour :: Pattern LocalTime
+pat_hour :: Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
 pat_hour = Pattern p_hour f_hour
 
-pat_minute :: Pattern LocalTime
+pat_hour_12 :: Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
+pat_hour_12 = Pattern p_hour_12 f_hour
+
+pat_minute :: Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
 pat_minute = Pattern p_minute f_minute
 
-pat_second :: Pattern LocalTime
+pat_second :: Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
 pat_second = Pattern p_second f_second
 
--- Codec stuff used for examples
-
-data PatternFor r w b a = PatternJ
-  {
-     patternRead :: r a
-    ,patternWrite :: b -> w a
-  }
-  deriving (Functor)
-
-instance (Applicative r, Applicative w) => Applicative (PatternFor r w b) where
-  pure x = PatternJ
-            {
-               patternRead = pure x
-              ,patternWrite = \_ -> pure x
-            }
-  f <*> x = PatternJ
-              {
-                 patternRead = patternRead f <*> patternRead x
-                ,patternWrite = \c -> patternWrite f c <*> patternWrite x c
-              }
-
-instance (Monad r, Monad w) => Monad (PatternFor r w b) where
-  return = pure
-  m >>= f = PatternJ
-              {
-                 patternRead = patternRead m >>= \x -> patternRead (f x)
-                ,patternWrite = \c -> patternWrite m c >>= \x -> patternWrite (f x) c
-              }
-
-instance (Functor r, Functor w) => Profunctor (PatternFor r w) where
-  dimap fRead fWrite (PatternJ readPat  writePat) =
-    PatternJ
-      {
-         patternRead = fmap fWrite readPat
-        ,patternWrite = fmap fWrite . writePat . fRead
-      }
+pat_char :: Char -> Pattern Char String String
+pat_char c = Pattern p_char f_char
+  where
+    p_char = char c
+    f_char = now (fromString $ c:[])
