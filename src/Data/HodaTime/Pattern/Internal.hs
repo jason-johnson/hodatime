@@ -5,20 +5,19 @@ module Data.HodaTime.Pattern.Internal
 (
    PatternFor(..)
   ,Profunctor(..)
-  ,Format(..)
-  ,formatToString
-  ,now
-  ,charr
   ,char
-  ,hour'
-  ,minute'
-  ,second'
+  ,f_hour
+  ,f_minute
+  ,f_second
   ,p_hour
   ,p_hour_12
   ,p_minute
   ,p_second
   ,parse
   ,(<>)
+  ,formatToString
+  ,(%)
+  ,colon
 )
 where
 
@@ -30,11 +29,11 @@ import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
 import Data.Semigroup ((<>), Semigroup)
-import            Data.Text.Lazy.Builder (Builder)
 import qualified  Data.Text as T
-import qualified  Data.Text.Lazy as TL
 import qualified  Data.Text.Lazy.Builder as TLB
 import Text.Parsec hiding (many, optional, (<|>), parse)
+import Formatting (Format, later, formatToString, left, (%.), (%), now)
+import Data.String (fromString)
 
 -- NOTE: The profunctor from Profunctors package brings in more than 10 dependancies to support things we're not going to be using
 class Profunctor p where
@@ -54,45 +53,23 @@ class Profunctor p where
 
 -- Formatting
 
--- Think about brining back the a type here because like this we're required to always
--- handle a LocalTime parameter and we don't always want that.  We can avoid giving out
--- any functions which are too loose anyway so no real reason to lock it down here
---
--- Well, having done it I see that it actually breaks the structure, at least so far.  This way you can't
--- mix constant builders like char with LocalTime ones like lens, hour', etc. because they have different
--- types
-newtype Format r a = Format { runFormat :: (Builder -> r) -> a }
-
-instance Monoid (Format r (a -> r)) where
-  mappend m n = Format (\k a -> runFormat m (\b1 -> runFormat n (\b2 -> k (b1 <> b2)) a) a)
-  mempty = Format (\k _ -> k mempty)
-
-now :: Builder -> Format r r
-now a = Format ($ a)
-
-charr :: Char -> Format r r
-charr c = now (TLB.fromText . T.singleton $ c)
-
-later :: (a -> Builder) -> Format r (a -> r)
-later f = Format (. f)
-
-lens :: ((Int -> Const Int Int) -> LocalTime -> Const Int LocalTime) -> Format r (LocalTime -> r)
-lens l = later (TLB.fromText . T.pack . show . get l)
+f_lens :: ((Int -> Const Int Int) -> LocalTime -> Const Int LocalTime) -> Format r (LocalTime -> r)
+f_lens l = later (TLB.fromText . T.pack . show . get l)
   where
     get :: ((s -> Const s c) -> a -> Const t b) -> a -> t
     get ll = getConst . ll Const
 
-hour' :: Format r (LocalTime -> r)
-hour' = lens hour
+f_hour :: Format r (LocalTime -> r)
+f_hour = left 2 '0' %. f_lens hour
 
-minute' :: Format r (LocalTime -> r)
-minute' = lens minute
+f_minute :: Format r (LocalTime -> r)
+f_minute = left 2 '0' %. f_lens minute
 
-second' :: Format r (LocalTime -> r)
-second' = lens second
+f_second :: Format r (LocalTime -> r)
+f_second = left 2 '0' %. f_lens second
 
-formatToString :: Format [Char] a -> a
-formatToString m = runFormat m (TL.unpack . TLB.toLazyText)
+colon :: Format r r
+colon = now (fromString ":")
 
 -- Parsing
 
