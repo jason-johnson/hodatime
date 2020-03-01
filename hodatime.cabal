@@ -72,8 +72,9 @@ library
                    Data.HodaTime.Offset,
                    Data.HodaTime.LocalTime,
                    Data.HodaTime.OffsetDateTime,
-                   Data.HodaTime.TimeZone
-                   Data.HodaTime.ZonedDateTime
+                   Data.HodaTime.TimeZone,
+                   Data.HodaTime.ZonedDateTime,
+                   Data.HodaTime.Pattern.LocalTime
   other-modules:
                    Data.HodaTime.Constants,
                    Data.HodaTime.Internal,

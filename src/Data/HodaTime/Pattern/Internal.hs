@@ -3,23 +3,23 @@
 
 module Data.HodaTime.Pattern.Internal
 (
-   parse'
+   Pattern(..)
+  ,parse'
   ,format
   ,(<>)         -- TODO: Remove
   ,(<%)
  -- ,(%>)
-  ,pat_hour
-  ,pat_hour_12
-  ,pat_minute
-  ,pat_second
   ,pat_string
   ,pat_char
+  ,pat_lens
+  ,digitsToInt
+  ,p_sixty
+  ,f_shown
+  ,f_shown_two
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..))
-import Data.HodaTime.LocalTime.Internal (hour, minute, second)
-import Control.Applicative ((<|>))
+import Data.HodaTime.CalendarDateTime.Internal (LocalTime)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -43,8 +43,6 @@ data ParseFailedException = ParseFailedException String
   deriving (Typeable, Show)
 
 instance Exception ParseFailedException
-
--- Pattern
 
 data Pattern a b r = Pattern
   {
@@ -106,24 +104,6 @@ f_shown x = later (TLB.fromText . T.pack . show . x)
 
 f_shown_two :: Show b => (a -> b) -> Format r (a -> r)
 f_shown_two x = left 2 '0' %. f_shown x
-
-pat_hour :: Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
-pat_hour = pat_lens hour (p_a <|> p_b) f_shown_two "hour: 00-24"
-  where
-    p_a = digitsToInt <$> oneOf ['0', '1'] <*> digit 
-    p_b = digitsToInt <$> char '2' <*> oneOf ['0'..'3']
-
-pat_hour_12 :: Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
-pat_hour_12 = pat_lens hour (p_a <|> p_b) f_shown_two "hour: 00-12"
-  where
-    p_a = digitsToInt <$> char '0' <*> digit
-    p_b = digitsToInt <$> char '1' <*> oneOf ['0'..'2']
-
-pat_minute :: Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
-pat_minute = pat_lens minute p_sixty f_shown_two "minute: 00-59"
-
-pat_second :: Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
-pat_second = pat_lens second p_sixty f_shown_two "second: 00-59"
 
 pat_string :: String -> Pattern String String String
 pat_string s = Pattern p_str f_str
