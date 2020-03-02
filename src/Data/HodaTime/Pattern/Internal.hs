@@ -8,7 +8,7 @@ module Data.HodaTime.Pattern.Internal
   ,format
   ,(<>)         -- TODO: Remove
   ,(<%)
- -- ,(%>)
+  ,(%>)
   ,pat_string
   ,pat_char
   ,pat_lens
@@ -19,7 +19,6 @@ module Data.HodaTime.Pattern.Internal
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (LocalTime)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -30,6 +29,10 @@ import Text.Parsec hiding (many, optional, (<|>), parse)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
 import Data.HodaTime.Internal.Lens (view, set, Lens)
+
+-- TODO: Remove these when we get %> fixed
+import Formatting (runFormat)
+import Formatting.Internal (Format(..))
 
 -- x = maybe (error "duh") id $ localTime 1 2 3 0
 -- d = maybe (error "duh") id $ localTime 0 0 0 0
@@ -83,20 +86,20 @@ parse' (Pattern p _) s def =
 format :: Pattern a r String -> r
 format (Pattern _ fmt) = formatToString fmt
 
-pat_lens :: Lens LocalTime LocalTime Int Int
-              -> Parser Int String
-              -> ((LocalTime -> Int) -> Format String (LocalTime -> String))
+pat_lens :: Lens s s a a
+              -> Parser a String
+              -> ((s -> a) -> Format String (s -> String))
               -> String
-              -> Pattern (LocalTime -> LocalTime) (LocalTime -> String) String
+              -> Pattern (s -> s) (s -> String) String
 pat_lens l p f err = Pattern par fmt
   where
     fmt = f $ view l
     par = set l <$> p <?> err
 
-digitsToInt :: Char -> Char -> Int
+digitsToInt :: (Num n, Read n) => Char -> Char -> n
 digitsToInt a b = read [a, b]
 
-p_sixty :: Parser Int String
+p_sixty :: (Num n, Read n) => Parser n String
 p_sixty = digitsToInt <$> oneOf ['0'..'5'] <*> digit
 
 f_shown :: Show b => (a -> b) -> Format r (a -> r)
