@@ -92,7 +92,8 @@ library
                    Data.HodaTime.TimeZone.Internal,
                    Data.HodaTime.TimeZone.Platform,
                    Data.HodaTime.ZonedDateTime.Internal,
-                   Data.HodaTime.Pattern.Internal
+                   Data.HodaTime.Pattern.Internal,
+                   Data.HodaTime.Pattern.Defaults
   if !os(windows)
     other-modules:
                    Data.HodaTime.TimeZone.Olson,

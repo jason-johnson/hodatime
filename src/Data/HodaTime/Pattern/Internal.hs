@@ -4,6 +4,8 @@
 module Data.HodaTime.Pattern.Internal
 (
    Pattern(..)
+  ,DefaultForParse(..)
+  ,parse
   ,parse'
   ,format
   ,(<>)         -- TODO: Remove
@@ -29,16 +31,11 @@ import Text.Parsec hiding (many, optional, (<|>), parse)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
 import Data.HodaTime.Internal.Lens (view, set, Lens)
+import Data.HodaTime.Pattern.Defaults (DefaultForParse(..))
 
 -- TODO: Remove these when we get %> fixed
 import Formatting (runFormat)
 import Formatting.Internal (Format(..))
-
--- x = maybe (error "duh") id $ localTime 1 2 3 0
--- d = maybe (error "duh") id $ localTime 0 0 0 0
--- pat = pat_hour <% pat_char ':' <> pat_minute <% pat_char ':' <> pat_second
--- parse' pat "01:01:01" d
--- format pat x
 
 type Parser a r = Parsec r () a
 
@@ -59,15 +56,12 @@ data Pattern a b r = Pattern
     par = parse1 <* parse2
     fmt = format1 % format2
 
--- (%>) :: Pattern c r r -> Pattern (a -> a) (a -> r) r -> Pattern (a -> a) (a -> r) r
--- (Pattern parse1 format1) %> (Pattern parse2 format2) = Pattern par fmt
---  where
---    par = parse1 *> parse2
---    fmt = (format1 :: Format r r) % format2
-
--- BUG: The above fails with
--- Expected type: Format r1 r1
--- Actual type: Format r r
+-- | Merge a static pattern with one that operates on a data type (BUG: currently ignores the left pattern on format operations)
+(%>) :: Pattern c r r -> Pattern (a -> a) (a -> r) r -> Pattern (a -> a) (a -> r) r
+(Pattern parse1 format1) %> (Pattern parse2 format2) = Pattern par fmt
+  where
+    par = parse1 *> parse2
+    fmt = Format $ runFormat format1 *> runFormat format2   -- TODO: discards the formatter on the left
 
 instance Semigroup (Pattern (a -> a) (b -> r) r) where
   (Pattern parse1 format1) <> (Pattern parse2 format2) = Pattern par fmt
@@ -75,7 +69,8 @@ instance Semigroup (Pattern (a -> a) (b -> r) r) where
       par = (\f g -> \x -> g . f $ x) <$> parse1 <*> parse2
       fmt = format1 `mappend` format2
 
--- TODO: We want to have a function parse which gets a default a to use
+parse :: (MonadThrow m, DefaultForParse a) => Pattern (a -> a) b String -> SourceName -> m a
+parse pat s = parse' pat s getDefault
 
 parse' :: MonadThrow m => Pattern (a -> a) b String -> SourceName -> a -> m a
 parse' (Pattern p _) s def =
