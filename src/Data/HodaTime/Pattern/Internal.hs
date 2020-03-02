@@ -50,6 +50,7 @@ data Pattern a b r = Pattern
     ,_patFormat :: Format r b
   }
 
+-- | Merge a pattern that operates on a data type with a static pattern
 (<%) :: Pattern a b r -> Pattern c r r -> Pattern a b r
 (Pattern parse1 format1) <% (Pattern parse2 format2) = Pattern par fmt
   where
@@ -66,7 +67,7 @@ data Pattern a b r = Pattern
 instance Semigroup (Pattern (a -> a) (b -> r) r) where
   (Pattern parse1 format1) <> (Pattern parse2 format2) = Pattern par fmt
     where
-      par = (\f g -> \x -> g . f $ x) <$> parse1 <*> parse2
+      par = (.) <$> parse1 <*> parse2
       fmt = format1 `mappend` format2
 
 parse :: (MonadThrow m, DefaultForParse a) => Pattern (a -> a) b String -> SourceName -> m a
