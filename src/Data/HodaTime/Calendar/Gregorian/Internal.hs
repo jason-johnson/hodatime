@@ -54,10 +54,10 @@ instance IsCalendar Gregorian where
   type Date Gregorian = CalendarDate Gregorian
     
   data DayOfWeek Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
-    deriving (Show, Eq, Ord, Enum, Bounded)
+    deriving (Show, Read, Eq, Ord, Enum, Bounded)
     
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December
-    deriving (Show, Eq, Ord, Enum, Bounded)
+    deriving (Show, Read, Eq, Ord, Enum, Bounded)
     
   day' f (CalendarDate _ d m y) = mkcd . (rest+) <$> f (fromIntegral d)
     where
