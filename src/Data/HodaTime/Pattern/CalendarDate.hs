@@ -13,7 +13,8 @@ import Data.HodaTime.Pattern.Internal
 import Data.HodaTime.CalendarDateTime.Internal (HasDate, day, monthl, year, Month, CalendarDate, IsCalendar)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
-import Text.Parsec (digit, count, string, choice)
+import Control.Applicative ((<|>))
+import Text.Parsec (digit, count, string, choice, oneOf, char)
 import Formatting (left, (%.), later)
 
 -- d1 = maybe (error "duh") id $ calendarDate 1 January 2000
@@ -39,4 +40,7 @@ pat_month = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
     fmt' x = later (TLB.fromText . T.pack . show . (toEnum :: Int -> Month cal) . x)
 
 pat_day :: HasDate d => Pattern (d -> d) (d -> String) String
-pat_day = pat_lens day p_sixty f_shown_two "second: 00-59"
+pat_day = pat_lens day (p_a <|> p_b) f_shown_two "day: 01-31"
+  where
+    p_a = digitsToInt <$> oneOf ['0'..'2'] <*> digit
+    p_b = digitsToInt <$> char '3' <*> oneOf ['0', '1']
