@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs #-}
 module Data.HodaTime.Pattern.CalendarDate
 (
   -- TODO: We don't expose these, they are building blocks
@@ -10,7 +11,7 @@ module Data.HodaTime.Pattern.CalendarDate
 where
 
 import Data.HodaTime.Pattern.Internal
-import Data.HodaTime.CalendarDateTime.Internal (HasDate, day, monthl, year, Month, CalendarDate, IsCalendar)
+import Data.HodaTime.CalendarDateTime.Internal (HasDate, day, monthl, year, Month, IsCalendar)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Control.Applicative ((<|>))
@@ -30,7 +31,7 @@ pat_year c = pat_lens year p fmt $ "year: " ++ zeros ++ "-" ++ nines
     p = read <$> count c digit 
     fmt x = left c '0' %. f_shown x
 
-pat_month :: forall cal. (Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal), IsCalendar cal) => Pattern (CalendarDate cal -> CalendarDate cal) (CalendarDate cal -> String) String
+pat_month :: forall cal d c. (d ~ c cal, IsCalendar cal, HasDate d, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
 pat_month = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
   where
     fm = minBound :: Month cal
