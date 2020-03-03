@@ -42,8 +42,10 @@ type Parser a r = Parsec r () a
 data ParseFailedException = ParseFailedException String
   deriving (Typeable, Show)
 
+-- | Exception for when a parse fails on the given string
 instance Exception ParseFailedException
 
+-- | Pattern for the data type which is used by the 'parse', 'format' and 'parse\'' functions
 data Pattern a b r = Pattern
   {
      _patParse :: Parser a r
@@ -70,15 +72,20 @@ instance Semigroup (Pattern (a -> a) (b -> r) r) where
       par = (.) <$> parse1 <*> parse2
       fmt = format1 `mappend` format2
 
+-- | Parse a 'String' given by 'Pattern' for the data type 'a'.  Will call 'throwM' on failure.
+-- NOTE: A default 'a' will be used to determine what happens for fields which do not appear in
+--       the parse
 parse :: (MonadThrow m, DefaultForParse a) => Pattern (a -> a) b String -> SourceName -> m a
 parse pat s = parse' pat s getDefault
 
+-- | Like 'parse' above but lets the user provide an 'a' as the default to use
 parse' :: MonadThrow m => Pattern (a -> a) b String -> SourceName -> a -> m a
 parse' (Pattern p _) s def =
   case runParser p () s s of
     Left err -> throwM . ParseFailedException $ show err
     Right r -> return . r $ def
 
+-- | Use the given 'Pattern' to format the data type 'a' into a 'String'
 format :: Pattern a r String -> r
 format (Pattern _ fmt) = formatToString fmt
 
