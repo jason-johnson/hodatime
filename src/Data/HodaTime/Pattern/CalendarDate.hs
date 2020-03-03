@@ -10,12 +10,11 @@ module Data.HodaTime.Pattern.CalendarDate
 where
 
 import Data.HodaTime.Pattern.Internal
-import Data.HodaTime.CalendarDateTime.Internal (HasDate, day, month, monthl, year, Month, CalendarDate, IsCalendar)
+import Data.HodaTime.CalendarDateTime.Internal (HasDate, day, monthl, year, Month, CalendarDate, IsCalendar)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
-import Text.Parsec (digit, count, oneOf, string, choice)
-import Formatting (left, (%.), mapf, later)
-import Data.HodaTime.Internal.Lens (view, set, Lens)
+import Text.Parsec (digit, count, string, choice)
+import Formatting (left, (%.), later)
 
 -- d1 = maybe (error "duh") id $ calendarDate 1 January 2000
 -- d2 = maybe (error "duh") id $ calendarDate 3 March 2020
@@ -31,13 +30,12 @@ pat_year c = pat_lens year p fmt $ "year: " ++ zeros ++ "-" ++ nines
     fmt x = left c '0' %. f_shown x
 
 pat_month :: forall cal. (Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal), IsCalendar cal) => Pattern (CalendarDate cal -> CalendarDate cal) (CalendarDate cal -> String) String
-pat_month = Pattern p fmt
+pat_month = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
   where
-    months' = [minBound..maxBound] :: [Month cal]
-    months = choice . fmap (string . show) $ months'
-    p = set monthl <$> p'
+    fm = minBound :: Month cal
+    lm = maxBound :: Month cal
+    months = choice . fmap (string . show) $ [fm..lm]
     p' = (fromEnum :: Month cal -> Int) . read <$> months
-    fmt = fmt' $ view monthl
     fmt' x = later (TLB.fromText . T.pack . show . (toEnum :: Int -> Month cal) . x)
 
 pat_day :: HasDate d => Pattern (d -> d) (d -> String) String
