@@ -45,7 +45,7 @@ unitTests = testGroup "Unit tests"
 calDateProps :: TestTree
 calDateProps = testGroup "CalendarDateTime conversion"
   [
-     QC.testProperty "format CalendarDateTime -> parse CalendarDateTime == id" $ testFormatToParseIdentity
+     QC.testProperty "format pattern CalendarDateTime -> parse pattern CalendarDateTime == id" $ testFormatToParseIdentity
   ]
   where
     testFormatToParseIdentity (RandomStandardDate y mon d) (RandomTime h m s) = monadicIO $ do
