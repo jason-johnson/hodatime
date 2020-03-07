@@ -7,11 +7,9 @@ where
 import Test.Tasty
 import qualified Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
-import Test.Tasty.HUnit
+import Test.Tasty.HUnit ()
 import HodaTime.Util
 import Data.HodaTime.Offset
-import Control.Applicative (Const(..))
-import Data.Functor.Identity (Identity(..))
 
 offsetTests :: TestTree
 offsetTests = testGroup "Offset Tests" [scProps, qcProps, unitTests]

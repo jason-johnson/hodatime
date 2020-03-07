@@ -13,7 +13,7 @@ import HodaTime.Util
 import Data.HodaTime.LocalTime (localTime, HasLocalTime(..))
 import Data.HodaTime.CalendarDate (day, monthl, next, previous, dayOfWeek)
 import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
-import Data.HodaTime.CalendarDateTime (on, at)
+import Data.HodaTime.CalendarDateTime (on)
 
 calendarDateTimeTests :: TestTree
 calendarDateTimeTests = testGroup "CalendarDateTimeTests Tests" [qcProps, unitTests]
