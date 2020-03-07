@@ -15,12 +15,13 @@ import Data.HodaTime.CalendarDateTime.Internal (HasDate, day, monthl, year, Mont
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Control.Applicative ((<|>))
-import Text.Parsec (digit, count, string, choice, oneOf, char)
+import Text.Parsec (digit, count, string, choice, oneOf, char, try)
 import Formatting (left, (%.), later)
 
 -- d1 = maybe (error "duh") id $ calendarDate 1 January 2000
 -- d2 = maybe (error "duh") id $ calendarDate 3 March 2020
 -- pat = pat_year 4 <% pat_char '/'
+-- parse' (pat_year 4 <% pat_char '/' <> pat_month <% pat_char '/' <> pat_day <% pat_char ' ' <> pat_hour <% pat_char ':' <> pat_minute <% pat_char ':' <> pat_second) "2000/March/01 01:01:01" dt
 
 pat_year :: HasDate d => Int -> Pattern (d -> d) (d -> String) String
 pat_year c = pat_lens year p fmt $ "year: " ++ zeros ++ "-" ++ nines
@@ -36,7 +37,7 @@ pat_month = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
   where
     fm = minBound :: Month cal
     lm = maxBound :: Month cal
-    months = choice . fmap (string . show) $ [fm..lm]
+    months = choice . fmap (try . string . show) $ [fm..lm]
     p' = (fromEnum :: Month cal -> Int) . read <$> months
     fmt' x = later (TLB.fromText . T.pack . show . (toEnum :: Int -> Month cal) . x)
 
