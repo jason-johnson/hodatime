@@ -2,6 +2,7 @@ module Data.HodaTime.LocalTime.Internal
 (
    LocalTime(..)
   ,HasLocalTime(..)
+  ,localTime
   ,Hour
   ,Minute
   ,Second
@@ -11,10 +12,13 @@ module Data.HodaTime.LocalTime.Internal
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..), CalendarDateTime(..), CalendarDate, day, IsCalendar(..))
-import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs)
+import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs, secondsFromHours, secondsFromMinutes)
 import Data.HodaTime.Constants (secondsPerDay)
+import Data.HodaTime.Exceptions
 import Data.Functor.Identity (Identity(..))
 import Data.Word (Word32)
+import Control.Monad (unless)
+import Control.Monad.Catch (MonadThrow, throwM)
 
 type Hour = Int
 type Minute = Int
@@ -85,3 +89,17 @@ fromSecondsRolled date nsecs secs = CalendarDateTime date' $ LocalTime secs' nse
     where
       (d, secs') = secs `divMod` secondsPerDay
       date' = if d == 0 then date else runIdentity . day (Identity . (+ fromIntegral d)) $ date  -- NOTE: inlining the modify lens here
+
+-- constructors
+
+-- | Create a new 'LocalTime' from an hour, minute, second and nanosecond if values are valid
+localTime :: MonadThrow m => Hour -> Minute -> Second -> Nanosecond -> m LocalTime
+localTime h m s ns = do
+  unless (h < 24 && h >= 0) $ throwM InvalidHourException
+  unless (m < 60 && m >= 0) $ throwM InvalidMinuteException
+  unless (s < 60 && m >= 0) $ throwM InvalidSecondException
+  unless (ns >= 0) $ throwM InvalidNanoSecondException
+  return $ LocalTime (h' + m' + fromIntegral s) (fromIntegral ns)
+  where
+    h' = secondsFromHours h
+    m' = secondsFromMinutes m

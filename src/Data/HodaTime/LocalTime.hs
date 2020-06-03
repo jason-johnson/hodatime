@@ -27,19 +27,3 @@ module Data.HodaTime.LocalTime
 where
 
 import Data.HodaTime.LocalTime.Internal
-import Data.HodaTime.Internal (secondsFromHours, secondsFromMinutes)
-import Control.Monad (guard)
-
--- Construction
-
--- | Create a new 'LocalTime' from an hour, minute, second and nanosecond if values are valid, nothing otherwise
-localTime :: Hour -> Minute -> Second -> Nanosecond -> Maybe LocalTime
-localTime h m s ns = do
-  guard $ h < 24 && h >= 0
-  guard $ m < 60 && m >= 0
-  guard $ s < 60 && m >= 0
-  guard $ ns >= 0
-  return $ LocalTime (h' + m' + fromIntegral s) (fromIntegral ns)
-  where
-    h' = secondsFromHours h
-    m' = secondsFromMinutes m

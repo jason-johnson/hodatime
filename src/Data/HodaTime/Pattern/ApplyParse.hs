@@ -10,13 +10,10 @@ module Data.HodaTime.Pattern.ApplyParse
 )
 where
 
-import Data.HodaTime.LocalTime.Internal (LocalTime(..))
-import Data.HodaTime.Exceptions
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, CalendarDate(..), CalendarDateTime(..), Month, at)
+import Data.HodaTime.LocalTime.Internal (LocalTime(..), localTime)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, CalendarDate(..), CalendarDateTime(..), at)
 import Data.HodaTime.Pattern.ParseTypes
-import Control.Monad.Catch (MonadThrow, throwM)
-
-import Data.HodaTime.LocalTime (localTime)   -- TODO: REMOVE THIS RIGHT AWAY!   THIS IS NOT ALLOWED
+import Control.Monad.Catch (MonadThrow)
 
 defaultTime = TimeInfo 0 0 0 0
 
@@ -43,11 +40,9 @@ class ApplyParse a b | b -> a where
   applyParse :: MonadThrow m => (a -> a) -> m b
 
 instance ApplyParse TimeInfo LocalTime where
-  applyParse f = g $ localTime (_hour ti) (_minute ti) (_second ti) (_nanoSecond ti)
+  applyParse f = localTime (_hour ti) (_minute ti) (_second ti) (_nanoSecond ti)
     where
       ti = f defaultTime
-      g Nothing = throwM DayRequiredException
-      g (Just x) = pure x
 
 instance IsCalendar cal => ApplyParse (DateInfo cal) (CalendarDate cal) where
   applyParse f = undefined

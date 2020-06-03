@@ -16,33 +16,65 @@ module Data.HodaTime.Exceptions
   ,DayRequiredException(..)
   ,MonthRequiredException(..)
   ,YearRequiredException(..)
+  ,InvalidHourException(..)
+  ,InvalidMinuteException(..)
+  ,InvalidSecondException(..)
+  ,InvalidNanoSecondException(..)
 )
 where
 
 import Control.Exception (Exception)
 import Data.Typeable (Typeable)
 
--- | Exception for when a parse fails on the given string
+-- Parsing
+
+-- | Parse failed on the given string
 data ParseFailedException = ParseFailedException String
   deriving (Typeable, Show)
 
--- | Exception for when a parse fails on the given string (documentation defined on the instance - does this one show up?)
+-- | Parse failed on the given string (documentation defined on the instance - does this one show up?)
 instance Exception ParseFailedException
 
--- | Exception for when a parse fails on the given string
+-- | Day is required for parse pattern
 data DayRequiredException = DayRequiredException
   deriving (Typeable, Show)
 
 instance Exception DayRequiredException
 
--- | Exception for when a parse fails on the given string
+-- | Month is required for parse pattern
 data MonthRequiredException = MonthRequiredException
   deriving (Typeable, Show)
 
 instance Exception MonthRequiredException
 
--- | Exception for when a parse fails on the given string
+-- | Year is required for parse pattern
 data YearRequiredException = YearRequiredException
   deriving (Typeable, Show)
 
 instance Exception YearRequiredException
+
+-- Constructor exceptions
+
+-- | Given hour was not valid
+data InvalidHourException = InvalidHourException
+  deriving (Typeable, Show)
+
+instance Exception InvalidHourException
+
+-- | Given minute was not valid
+data InvalidMinuteException = InvalidMinuteException
+  deriving (Typeable, Show)
+
+instance Exception InvalidMinuteException
+
+-- | Given second was not valid
+data InvalidSecondException = InvalidSecondException
+  deriving (Typeable, Show)
+
+instance Exception InvalidSecondException
+
+-- | Given nanosecond was not valid
+data InvalidNanoSecondException = InvalidNanoSecondException
+  deriving (Typeable, Show)
+
+instance Exception InvalidNanoSecondException
