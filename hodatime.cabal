@@ -77,7 +77,8 @@ library
                    Data.HodaTime.Pattern,
                    Data.HodaTime.Pattern.LocalTime,
                    Data.HodaTime.Pattern.CalendarDate,
-                   Data.HodaTime.Pattern.ZonedDateTime
+                   Data.HodaTime.Pattern.ZonedDateTime,
+                   Data.HodaTime.Exceptions
   other-modules:
                    Data.HodaTime.Constants,
                    Data.HodaTime.Internal,
@@ -96,7 +97,8 @@ library
                    Data.HodaTime.TimeZone.Platform,
                    Data.HodaTime.ZonedDateTime.Internal,
                    Data.HodaTime.Pattern.Internal,
-                   Data.HodaTime.Pattern.Defaults
+                   Data.HodaTime.Pattern.ApplyParse
+                   Data.HodaTime.Pattern.ParseTypes
   if !os(windows)
     other-modules:
                    Data.HodaTime.TimeZone.Olson,

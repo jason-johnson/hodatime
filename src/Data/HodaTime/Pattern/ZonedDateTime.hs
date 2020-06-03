@@ -32,7 +32,6 @@ data ZonedDateTimeInfo cal m =
     ,zone :: String
   }
 
-
 pat_yearz :: (MonadThrow m, IsCalendar cal) => Int -> Pattern (ZonedDateTimeInfo cal m -> ZonedDateTimeInfo cal m) (ZonedDateTime cal -> String) String
 pat_yearz c = Pattern p fmt
   where

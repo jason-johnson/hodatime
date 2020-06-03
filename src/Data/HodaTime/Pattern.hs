@@ -13,7 +13,6 @@ module Data.HodaTime.Pattern
 (
   -- * Types
    Pattern(..)
-  ,DefaultForParse(..)
   -- * Parsing / Formatting
   ,parse
   ,parse'

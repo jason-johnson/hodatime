@@ -7,6 +7,7 @@ module Data.HodaTime.Pattern.Internal
   ,DefaultForParse(..)
   ,parse
   ,parse'
+  ,parse''
   ,format
   ,(<>)         -- TODO: Remove
   ,(<%)
@@ -14,6 +15,7 @@ module Data.HodaTime.Pattern.Internal
   ,pat_string
   ,pat_char
   ,pat_lens
+  ,pat_lens'
   ,digitsToInt
   ,p_sixty
   ,f_shown
@@ -21,9 +23,7 @@ module Data.HodaTime.Pattern.Internal
 )
 where
 
-import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
-import Data.Typeable (Typeable)
 import Data.Semigroup ((<>), Semigroup)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
@@ -31,19 +31,14 @@ import Text.Parsec hiding (many, optional, (<|>), parse)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
 import Data.HodaTime.Internal.Lens (view, set, Lens)
-import Data.HodaTime.Pattern.Defaults (DefaultForParse(..))
+import Data.HodaTime.Pattern.ApplyParse (DefaultForParse(..), ApplyParse(..))
+import Data.HodaTime.Exceptions
 
 -- TODO: Remove these when we get %> fixed
 import Formatting (runFormat)
 import Formatting.Internal (Format(..))
 
 type Parser a r = Parsec r () a
-
-data ParseFailedException = ParseFailedException String
-  deriving (Typeable, Show)
-
--- | Exception for when a parse fails on the given string
-instance Exception ParseFailedException
 
 -- | Pattern for the data type which is used by the 'parse', 'format' and 'parse\'' functions
 data Pattern a b r = Pattern
@@ -85,6 +80,12 @@ parse' (Pattern p _) s def =
     Left err -> throwM . ParseFailedException $ show err
     Right r -> return . r $ def
 
+parse'' :: (MonadThrow m, ApplyParse a b) => Pattern (a -> a) (b -> String) String -> SourceName -> m b
+parse'' (Pattern p _) s =
+  case runParser p () s s of
+    Left err -> throwM . ParseFailedException $ show err
+    Right r -> applyParse r
+
 -- | Use the given 'Pattern' to format the data type 'a' into a 'String'
 format :: Pattern a r String -> r
 format (Pattern _ fmt) = formatToString fmt
@@ -98,6 +99,17 @@ pat_lens l p f err = Pattern par fmt
   where
     fmt = f $ view l
     par = set l <$> p <?> err
+
+pat_lens' :: Lens s s a a
+              -> Lens s' s' a' a'
+              -> Parser a String
+              -> ((s' -> a') -> Format String (s' -> String))
+              -> String
+              -> Pattern (s -> s) (s' -> String) String
+pat_lens' lp lf p f err = Pattern par fmt
+  where
+    fmt = f $ view lf
+    par = set lp <$> p <?> err
 
 digitsToInt :: (Num n, Read n) => Char -> Char -> n
 digitsToInt a b = read [a, b]
