@@ -22,6 +22,7 @@ import Data.Word (Word8, Word32)
 
 -- CalendarDate
 
+-- | Used by several smart constructors to chose a day relative to the start or end of the month.
 data DayNth =
     FourthToLast
   | ThirdToLast

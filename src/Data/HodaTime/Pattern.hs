@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Data.HodaTime.Duration
+-- Module      :  Data.HodaTime.Pattern
 -- Copyright   :  (C) 2016 Jason Johnson
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
