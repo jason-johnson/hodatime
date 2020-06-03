@@ -37,8 +37,8 @@ module Data.HodaTime.ZonedDateTime
   ,fromCalendarDateTimeAll
   ,resolve
   -- * Exceptions
-  ,DateTimeDoesNotExistException(..)
-  ,DateTimeAmbiguousException(..)
+  ,DateTimeDoesNotExistException
+  ,DateTimeAmbiguousException
 )
 where
 

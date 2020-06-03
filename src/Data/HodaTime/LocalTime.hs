@@ -16,13 +16,20 @@
 ----------------------------------------------------------------------------
 module Data.HodaTime.LocalTime
 (
+  -- * Types
    LocalTime
   ,HasLocalTime(..)
   ,Hour
   ,Minute
   ,Second
   ,Nanosecond
+  -- * Constructors
   ,localTime
+  -- * Exceptions
+  ,InvalidHourException
+  ,InvalidMinuteException
+  ,InvalidSecondException
+  ,InvalidNanoSecondException
 )
 where
 

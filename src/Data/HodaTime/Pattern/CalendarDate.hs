@@ -7,6 +7,7 @@ module Data.HodaTime.Pattern.CalendarDate
    pat_day
   ,pat_month
   ,pat_year
+  -- * Patterns
 )
 where
 

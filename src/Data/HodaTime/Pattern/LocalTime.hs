@@ -8,6 +8,7 @@ module Data.HodaTime.Pattern.LocalTime
   ,pat_minute'
   ,pat_second
   ,pat_second'
+  -- * Patterns
 )
 where
 

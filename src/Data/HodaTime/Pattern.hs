@@ -23,6 +23,8 @@ module Data.HodaTime.Pattern
   -- * Patterns
   ,pat_string
   ,pat_char
+  -- * Exceptions
+  ,ParseFailedException
 )
 where
 

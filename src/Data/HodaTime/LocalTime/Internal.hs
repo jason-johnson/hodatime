@@ -2,23 +2,56 @@ module Data.HodaTime.LocalTime.Internal
 (
    LocalTime(..)
   ,HasLocalTime(..)
-  ,localTime
   ,Hour
   ,Minute
   ,Second
   ,Nanosecond
+  ,localTime
   ,midnight
+  ,InvalidHourException(..)
+  ,InvalidMinuteException(..)
+  ,InvalidSecondException(..)
+  ,InvalidNanoSecondException(..)
 )
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..), CalendarDateTime(..), CalendarDate, day, IsCalendar(..))
 import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs, secondsFromHours, secondsFromMinutes)
 import Data.HodaTime.Constants (secondsPerDay)
-import Data.HodaTime.Exceptions
 import Data.Functor.Identity (Identity(..))
 import Data.Word (Word32)
 import Control.Monad (unless)
 import Control.Monad.Catch (MonadThrow, throwM)
+import Control.Exception (Exception)
+import Data.Typeable (Typeable)
+
+-- Exceptions
+
+-- | Given hour was not valid
+data InvalidHourException = InvalidHourException
+  deriving (Typeable, Show)
+
+instance Exception InvalidHourException
+
+-- | Given minute was not valid
+data InvalidMinuteException = InvalidMinuteException
+  deriving (Typeable, Show)
+
+instance Exception InvalidMinuteException
+
+-- | Given second was not valid
+data InvalidSecondException = InvalidSecondException
+  deriving (Typeable, Show)
+
+instance Exception InvalidSecondException
+
+-- | Given nanosecond was not valid
+data InvalidNanoSecondException = InvalidNanoSecondException
+  deriving (Typeable, Show)
+
+instance Exception InvalidNanoSecondException
+
+-- Types
 
 type Hour = Int
 type Minute = Int

@@ -12,14 +12,9 @@
 module Data.HodaTime.Exceptions
 (
   -- * Types
-   ParseFailedException(..)
-  ,DayRequiredException(..)
+   DayRequiredException(..)
   ,MonthRequiredException(..)
   ,YearRequiredException(..)
-  ,InvalidHourException(..)
-  ,InvalidMinuteException(..)
-  ,InvalidSecondException(..)
-  ,InvalidNanoSecondException(..)
 )
 where
 
@@ -27,13 +22,6 @@ import Control.Exception (Exception)
 import Data.Typeable (Typeable)
 
 -- Parsing
-
--- | Parse failed on the given string
-data ParseFailedException = ParseFailedException String
-  deriving (Typeable, Show)
-
--- | Parse failed on the given string (documentation defined on the instance - does this one show up?)
-instance Exception ParseFailedException
 
 -- | Day is required for parse pattern
 data DayRequiredException = DayRequiredException
@@ -52,29 +40,3 @@ data YearRequiredException = YearRequiredException
   deriving (Typeable, Show)
 
 instance Exception YearRequiredException
-
--- Constructor exceptions
-
--- | Given hour was not valid
-data InvalidHourException = InvalidHourException
-  deriving (Typeable, Show)
-
-instance Exception InvalidHourException
-
--- | Given minute was not valid
-data InvalidMinuteException = InvalidMinuteException
-  deriving (Typeable, Show)
-
-instance Exception InvalidMinuteException
-
--- | Given second was not valid
-data InvalidSecondException = InvalidSecondException
-  deriving (Typeable, Show)
-
-instance Exception InvalidSecondException
-
--- | Given nanosecond was not valid
-data InvalidNanoSecondException = InvalidNanoSecondException
-  deriving (Typeable, Show)
-
-instance Exception InvalidNanoSecondException

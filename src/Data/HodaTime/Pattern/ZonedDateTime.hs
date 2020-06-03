@@ -5,6 +5,7 @@ module Data.HodaTime.Pattern.ZonedDateTime
   ,pat_monthz
   ,pat_yearz
   ,ZonedDateTimeInfo(..)
+  -- * Patterns
 )
 where
 
