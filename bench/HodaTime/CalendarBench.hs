@@ -6,14 +6,33 @@ module HodaTime.CalendarBench
 where
 
 import Criterion.Main
-import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), fromNthDay, Gregorian)
+import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), fromNthDay, Gregorian, daysToYearMonthDay, daysToYearMonthDay')
 import Data.HodaTime.CalendarDate (DayNth(..))
 
 calendarBenches :: Benchmark
-calendarBenches = bgroup "Calendar Benchmarks" [fromNthBench, fromNthBenchBackwards]
+calendarBenches = bgroup "Calendar Benchmarks" [fromNthBenches, daysToYearMonthDayBenches, daysToYearMonthDayPrimeBenches]
 
-fromNthBench :: Benchmark
-fromNthBench = bench "fromNthBench"  $ nf (fromNthDay Second Wednesday November) 2017
+fromNthBenches :: Benchmark
+fromNthBenches = bgroup "fromNth" [
+   bench "Forward"  $ nf (fromNthDay Second Wednesday November) 2017
+  ,bench "Backwards"  $ nf (fromNthDay SecondToLast Wednesday November) 2017
+  ]
 
-fromNthBenchBackwards :: Benchmark
-fromNthBenchBackwards = bench "fromNthBench Backwards"  $ nf (fromNthDay SecondToLast Wednesday November) 2017
+daysToYearMonthDayBenches :: Benchmark
+daysToYearMonthDayBenches = bgroup "daysToYearMonthDay" [
+   bench "0" $ nf daysToYearMonthDay 0
+  ,bench "4759" $ nf daysToYearMonthDay 4759
+  ,bench "59065" $ nf daysToYearMonthDay 59065
+  ,bench "4759065" $ nf daysToYearMonthDay 4759065
+  ,bench "-475945" $ nf daysToYearMonthDay (-475945)
+  ]
+
+daysToYearMonthDayPrimeBenches :: Benchmark
+daysToYearMonthDayPrimeBenches = bgroup "daysToYearMonthDay Prime" [
+   bench "0" $ nf daysToYearMonthDay' 0
+  ,bench "4759" $ nf daysToYearMonthDay' 4759
+  ,bench "59065" $ nf daysToYearMonthDay' 59065
+  ,bench "4759065" $ nf daysToYearMonthDay' 4759065
+  ,bench "-475945" $ nf daysToYearMonthDay' (-475945)
+  ]
+

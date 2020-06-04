@@ -8,6 +8,9 @@ module Data.HodaTime.Calendar.Gregorian
   ,Month(..)
   ,DayOfWeek(..)
   ,Gregorian
+  -- * Debug - please remove
+  ,daysToYearMonthDay'
+  ,daysToYearMonthDay
 )
 where
 

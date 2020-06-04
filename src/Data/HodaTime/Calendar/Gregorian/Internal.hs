@@ -14,6 +14,7 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,nthDayToDayOfMonth
   ,dayOfWeekFromDays
   ,instantToYearMonthDay
+  ,daysToYearMonthDay'
 )
 where
 
@@ -27,6 +28,7 @@ import Data.Maybe (fromJust)
 import Data.List (findIndex)
 import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
+import Data.Array.Unboxed ((!))
 import Control.Monad (guard)
 
 -- Constants
@@ -206,11 +208,11 @@ daysToYearMonthDay days = (fromIntegral y, fromIntegral m'', fromIntegral d')
     y = startDate + centuryYears + fourYears + oneYears
   
 -- TODO: At some point we should see how much a difference the caching makes
-_daysToYearMonthDay' :: Int32 -> (Int32, Int8, Int8)
-_daysToYearMonthDay' days = (y',m'', fromIntegral d')
+daysToYearMonthDay' :: Int32 -> (Int32, Int8, Int8)
+daysToYearMonthDay' days = (y',m'', fromIntegral d')
   where
     (centuryYears, centuryDays, isExtraCycleDay) = calculateCenturyDays days
-    decodeEntry (DTCacheTable xs _ _) = (\x -> (decodeYear x, decodeMonth x, decodeDay x)) . (!!) xs
+    decodeEntry (DTCacheTable xs _) = (\x -> (decodeYear x, decodeMonth x, decodeDay x)) . (!) xs
     (y,m,d) = decodeEntry cacheTable . fromIntegral $ centuryDays
     (m',d') = if isExtraCycleDay then (1,29) else (m,d)
     (y',m'') = (2000 + centuryYears + fromIntegral y, fromIntegral $ m')
