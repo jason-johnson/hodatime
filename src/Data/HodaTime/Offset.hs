@@ -27,38 +27,24 @@ module Data.HodaTime.Offset
   ,minutes
   ,hours
   -- * Math
-  ,add
-  ,minus
+  ,addClamped
+  ,minusClamped
 )
 where
 
-import Data.HodaTime.OffsetDateTime.Internal
-import Data.HodaTime.Constants (secondsPerHour)
-import Data.HodaTime.Internal (secondsFromSeconds, secondsFromMinutes, secondsFromHours, clamp, hoursFromSecs, minutesFromSecs, secondsFromSecs)
+import Data.HodaTime.Offset.Internal
+import Data.HodaTime.Internal (secondsFromMinutes, secondsFromHours, clamp, hoursFromSecs, minutesFromSecs, secondsFromSecs)
 
 -- Offset specific constants
 
-maxOffsetHours :: Num a => a
-maxOffsetHours = 18
-
 minOffsetHours :: Num a => a
 minOffsetHours = negate maxOffsetHours
-
-maxOffsetSeconds :: Num a => a
-maxOffsetSeconds = maxOffsetHours * secondsPerHour
-
-minOffsetSeconds :: Num a => a
-minOffsetSeconds = negate maxOffsetSeconds
 
 maxOffsetMinutes :: Num a => a
 maxOffsetMinutes = maxOffsetHours * 60
 
 minOffsetMinutes :: Num a => a
 minOffsetMinutes = negate maxOffsetMinutes
-
--- | Create an 'Offset' of (clamped) s seconds.
-fromSeconds :: Integral a => a -> Offset
-fromSeconds = Offset . secondsFromSeconds . clamp minOffsetSeconds maxOffsetSeconds
 
 -- | Create an 'Offset' of (clamped) m minutes.
 fromMinutes :: Integral a => a -> Offset
@@ -82,11 +68,3 @@ minutes f (Offset secs) = minutesFromSecs fromSeconds f secs
 hours :: Functor f => (Int -> f Int) -> Offset -> f Offset
 hours f (Offset secs) = hoursFromSecs fromSeconds f secs
 {-# INLINE hours #-}
-
--- | Add one 'Offset' to another  /NOTE: if the result of the addition is outside the accepted range it will be clamped/
-add :: Offset -> Offset -> Offset
-add (Offset lsecs) (Offset rsecs) = fromSeconds $ lsecs + rsecs
-
--- | Subtract one 'Offset' to another.  /NOTE: See 'add' above/
-minus :: Offset -> Offset -> Offset
-minus (Offset lsecs) (Offset rsecs) = fromSeconds $ lsecs - rsecs

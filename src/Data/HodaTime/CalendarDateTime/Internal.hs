@@ -12,6 +12,7 @@ module Data.HodaTime.CalendarDateTime.Internal
   ,HasDate(..)
   ,LocalTime(..)
   ,IsCalendarDateTime(..)
+  ,at
 )
 where
 
@@ -32,11 +33,14 @@ data DayNth =
   | Third
   | Fourth
   | Fifth
-    deriving (Eq, Show, Enum)
+  deriving (Eq, Show, Enum)
 
 type Year = Int
 type DayOfMonth = Int
 type WeekNumber = Int
+
+-- TODO: We may want to add a "cycle" field to the calendarDate that counts 400 year cyles.  This would allow days to be non-negative
+--       and it would mean that one table can translate all possible days since they repeat each cycle
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
 -- Note: We keep the date in 2 formats, redundantly.  We depend on lazy evaluation to only produce the portion that is actually used
@@ -128,3 +132,9 @@ class IsCalendarDateTime cal where
   fromAdjustedInstant :: Instant -> CalendarDateTime cal
   -- | Convert a CalendarDateTime directly to an Instant.  Needed because different calendars use different epochs.  If this ever changes we can revisit this
   toUnadjustedInstant :: CalendarDateTime cal -> Instant
+
+-- constructors
+
+-- | Returns a 'CalendarDateTime' of the 'CalendarDate' at the given 'LocalTime'
+at :: CalendarDate cal -> LocalTime -> CalendarDateTime cal
+at date time = CalendarDateTime date time

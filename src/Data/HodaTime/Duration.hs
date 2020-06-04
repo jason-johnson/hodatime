@@ -32,7 +32,7 @@ import Data.HodaTime.Duration.Internal
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Instant (difference)
 import qualified Data.HodaTime.Instant as I (add)
-import Data.HodaTime.Constants (secondsPerDay, secondsPerHour, nsecsPerSecond)
+import Data.HodaTime.Constants (secondsPerHour)
 
 -- | Duration of standard weeks (a standard week is assumed to be exactly 7 24 hour days)
 fromStandardWeeks :: Int -> Duration
@@ -57,13 +57,6 @@ fromMilliseconds = fromNanoseconds . (* 1000000)
 -- | Duration of microseconds
 fromMicroseconds :: Int -> Duration
 fromMicroseconds = fromNanoseconds . (* 1000)
-
--- | Duration of nanoseconds
-fromNanoseconds :: Int -> Duration
-fromNanoseconds ns = Duration $ Instant (fromIntegral d) (fromIntegral s') (fromIntegral ns')
-    where
-        (s, ns') = normalize ns nsecsPerSecond
-        (d, s') = normalize s secondsPerDay
 
 -- | Add two durations together
 add :: Duration -> Duration -> Duration

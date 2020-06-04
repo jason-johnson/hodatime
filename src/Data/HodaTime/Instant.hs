@@ -23,18 +23,20 @@ module Data.HodaTime.Instant
   -- * Conversion
   ,inTimeZone
   -- * Debug - to be removed
-  ,LTI.fromInstant  -- TODO:  REMOVE THIS!  This is only exported for testing, remove it immediately after fixing fromSecondsSinceUnixEpoch
 )
 where
+
+-- TODO - BUG: now is based on calling gettimeofday.  The question is if this returns a number with leap seconds removed or not.  If it does not then we will have
+-- TODO - BUG: an issue if we go:  now -> ZoneDateTime -> Instant   because the last conversion will remove leap seconds.
 
 import Data.HodaTime.Instant.Internal
 import Data.HodaTime.Instant.Platform (now)
 import Data.HodaTime.TimeZone.Internal (TimeZone)
-import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
-import qualified Data.HodaTime.LocalTime.Internal as LTI (fromInstant, Hour)    -- Made to warn so we don't forget to remove this stuff
+import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..), fromInstant)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendarDateTime)
 
 -- Conversion
 
 -- | Convert 'Instant' to a 'ZonedDateTime' in the specified time zone.  The calendar must be derivable or specified in the type explicitly
-inTimeZone :: Instant -> TimeZone -> ZonedDateTime cal
-inTimeZone _instant _tz = undefined
+inTimeZone :: IsCalendarDateTime cal => Instant -> TimeZone -> ZonedDateTime cal
+inTimeZone instant tz = fromInstant instant tz

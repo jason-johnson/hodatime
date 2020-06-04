@@ -70,7 +70,7 @@ data RandomStandardDate = RandomStandardDate Int Int Int
 
 instance Arbitrary RandomStandardDate where
   arbitrary = do
-    y <- choose (1972,2030)
+    y <- choose (1972,2040)
     m <- choose (0,11)
     d <- choose (1,28)
     return $ RandomStandardDate y m d

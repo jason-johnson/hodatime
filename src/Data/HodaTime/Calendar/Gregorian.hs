@@ -3,7 +3,6 @@ module Data.HodaTime.Calendar.Gregorian
   -- * Constructors
    calendarDate
   ,fromNthDay
-  ,fromNthDay'
   ,fromWeekDate
   -- * Types
   ,Month(..)
@@ -30,23 +29,6 @@ calendarDate d m y = do
 -- | Smart constuctor for Gregorian calendar date based on relative month day.
 fromNthDay :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
 fromNthDay nth dow m y = do
-  guard $ adjustment < fromIntegral mdim           -- NOTE: we have to use < not <= because we're adding to first of the month or subtracting from the end of the month
-  guard $ days > invalidDayThresh
-  return $ CalendarDate (fromIntegral days) (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
-  where
-    mdim = maxDaysInMonth m y
-    somDays = yearMonthDayToDays y m 1
-    eomDays = yearMonthDayToDays y m mdim
-    startDow = dayOfWeekFromDays days'
-    targetDow = fromEnum dow
-    adjustment = 7 * multiple + adjust startDow targetDow
-    (days', multiple, adjust, d, days) = frontOrBack (fromEnum nth - 4)
-    frontOrBack nth'
-      | nth' < 0  = (eomDays, nth', flip weekdayDistance, mdim - adjustment, eomDays - adjustment)
-      | otherwise = (somDays, nth', weekdayDistance, adjustment + 1, somDays + adjustment)
-
-fromNthDay' :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
-fromNthDay' nth dow m y = do
   guard $ d > 0 && d <= mdim
   guard $ days > invalidDayThresh
   return $ CalendarDate (fromIntegral days) (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
@@ -60,10 +42,3 @@ fromNthDay' nth dow m y = do
 --   which has at least one day in the new year.  For ISO compliant behavior use this constructor from the ISO module
 fromWeekDate :: WeekNumber -> DayOfWeek Gregorian -> Year -> Maybe (CalendarDate Gregorian)
 fromWeekDate = GI.fromWeekDate 1 Sunday
-
--- help functions
-
-weekdayDistance :: (Ord a, Num a) => a -> a -> a
-weekdayDistance s e = e' - s
-  where
-    e' = if e >= s then e else e + 7
