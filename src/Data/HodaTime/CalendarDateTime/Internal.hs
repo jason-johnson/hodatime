@@ -82,8 +82,20 @@ class HasDate d where
   -- | Lens for the year component of a 'HasDate'.  Please note that the rest of the date is left as is, with two exceptions: Feb 29 will clamp to 28 in a non-leapyear
   --   and if the new year is earlier than the earliest supported year it will clamp back to that year
   year :: Functor f => (Year -> f Year) -> d -> f d
+  -- | Accessor for the Day of the week enum of a 'HasDate', for example:
+  --
+  -- >>> dayOfWeek . fromJust $ Gregorian.calendarDate 31 January 2000
+  -- Monday
   dayOfWeek :: d -> DoW d
+  -- | Returns a 'HasDate' shifted to the nth next Day of Week from the current 'HasDate', for example:
+  --
+  -- >>> next 1 Monday . fromJust $ Gregorian.calendarDate 31 January 2000
+  -- CalendarDate 7 February 2000
   next :: Int -> DoW d -> d -> d
+  -- | Returns a 'HasDate' shifted to the nth previous Day of Week from the current 'HasDate', for example:
+  --
+  -- >>> previous 1 Monday . fromJust $ Gregorian.calendarDate 31 January 2000
+  -- CalendarDate 24 January 2000
   previous :: Int -> DoW d -> d -> d
 
 instance (IsCalendar cal) => HasDate (CalendarDate cal) where
