@@ -17,15 +17,13 @@ module Data.HodaTime.Calendar.Gregorian.Internal
 )
 where
 
-import Data.HodaTime.Constants (daysPerCycle, daysPerCentury, daysPerFourYears)
+import Data.HodaTime.Constants (daysPerCycle, daysPerCentury)
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.HodaTime.Calendar.Constants (daysPerStandardYear)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
-import Data.Maybe (fromJust)
-import Data.List (findIndex)
-import Data.Int (Int32, Int8)
+import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 import Data.Array.Unboxed ((!))
 import Control.Monad (guard)
@@ -193,22 +191,9 @@ calculateCenturyDays days = (y, centuryDays, isExtraCycleDay)
     (cycleYears, (cycleDays, isExtraCycleDay)) = flip divMod daysPerCycle >>> (* 400) *** id &&& borders daysPerCycle $ days
     (centuryYears, centuryDays) = flip divMod daysPerCentury >>> first (* 100) $ cycleDays
     y = cycleYears + centuryYears
-  
+
 daysToYearMonthDay :: Int32 -> (Word32, Word8, Word8)
-daysToYearMonthDay days = (fromIntegral y, fromIntegral m'', fromIntegral d')
-  where
-    (centuryYears, centuryDays, isExtraCycleDay) = calculateCenturyDays days
-    (fourYears, (remaining, isLeapDay)) = flip divMod daysPerFourYears >>> (* 4) *** id &&& borders daysPerFourYears $ centuryDays
-    (oneYears, yearDays) = remaining `divMod` daysPerStandardYear
-    m = pred . fromJust . findIndex (\mo -> yearDays < mo) $ monthDayOffsets
-    (m', startDate) = if m >= 10 then (m - 10, 2001) else (m + 2, 2000)
-    d = yearDays - monthDayOffsets !! m + 1
-    (m'', d') = if isExtraCycleDay || isLeapDay then (1, 29) else (m', d)
-    y = startDate + centuryYears + fourYears + oneYears
-  
--- TODO: At some point we should see how much a difference the caching makes
-_daysToYearMonthDay' :: Int32 -> (Int32, Int8, Int8)
-_daysToYearMonthDay' days = (y',m'', fromIntegral d')
+daysToYearMonthDay days = (fromIntegral y', m'', fromIntegral d')
   where
     (centuryYears, centuryDays, isExtraCycleDay) = calculateCenturyDays days
     decodeEntry (DTCacheTable xs _) = (\x -> (decodeYear x, decodeMonth x, decodeDay x)) . (!) xs

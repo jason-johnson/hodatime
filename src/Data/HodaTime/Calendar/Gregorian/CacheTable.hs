@@ -25,7 +25,7 @@ cacheTable = DTCacheTable days hours where
   toArray xs = array (0, length xs) $ zip [0..] xs
   days = toArray $ firstYear ++ restYears
   firstYear = [ encodeDate 0 m d | m <- [2..11], d <- daysInMonth m 0]
-  restYears = [ encodeDate y m d | y <- [1..127], m <- [0..11], d <- daysInMonth m y]
+  restYears = [ encodeDate y m d | y <- [1..100], m <- [0..11], d <- daysInMonth m y]
   hours = toArray [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
 
 -- encode
