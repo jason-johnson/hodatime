@@ -20,6 +20,12 @@ type DTCacheHoursTable = UArray Int Word16
 
 data DTCacheTable = DTCacheTable DTCacheDaysTable DTCacheHoursTable
 
+-- The Cache Table holds years and hours in the following format:
+-- +-----+----+----+  +----+----+----+
+-- |0-100|1-12|1-31|  |0-11|0-59|0-59|
+-- +-----+----+----+  +----+----+----+
+--    7     4   5        4    6    6
+-- Meaning we can store 100 years of days and 12 hours of seconds in 16 bits each
 cacheTable :: DTCacheTable
 cacheTable = DTCacheTable days hours where
   toArray xs = array (0, length xs) $ zip [0..] xs
