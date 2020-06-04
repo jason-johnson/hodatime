@@ -46,7 +46,8 @@ library
                    fingertree >= 0.1.3 && < 0.1.4,
                    text >= 0.11.0.8,
                    parsec,
-                   formatting
+                   formatting,
+                   array
   if os(windows)
     build-depends: Win32
   if !os(windows)
