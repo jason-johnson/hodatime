@@ -50,16 +50,15 @@ lensProps = testGroup "Lens"
     ,QC.testProperty "dayOfWeek . next n dow $ date == dow" $ testNextDoW
     ,QC.testProperty "next n (dayOfWeek date) date == modify (+ n * 7) day date" $ testDirection next (+)
     ,QC.testProperty "previous n (dayOfWeek date) date == modify (- n * 7) day date" $ testDirection previous $ flip (-)
-    ,QC.testProperty "next 1 dow date < modify (+ 8) day date" $ testNextRange
-    ,QC.testProperty "previous 1 dow date > modify (- 8) day date" $ testPrevRange
+    ,QC.testProperty "next 1 dow date < modify (+ 8) day date" $ testDirectionRange next (<) (+)
+    ,QC.testProperty "previous 1 dow date > modify (- 8) day date" $ testDirectionRange previous (>) $ flip (-)
   ]
   where
     mkcd d m = fromJust . calendarDate d m
     testMonthAdd d (CycleYear y) m add = get day (modify (+ add) monthl $ mkcd d m (y + 1900)) == d  -- NOTE: We fix the year so we don't run out of tests
     testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
     testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
-    testNextRange dow (RandomStandardDate y m d) = let cd = mkcd d m y in next 1 dow cd < modify (+8) day cd
-    testPrevRange dow (RandomStandardDate y m d) = let cd = mkcd d m y in previous 1 dow cd > modify (\x -> x - 8) day cd
+    testDirectionRange dir gtlt adjust dow (RandomStandardDate y m d) = let cd = mkcd d m y in dir 1 dow cd `gtlt` modify (adjust 8) day cd
     epochDay = mkcd 1 March 2000
 
 constructorUnits :: TestTree
