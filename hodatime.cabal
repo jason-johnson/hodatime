@@ -63,6 +63,7 @@ library
                    Data.HodaTime.Calendar.Hebrew,
                    Data.HodaTime.Calendar.Islamic,
                    Data.HodaTime.Calendar.Iso,
+                   Data.HodaTime.Calendar.Julian,
                    Data.HodaTime.Calendar.Persian,
                    Data.HodaTime.CalendarDate,
                    Data.HodaTime.CalendarDateTime,
