@@ -149,7 +149,19 @@ benchmark bench
   main-is:
                    bench.hs
   other-modules:
-                   HodaTime.OffsetBench
+                   HodaTime.OffsetBench,
+                   Data.HodaTime.Calendar.Constants
+                   Data.HodaTime.Calendar.Gregorian
+                   Data.HodaTime.Calendar.Gregorian.CacheTable
+                   Data.HodaTime.Calendar.Gregorian.Internal
+                   Data.HodaTime.CalendarDate
+                   Data.HodaTime.CalendarDateTime.Internal
+                   Data.HodaTime.Constants
+                   Data.HodaTime.Duration.Internal
+                   Data.HodaTime.Instant.Internal
+                   Data.HodaTime.Internal
+                   Data.HodaTime.Offset
+                   Data.HodaTime.Offset.Internal
   build-depends:
                    base > 4,
                    criterion,
