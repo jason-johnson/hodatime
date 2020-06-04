@@ -149,7 +149,7 @@ benchmark bench
                    Data.HodaTime.Instant.Internal,
                    Data.HodaTime.Internal,
                    Data.HodaTime.Offset,
-                   Data.HodaTime.OffsetDateTime.Internal,
+                   Data.HodaTime.Offset.Internal,
                    Data.HodaTime.TimeZone.Internal,
                    Data.HodaTime.ZonedDateTime.Internal,
                    Data.HodaTime.CalendarDate
