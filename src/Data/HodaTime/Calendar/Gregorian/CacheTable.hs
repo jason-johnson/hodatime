@@ -20,6 +20,8 @@ type DTCacheHoursTable = UArray Int Word16
 
 data DTCacheTable = DTCacheTable DTCacheDaysTable DTCacheHoursTable
 
+-- TODO: Since the actual Gregorian cycle is 400 years, does this strategy give correct dates?
+
 -- The Cache Table holds years and hours in the following format:
 -- +-----+----+----+  +----+----+----+
 -- |0-100|1-12|1-31|  |0-11|0-59|0-59|
