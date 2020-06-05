@@ -1,5 +1,4 @@
 {-# LANGUAGE TypeFamilies #-}
-
 module Data.HodaTime.Calendar.Gregorian.Internal
 (
    daysToYearMonthDay
@@ -21,6 +20,7 @@ import Data.HodaTime.Constants (daysPerCycle, daysPerCentury)
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.HodaTime.Calendar.Constants (daysPerStandardYear)
+import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Int (Int32)
@@ -58,45 +58,22 @@ instance IsCalendar Gregorian where
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
     
-  day' f (CalendarDate _ d m y) = mkcd . (rest+) <$> f (fromIntegral d)
-    where
-      rest = pred $ yearMonthDayToDays (fromIntegral y) (toEnum . fromIntegral $ m) 1
-      mkcd days =
-        let
-          days' = fromIntegral $ if days > invalidDayThresh then days else invalidDayThresh + 1
-          (y', m', d') = daysToYearMonthDay days'
-        in CalendarDate days' d' m' y'
+  day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays daysToYearMonthDay
   {-# INLINE day' #-}
     
   month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m
     
-  monthl' f (CalendarDate _ d m y) = mkcd <$> f (fromEnum m)
-    where
-      mkcd months = CalendarDate (fromIntegral days) d'' (fromIntegral m') (fromIntegral y'')
-        where
-          (y', months') = flip divMod 12 >>> first (+ fromIntegral y) $ months
-          (y'', m', d') = if (y', months', d) < firstGregDayTuple then firstGregDayTuple else (y', months', d)
-          mdim = fromIntegral $ maxDaysInMonth (toEnum m') y'
-          d'' = if d' > mdim then mdim else d'
-          days = yearMonthDayToDays y'' (toEnum m') (fromIntegral d'')
+  monthl' = mkCommonMonthLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays
   {-# INLINE monthl' #-}
     
-  year' f (CalendarDate _ d m y) = mkcd <$> f (fromIntegral y)
-    where
-      mkcd y' = CalendarDate days d'' m' (fromIntegral y'')
-        where
-          (y'', m', d') = if (y', m, d) < firstGregDayTuple then firstGregDayTuple else (y', m, d)
-          m'' = toEnum . fromIntegral $ m'
-          mdim = fromIntegral $ maxDaysInMonth m'' y''
-          d'' = if d' > mdim then mdim else d'
-          days = fromIntegral $ yearMonthDayToDays y'' m'' (fromIntegral d'')
+  year' = mkYearLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays
   {-# INLINE year' #-}
     
   dayOfWeek' (CalendarDate days _ _ _) = toEnum . dayOfWeekFromDays . fromIntegral $ days
     
-  next' n dow (CalendarDate days _ _ _) = moveByDow n dow (-) (+) (fromIntegral days)
+  next' n dow (CalendarDate days _ _ _) = moveByDow n dow (-) (+) (>) (fromIntegral days)
     
-  previous' n dow (CalendarDate days _ _ _) = moveByDow n dow subtract (-) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+  previous' n dow (CalendarDate days _ _ _) = moveByDow n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
 
 instance IsCalendarDateTime Gregorian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime cd lt
@@ -144,13 +121,14 @@ dayOfWeekFromDays = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
   where
     normalize n = if n >= 7 then n - 7 else n
 
-moveByDow :: Int -> DayOfWeek Gregorian -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> Int -> CalendarDate Gregorian
-moveByDow n dow distanceF adjust days = CalendarDate days' d m y
+moveByDow :: Int -> DayOfWeek Gregorian -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> (Int -> Int -> Bool) -> Int -> CalendarDate Gregorian
+moveByDow n dow distanceF adjust cmp days = CalendarDate days' d m y
   where
+    n' = if targetDow `cmp` currentDoW then n-1 else n
     currentDoW = dayOfWeekFromDays days
     targetDow = fromIntegral . fromEnum $ dow
     distance = distanceF targetDow currentDoW
-    days' = fromIntegral $ fromIntegral days `adjust` (7 * n) `adjust` distance
+    days' = fromIntegral $ fromIntegral days `adjust` (7 * n') `adjust` distance
     (y, m, d) = daysToYearMonthDay days'
 
 maxDaysInMonth :: Month Gregorian -> Year -> Int
