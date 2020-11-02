@@ -136,6 +136,12 @@ benchmark bench
                    bench.hs
   other-modules:
                    HodaTime.OffsetBench
+                   Data.HodaTime.Constants
+                   Data.HodaTime.Duration.Internal
+                   Data.HodaTime.Instant.Internal
+                   Data.HodaTime.Internal
+                   Data.HodaTime.Offset
+                   Data.HodaTime.Offset.Internal
   build-depends:
                    base > 4,
                    criterion,
