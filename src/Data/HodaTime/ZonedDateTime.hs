@@ -23,6 +23,7 @@ module Data.HodaTime.ZonedDateTime
   ,toCalendarDateTime
   ,toCalendarDate
   ,toLocalTime
+  ,toInstant
   -- * Accessors
   ,inDst
   ,zoneAbbreviation
@@ -35,9 +36,11 @@ module Data.HodaTime.ZonedDateTime
 )
 where
 
+import Data.HodaTime.Instant
 import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime)
 import Data.HodaTime.LocalTime.Internal (second)
+import Data.HodaTime.Duration (fromSeconds)
 import Data.HodaTime.Offset.Internal (Offset(..))
 import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
 import Control.Exception (Exception)
@@ -126,6 +129,14 @@ toCalendarDate (ZonedDateTime (CalendarDateTime cd _) _  _) = cd
 toLocalTime :: ZonedDateTime cal -> LocalTime
 toLocalTime (ZonedDateTime (CalendarDateTime _ lt) _  _) = lt
 
+-- | Return the 'Instant' represented by this 'ZonedDateTime'
+toInstant :: IsCalendarDateTime cal => ZonedDateTime cal -> Instant
+toInstant zdt = adjusted
+  where
+    offset = tiUtcOffset . zdtActiveTransition $ zdt
+    d = fromSeconds $ offsetSeconds offset
+    unadjusted = toUnadjustedInstant . zdtCalendarDateTime $ zdt
+    adjusted = unadjusted `minus` d
 -- Accessors
 
 -- | Return a 'Bool' specifying if this 'ZonedDateTime' is currently in Daylight savings time.

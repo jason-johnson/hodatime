@@ -29,6 +29,9 @@ module Data.HodaTime.Offset
   -- * Math
   ,addClamped
   ,minusClamped
+  -- * Utils
+  ,minOffsetSeconds
+  ,maxOffsetSeconds
 )
 where
 

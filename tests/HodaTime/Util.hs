@@ -11,12 +11,14 @@ module HodaTime.Util
 )
 where
 
-import Test.Tasty.QuickCheck (Arbitrary(..), choose)
+import Test.Tasty.QuickCheck (Arbitrary(..), Gen, choose)
 
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
 
+import Data.HodaTime.Instant
 import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), Gregorian)
+import Data.HodaTime.Offset (Offset, fromSeconds, minOffsetSeconds, maxOffsetSeconds)
 
 -- arbitrary data and instances
 
@@ -74,6 +76,17 @@ instance Arbitrary RandomStandardDate where
     m <- choose (0,11)
     d <- choose (1,28)
     return $ RandomStandardDate y m d
+
+instance Arbitrary Instant where
+  arbitrary = do
+    s <- arbitrary
+    return $ fromSecondsSinceUnixEpoch s
+
+instance Arbitrary Offset where
+  arbitrary = do
+    s <- choose (minOffsetSeconds, maxOffsetSeconds) :: Gen Int
+    return $ fromSeconds s
+
 
 -- Lenses
 

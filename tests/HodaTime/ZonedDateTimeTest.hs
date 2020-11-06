@@ -9,13 +9,14 @@ import Test.Tasty.QuickCheck as QC
 import Test.QuickCheck.Monadic (monadicIO, run)
 import qualified Test.QuickCheck.Monadic as QCM
 import Test.Tasty.HUnit
-import Control.Monad (join)
+import Control.Monad (when, join)
 import qualified System.Info as SysInfo
 import Data.Maybe (catMaybes)
 
 import HodaTime.Util
-import Data.HodaTime.ZonedDateTime (fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, fromCalendarDateTimeAll, toCalendarDateTime, zoneAbbreviation, ZonedDateTime) -- remove ZonedDateTime
+import Data.HodaTime.ZonedDateTime (fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, fromCalendarDateTimeAll, toCalendarDateTime, fromInstant, toInstant, zoneAbbreviation, ZonedDateTime) -- remove ZonedDateTime
 import Data.HodaTime.TimeZone (timeZone)
+import Data.HodaTime.TimeZone.Internal (fixedOffsetZone, TZIdentifier(Zone), TimeZone(..))
 import Data.HodaTime.Calendar.Gregorian (Month(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import Data.HodaTime.LocalTime (localTime)
@@ -27,7 +28,7 @@ zonedDateTimeTests = testGroup "ZonedDateTime Tests" [qcProps, unitTests]
 -- top level tests
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [calDateProps]
+qcProps = testGroup "(checked by QuickCheck)" [calDateProps, toInstantProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
@@ -49,6 +50,29 @@ calDateProps = testGroup "CalendarDateTime conversion"
       let zdt = join $ flip fromCalendarDateTimeStrictly tz <$> cdt
       let cdt' = toCalendarDateTime <$> zdt
       QCM.assert $ cdt == cdt'
+
+toInstantProps :: TestTree
+toInstantProps = testGroup "Instant conversion"
+  [
+     QC.testProperty "Instant -> ZonedDateTime -> Instant == id in UTC" $ testInstantToZonedIdentity "UTC"
+    ,QC.testProperty "Instant -> ZonedDateTime -> Instant == id in Europe/Stockholm" $ testInstantToZonedIdentity "Europe/Stockholm"
+    ,QC.testProperty "Instant -> ZonedDateTime -> Instant == id in fixedOffset TZ" $ testInstantToZonedIdentityFixed
+  ]
+  where
+    testInstantToZonedIdentity zone i = monadicIO $ do
+      tz <- run (timeZone zone)
+      let zdt = fromInstant i tz :: ZonedDateTime G.Gregorian
+      let i' = toInstant zdt
+      run $ when (i /= i') (print $ "i = " <> show i <> " != " <> show i' <> " = i'")
+      QCM.assert $ i == i'
+
+    testInstantToZonedIdentityFixed o i = monadicIO $ do
+      let (utcM, calDateM, _) = fixedOffsetZone "Fixed" o
+      let tz = TimeZone (Zone "Fixed") utcM calDateM
+      let zdt = fromInstant i tz :: ZonedDateTime G.Gregorian
+      let i' = toInstant zdt
+
+      QCM.assert $ i == i'
 
 lenientZoneTransitionUnits :: TestTree
 lenientZoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
