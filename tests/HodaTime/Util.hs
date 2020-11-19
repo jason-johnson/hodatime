@@ -5,6 +5,7 @@ module HodaTime.Util
   ,RandomTime(..)
   ,CycleYear(..)
   ,RandomStandardDate(..)
+  ,ValidTimeZoneName(..)
   ,get
   ,modify
   ,set
@@ -12,13 +13,16 @@ module HodaTime.Util
 where
 
 import Test.Tasty.QuickCheck (Arbitrary(..), Gen, choose)
+import Test.QuickCheck.GenT hiding (choose)
 
+import Control.Monad.IO.Class (liftIO)
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
 
 import Data.HodaTime.Instant
 import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), Gregorian)
 import Data.HodaTime.Offset (Offset, fromSeconds, minOffsetSeconds, maxOffsetSeconds)
+import Data.HodaTime.TimeZone
 
 -- arbitrary data and instances
 
@@ -78,15 +82,20 @@ instance Arbitrary RandomStandardDate where
     return $ RandomStandardDate y m d
 
 instance Arbitrary Instant where
-  arbitrary = do
-    s <- arbitrary
-    return $ fromSecondsSinceUnixEpoch s
+  arbitrary = fromSecondsSinceUnixEpoch <$> arbitrary
 
 instance Arbitrary Offset where
   arbitrary = do
     s <- choose (minOffsetSeconds, maxOffsetSeconds) :: Gen Int
     return $ fromSeconds s
 
+newtype ValidTimeZoneName = ValidTimeZoneName String deriving (Show)
+
+instance Arbitrary ValidTimeZoneName where
+  arbitrary = ValidTimeZoneName <$> elements [
+      "UTC"
+    , "Europe/Stockholm"
+    ]
 
 -- Lenses
 

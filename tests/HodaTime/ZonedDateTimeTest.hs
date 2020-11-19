@@ -15,8 +15,7 @@ import Data.Maybe (catMaybes)
 
 import HodaTime.Util
 import Data.HodaTime.ZonedDateTime (fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, fromCalendarDateTimeAll, toCalendarDateTime, fromInstant, toInstant, zoneAbbreviation, ZonedDateTime) -- remove ZonedDateTime
-import Data.HodaTime.TimeZone (timeZone)
-import Data.HodaTime.TimeZone.Internal (fixedOffsetZone, TZIdentifier(Zone), TimeZone(..))
+import Data.HodaTime.TimeZone (timeZone, utc)
 import Data.HodaTime.Calendar.Gregorian (Month(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import Data.HodaTime.LocalTime (localTime)
@@ -52,26 +51,14 @@ calDateProps = testGroup "CalendarDateTime conversion"
       QCM.assert $ cdt == cdt'
 
 toInstantProps :: TestTree
-toInstantProps = testGroup "Instant conversion"
-  [
-     QC.testProperty "Instant -> ZonedDateTime -> Instant == id in UTC" $ testInstantToZonedIdentity "UTC"
-    ,QC.testProperty "Instant -> ZonedDateTime -> Instant == id in Europe/Stockholm" $ testInstantToZonedIdentity "Europe/Stockholm"
-    ,QC.testProperty "Instant -> ZonedDateTime -> Instant == id in fixedOffset TZ" $ testInstantToZonedIdentityFixed
+toInstantProps = testGroup "Instant conversion" [
+    QC.testProperty "Instant -> ZonedDateTime -> Instant == id" testInstantToZonedIdentity
   ]
   where
-    testInstantToZonedIdentity zone i = monadicIO $ do
-      tz <- run (timeZone zone)
-      let zdt = fromInstant i tz :: ZonedDateTime G.Gregorian
+    testInstantToZonedIdentity (ValidTimeZoneName tz) i = monadicIO $ do
+      tz' <- run $ timeZone tz
+      let zdt = fromInstant i tz' :: ZonedDateTime G.Gregorian
       let i' = toInstant zdt
-      run $ when (i /= i') (print $ "i = " <> show i <> " != " <> show i' <> " = i'")
-      QCM.assert $ i == i'
-
-    testInstantToZonedIdentityFixed o i = monadicIO $ do
-      let (utcM, calDateM, _) = fixedOffsetZone "Fixed" o
-      let tz = TimeZone (Zone "Fixed") utcM calDateM
-      let zdt = fromInstant i tz :: ZonedDateTime G.Gregorian
-      let i' = toInstant zdt
-
       QCM.assert $ i == i'
 
 lenientZoneTransitionUnits :: TestTree
