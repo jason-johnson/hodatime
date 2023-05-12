@@ -15,7 +15,8 @@
       "extensions": [
         "haskell.haskell",
         "eamodio.gitlens",
-        "redhat.vscode-yaml"
+        "redhat.vscode-yaml",
+        "github.vscode-github-actions"
       ]
     }
   },
