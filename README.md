@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/jason-johnson/hodatime/actions/workflows/haskell/badge.svg)](https://github.com/jason-johnson/hodatime)
+[![Build Status](https://github.com/jason-johnson/hodatime/actions/workflows/haskell.yml/badge.svg)](https://github.com/jason-johnson/hodatime)
 [![Hackage](https://img.shields.io/hackage/v/hodatime.svg)](https://hackage.haskell.org/package/hodatime)
 
 # hodatime
