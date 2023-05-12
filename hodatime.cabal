@@ -12,7 +12,7 @@ bug-reports:    https://github.com/jason-johnson/hodatime/issues
 synopsis:       A fully featured date/time library based on Nodatime
 description:    A library for dealing with time, dates, calendars and time zones
 category:       Data, Time
-tested-with:    GHC == 8.0.2
+tested-with:    GHC == 8.8.3
 extra-source-files:
                    platform/osx/Data/HodaTime/TimeZone/Platform.hs
                    platform/osx/Data/HodaTime/Instant/Platform.hs
@@ -37,7 +37,7 @@ library
     hs-source-dirs: platform/windows
 
   build-depends:
-                   base >= 4.9 && < 4.10,
+                   base >= 4.9 && < 5,
                    mtl,
                    binary,
                    bytestring,
