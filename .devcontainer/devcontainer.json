@@ -13,7 +13,9 @@
       },
       // Add the IDs of extensions you want installed when the container is created.
       "extensions": [
-        "haskell.haskell"
+        "haskell.haskell",
+        "eamodio.gitlens",
+        "redhat.vscode-yaml"
       ]
     }
   },
