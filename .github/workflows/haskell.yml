@@ -2,42 +2,51 @@ name: Haskell CI
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    paths-ignore:
+      - "**.md"
 
 permissions:
   contents: read
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-
+    name: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-10.15, windows-2019]
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-haskell@v1
-      with:
-        ghc-version: '8.10.3'
-        cabal-version: '3.2'
+      - name: Checkout repo
+        uses: actions/checkout@v2
 
-    - name: Cache
-      uses: actions/cache@v3
-      env:
-        cache-name: cache-cabal
-      with:
-        path: ~/.cabal
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
+      - name: Install stack (MacOS)
+        run: curl -sSL https://get.haskellstack.org/ | sh
+        if: matrix.os == 'macos-10.15'
 
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal build --only-dependencies --enable-tests --enable-benchmarks
-    - name: Build
-      run: cabal build --enable-tests --enable-benchmarks all
-    - name: Run tests
-      run: cabal test all
+      - name: Install stack (Windows)
+        run: choco install haskell-stack
+        if: matrix.os == 'windows-2019'
+
+      - name: Cache dependencies (Unix)
+        uses: actions/cache@v1
+        if: matrix.os != 'windows-2019'
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-store-${{ hashFiles('generator/stack.yaml.lock') }}-${{ hashFiles('generator/generator.cabal') }}
+
+      - name: Cache dependencies (Windows)
+        uses: actions/cache@v1
+        if: matrix.os == 'windows-2019'
+        with:
+          path: 'C:\Users\runneradmin\AppData\Roaming\stack'
+          key: ${{ runner.os }}-store-${{ hashFiles('generator/stack.yaml.lock') }}-${{ hashFiles('generator/generator.cabal') }}
+
+      - name: Cache GHC (Windows)
+        uses: actions/cache@v1
+        if: matrix.os == 'windows-2019'
+        with:
+          path: 'C:\Users\runneradmin\AppData\Local\Programs\stack'
+          key: ghc-${{ hashFiles('generator/stack.yaml.lock') }}
+
+      - name: test project
+        run: stack test
