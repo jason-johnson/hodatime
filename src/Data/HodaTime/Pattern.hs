@@ -19,7 +19,6 @@ module Data.HodaTime.Pattern
   ,format
   -- * Pattern operators
   ,(<%)
-  ,(%>)
   -- * Patterns
   ,pat_string
   ,pat_char

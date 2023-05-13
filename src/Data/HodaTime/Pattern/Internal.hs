@@ -11,7 +11,6 @@ module Data.HodaTime.Pattern.Internal
   ,format
   ,(<>)         -- TODO: Remove
   ,(<%)
-  ,(%>)
   ,pat_string
   ,pat_char
   ,pat_lens
