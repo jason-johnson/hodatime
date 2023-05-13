@@ -64,12 +64,18 @@ data Pattern a b r = Pattern
     par = parse1 <* parse2
     fmt = format1 % format2
 
--- | Merge a static pattern with one that operates on a data type (BUG: currently ignores the left pattern on format operations)
-(%>) :: Pattern c r r -> Pattern (a -> a) (a -> r) r -> Pattern (a -> a) (a -> r) r
+{-
+-- | Merge a static pattern with one that operates on a data type
+
+-- NOTE: The following doesn't work, I believe because of how much we're fixing the types removes the ability to apply (%) in either direction.
+-- NOTE: But in fact, (<%) above is sufficient, the library can work fine without offering the other option
+
+(%>) :: Pattern c r r -> Pattern a b r -> Pattern a b r
 (Pattern parse1 format1) %> (Pattern parse2 format2) = Pattern par fmt
   where
     par = parse1 *> parse2
-    fmt = Format $ runFormat format1 *> runFormat format2   -- TODO: discards the formatter on the left
+    fmt = format1 % format2
+-}
 
 instance Semigroup (Pattern (a -> a) (b -> r) r) where
   (Pattern parse1 format1) <> (Pattern parse2 format2) = Pattern par fmt
