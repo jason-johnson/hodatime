@@ -6,6 +6,7 @@ where
 
 import Criterion.Main
 import Data.HodaTime.Offset (addClamped, fromHours)
+import Data.HodaTime.Offset (addClamped, fromHours)
 
 offsetBenches :: Benchmark
 offsetBenches = bgroup "Offset Benchmarks" [addHour]

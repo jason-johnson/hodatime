@@ -17,4 +17,4 @@ benches = bgroup "Benchmarks" [offsetBenches, calendarBenches]
 -- This configuration enables garbage collection between benchmarks. It is a
 -- good idea to do so. Otherwise GC might distort your results
 benchConfig :: Config
-benchConfig = defaultConfig { forceGC = True }
+benchConfig = defaultConfig -- { forceGC = True }
