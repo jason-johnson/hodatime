@@ -113,7 +113,7 @@ systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) offsetSecs = NthDay
 readLocalZoneName :: IO String
 readLocalZoneName =
   bracket op regCloseKey $ \key ->
-  regQueryValue key (Just "TimeZoneKeyName")
+  regQueryValue key "TimeZoneKeyName"
     where
       op = regOpenKeyEx hKEY_LOCAL_MACHINE hive kEY_QUERY_VALUE
       hive = "SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation"
@@ -129,8 +129,8 @@ readAllZoneNames =
 readTziForZone :: String -> IO (String, String, REG_TZI_FORMAT)
 readTziForZone zone =
   bracket op regCloseKey $ \key -> do
-    std <- regQueryValue key (Just "Std")
-    dst <- regQueryValue key (Just "Dlt")
+    std <- regQueryValue key "Std"
+    dst <- regQueryValue key "Dlt"
     tzi <- readTzi key "TZI"
     return (std, dst, tzi)
     where
