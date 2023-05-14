@@ -57,8 +57,5 @@ jobs:
           path: 'C:\Users\runneradmin\AppData\Local\Programs\stack'
           key: ghc-${{ hashFiles('generator/stack.yaml.lock') }}
 
-      - name: look at UTC file
-        run: file -L "/usr/share/zoneinfo/UTC"
-
       - name: test project
         run: stack test
