@@ -26,9 +26,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
-      - name: Install stack (MacOS)
-        run: curl -sSL https://get.haskellstack.org/ | sh
-        if: matrix.os == 'macos-latest'
+#      - name: Install stack (MacOS)
+#        run: curl -sSL https://get.haskellstack.org/ | sh
+#        if: matrix.os == 'macos-latest'
 
       - name: Install stack (Windows)
         run: choco install haskell-stack
