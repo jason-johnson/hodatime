@@ -1,4 +1,4 @@
-module Data.HodaTime.CacheTable
+module Data.HodaTime.Calendar.Gregorian.CacheTable
 (
    DTCacheTable(..)
   ,cacheTable

@@ -1,13 +1,12 @@
 module Data.HodaTime.Internal
 (
-   Day(..)
-  ,Month(..)
-  ,DateTime(..)
-  ,Date(..)
-  ,toDateTime
-  ,toDate
-  ,enumFromDate
-  ,enumFromToDate
+   secondsFromSeconds
+  ,secondsFromMinutes
+  ,secondsFromHours
+  ,hoursFromSecs
+  ,minutesFromSecs
+  ,secondsFromSecs
+  ,clamp
 )
 where
 import Data.HodaTime.Constants
@@ -17,106 +16,52 @@ import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.List (findIndex, group, foldl')
 import Data.Maybe (fromJust)
 
-data Day = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
-  deriving (Show, Eq, Ord, Enum, Bounded)
+import Data.HodaTime.Constants (secondsPerHour, secondsPerMinute)
 
-data Month = January | February | March | April | May | June | July | August | September | October | November | December
-  deriving (Show, Eq, Ord, Enum, Bounded)
+-- conversion
 
-class IntConverter a where
-  toInt :: a -> Int
-  fromInt :: Int -> a
+secondsFromSeconds :: (Integral a, Num b) => a -> b
+secondsFromSeconds = fromIntegral
+{-# INLINE secondsFromSeconds #-}
 
-instance IntConverter Day where
-  toInt Sunday = 0
-  toInt Monday = 1
-  toInt Tuesday = 2
-  toInt Wednesday = 3
-  toInt Thursday = 4
-  toInt Friday = 5
-  toInt Saturday = 6
-  fromInt 0 = Sunday
-  fromInt 1 = Monday
-  fromInt 2 = Tuesday
-  fromInt 3 = Wednesday
-  fromInt 4 = Thursday
-  fromInt 5 = Friday
-  fromInt 6 = Saturday
-  fromInt n = error $ "invalid day: " ++ show n 
+secondsFromMinutes :: (Integral a, Num b) => a -> b
+secondsFromMinutes = fromIntegral . (*secondsPerMinute)
+{-# INLINE secondsFromMinutes #-}
 
-instance IntConverter Month where
-  toInt January = 0
-  toInt February = 1
-  toInt March = 2
-  toInt April = 3
-  toInt May = 4
-  toInt June = 5
-  toInt July = 6
-  toInt August = 7
-  toInt September = 8
-  toInt October = 9
-  toInt November = 10
-  toInt December = 11
-  fromInt 0 = January
-  fromInt 1 = February
-  fromInt 2 = March
-  fromInt 3 = April
-  fromInt 4 = May
-  fromInt 5 = June
-  fromInt 6 = July
-  fromInt 7 = August
-  fromInt 8 = September
-  fromInt 9 = October
-  fromInt 10 = November
-  fromInt 11 = December
-  fromInt n = error $ "invalid month: " ++ show n
+secondsFromHours :: (Integral a, Num b) => a -> b
+secondsFromHours = fromIntegral . (*secondsPerHour)
+{-# INLINE secondsFromHours #-}
 
--- types
+-- lenses
 
-data DateTime = DateTime { dtDays :: Int, dtSecs :: Word, dtNsecs :: Word }
-  deriving (Eq, Ord)
-
-newtype Date = Date DateTime
-
-instance Bounded Date where
-  minBound = toDate 1600 March 1
-  maxBound = toDate 9999 December 31
-
--- smart constructors
-
-dateToDays :: Int -> Int -> Int -> Int
-dateToDays year month day = days
+hoursFromSecs :: (Functor f, Num b, Integral b) => (b -> a) -> (Int -> f Int) -> b -> f a
+hoursFromSecs to f secs = unitFromSeconds to h r (*secondsPerHour) f
   where
-    month' = if month > 1 then month - 2 else month + 10
-    years = if month < 2 then year - 2001 else year - 2000
-    yearDays = years * daysPerYear + years `div` 4 + years `div` 400 - years `div` 100
-    days = yearDays + monthDayOffsets !! month' + day - 1
+    h = secs `div` secondsPerHour
+    r = secs - (h*secondsPerHour)
+{-# INLINE hoursFromSecs #-}
 
-toDate :: Int -> Month -> Int -> Date
-toDate year month day = Date $ DateTime days 0 0
+minutesFromSecs :: (Functor f, Num b, Integral b) => (b -> a) -> (Int -> f Int) -> b -> f a
+minutesFromSecs to f secs = unitFromSeconds to m r (*60) f
   where
-    days = dateToDays year (toInt month) day
+    m = secs `mod` secondsPerHour `div` 60
+    r = secs - (m*60)
+{-# INLINE minutesFromSecs #-}
 
-toDateTime :: Int -> Month -> Int -> Word -> Word -> Word -> Word -> DateTime
-toDateTime year month day hour minute second = DateTime days secs
+secondsFromSecs :: (Functor f, Num b, Integral b) => (b -> a) -> (Int -> f Int) -> b -> f a
+secondsFromSecs to f secs = unitFromSeconds to s r id f
   where
-    days = dateToDays year (toInt month) day
-    secs = hour * secondsPerHour + minute * minutesPerHour + second
+    s = secs `mod` 60
+    r = secs - s
+{-# INLINE secondsFromSecs #-}
 
--- enumerating
+-- utility
 
-enumFromDate :: Date -> [Date]
-enumFromDate d@(Date (DateTime days _ _)) = d : ds
-  where
-    ds = enumFromDate . Date $ DateTime (succ days) 0 0
+clamp :: Ord a => a -> a -> a -> a
+clamp small big = min big . max small
+{-# INLINE clamp #-}
 
-enumFromToDate :: Date -> Date -> [Date]
-enumFromToDate d@(Date (DateTime days _ _)) d'@(Date (DateTime days' _ _)) = d : ds
-  where
-    ds
-      | days == days' = []
-      | days > days'  = enumFromToDate (Date $ DateTime (pred days) 0 0) d'
-      | otherwise     = enumFromToDate (Date $ DateTime (succ days) 0 0) d'
+-- helper functions
 
 -- decoding
 

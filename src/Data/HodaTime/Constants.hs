@@ -3,7 +3,6 @@ module Data.HodaTime.Constants
    daysPerCycle
   ,daysPerCentury
   ,daysPerFourYears
-  ,daysPerYear
   ,monthsPerYear
   ,daysPerWeek
   ,hoursPerDay
@@ -13,9 +12,10 @@ module Data.HodaTime.Constants
   ,secondsInTwelveHours
   ,secondsPerHour
   ,secondsPerMinute
-  ,usecsPerDay
-  ,daysPerMonth
-  ,monthDayOffsets
+  ,millisecondsPerSecond
+  ,microsecondsPerSecond
+  ,nsecsPerSecond
+  ,nsecsPerMicrosecond
   ,unixDaysOffset
 )
 where
@@ -30,9 +30,6 @@ daysPerCentury = 36524
 
 daysPerFourYears :: Num a => a
 daysPerFourYears = 1461
-
-daysPerYear :: Num a => a
-daysPerYear = 365
 
 monthsPerYear :: Num a => a
 monthsPerYear = 12
@@ -61,16 +58,17 @@ secondsPerHour = 3600
 secondsPerMinute :: Num a => a
 secondsPerMinute = 60
 
-usecsPerDay :: Num a => a
-usecsPerDay = 86400000000
+millisecondsPerSecond :: Num a => a
+millisecondsPerSecond = 1000
 
-daysPerMonth :: Num a => [a]
-daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28]         -- NOTE: pre-rotated
+microsecondsPerSecond :: Num a => a
+microsecondsPerSecond = 1000000
 
-monthDayOffsets :: Num a => [a]
-monthDayOffsets = 0 : rest
-  where
-    rest = zipWith (+) daysPerMonth (0:rest)
+nsecsPerSecond :: Num a => a
+nsecsPerSecond = 1000000000
+
+nsecsPerMicrosecond :: Num a => a
+nsecsPerMicrosecond = 1000
 
 -- conversion constants
 
