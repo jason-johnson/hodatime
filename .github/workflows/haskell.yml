@@ -22,8 +22,6 @@ jobs:
             os: macos-latest
           - isMaster: false
             os: windows-latest
-          - isMaster: true
-            os: windows-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
