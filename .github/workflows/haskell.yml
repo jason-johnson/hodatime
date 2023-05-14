@@ -12,39 +12,39 @@ jobs:
   build:
     name: build
     runs-on: ${{ matrix.os }}
+    if: github.ref == 'refs/heads/master' || matrix.os == 'ubuntu-latest'
     strategy:
       matrix:
-#        os: [ubuntu-latest, macos-10.15, windows-2019]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
 
       - name: Install stack (MacOS)
         run: curl -sSL https://get.haskellstack.org/ | sh
-        if: matrix.os == 'macos-10.15'
+        if: matrix.os == 'macos-latest'
 
       - name: Install stack (Windows)
         run: choco install haskell-stack
-        if: matrix.os == 'windows-2019'
+        if: matrix.os == 'windows-latest'
 
       - name: Cache dependencies (Unix)
         uses: actions/cache@v1
-        if: matrix.os != 'windows-2019'
+        if: matrix.os != 'windows-latest'
         with:
           path: ~/.stack
           key: ${{ runner.os }}-store-${{ hashFiles('generator/stack.yaml.lock') }}-${{ hashFiles('generator/generator.cabal') }}
 
       - name: Cache dependencies (Windows)
         uses: actions/cache@v1
-        if: matrix.os == 'windows-2019'
+        if: matrix.os == 'windows-latest'
         with:
           path: 'C:\Users\runneradmin\AppData\Roaming\stack'
           key: ${{ runner.os }}-store-${{ hashFiles('generator/stack.yaml.lock') }}-${{ hashFiles('generator/generator.cabal') }}
 
       - name: Cache GHC (Windows)
         uses: actions/cache@v1
-        if: matrix.os == 'windows-2019'
+        if: matrix.os == 'windows-latest'
         with:
           path: 'C:\Users\runneradmin\AppData\Local\Programs\stack'
           key: ghc-${{ hashFiles('generator/stack.yaml.lock') }}
