@@ -3,12 +3,13 @@ module Data.HodaTime.Duration.Internal
    Duration(..)
   ,normalize
   ,fromSeconds
+  ,fromNanoseconds
 )
 where
 
 import Data.HodaTime.Instant.Internal (Instant(..), Duration(..))
 import Control.Arrow ((>>>), (***), first)
-import Data.HodaTime.Constants (secondsPerDay)
+import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond)
 
 normalize :: Int -> Int -> (Int, Int)
 normalize x size
@@ -28,4 +29,11 @@ normalize x size
 fromSeconds :: Int -> Duration
 fromSeconds s = Duration $ Instant (fromIntegral d) (fromIntegral s') 0
     where
+        (d, s') = normalize s secondsPerDay
+
+-- | Duration of nanoseconds
+fromNanoseconds :: Int -> Duration
+fromNanoseconds ns = Duration $ Instant (fromIntegral d) (fromIntegral s') (fromIntegral ns')
+    where
+        (s, ns') = normalize ns nsecsPerSecond
         (d, s') = normalize s secondsPerDay

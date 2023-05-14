@@ -1,23 +1,23 @@
 module Data.HodaTime.TimeZone.Unix
 (
    loadUTC
-  ,fixedOffsetZone
   ,loadLocalZone
   ,loadTimeZone
+  ,loadAvailableZones
   ,defaultLoadZoneFromOlsonFile
 )
 where
 
 import Data.HodaTime.TimeZone.Internal
 import Data.HodaTime.TimeZone.Olson
-import Data.HodaTime.Instant.Internal (bigBang)
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, getDirectoryContents)
 import System.FilePath ((</>))
 import qualified Data.ByteString.Lazy.Char8 as BS
-import System.Posix.Files (readSymbolicLink)
+import System.Posix.Files (readSymbolicLink, getFileStatus, isDirectory)
+import System.FilePath.Posix (makeRelative)
 import Data.List (intercalate)
 import Control.Exception (Exception, throwIO)
-import Control.Monad (unless)
+import Control.Monad (unless, forM)
 import Data.Typeable (Typeable)
 
 -- exceptions
@@ -32,36 +32,44 @@ data TZoneDBCorruptException = TZoneDBCorruptException
 
 instance Exception TZoneDBCorruptException
 
-type LoadZoneFromOlsonFile = FilePath -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
-type LoadLeaps = LeapsMap -> IO LeapsMap
+type LoadZoneFromOlsonFile = FilePath -> IO (UtcTransitionsMap, CalDateTransitionsMap)
 
 -- interface
 
-loadUTC :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
+loadUTC :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap)
 loadUTC loadZoneFromOlsonFile = loadTimeZone loadZoneFromOlsonFile "UTC"
 
-fixedOffsetZone :: LoadLeaps -> String -> Int -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, TransitionInfo)
-fixedOffsetZone loadLeaps tzName offset = do
-  leapM' <- loadLeaps leapM
-  return (utcM, calDateM, leapM', tInfo)
-    where
-      utcM = addUtcTransition bigBang tInfo' emptyUtcTransitions
-      calDateM = addCalDateTransition Smallest Largest tInfo' emptyCalDateTransitions
-      leapM = addLeapTransition bigBang 0 emptyLeapsMap
-      tInfo = TransitionInfo offset False tzName
-      tInfo' = TInfo tInfo
-
-loadTimeZone :: LoadZoneFromOlsonFile -> String -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap)
+loadTimeZone :: LoadZoneFromOlsonFile -> String -> IO (UtcTransitionsMap, CalDateTransitionsMap)
 loadTimeZone loadZoneFromOlsonFile tzName = do
   loadZoneFromOlsonFile $ tzdbDir </> tzName
 
-loadLocalZone :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap, LeapsMap, String)
+loadLocalZone :: LoadZoneFromOlsonFile -> IO (UtcTransitionsMap, CalDateTransitionsMap, String)
 loadLocalZone loadZoneFromOlsonFile = do
   let file = "/etc" </> "localtime"
   tzPath <- readSymbolicLink $ file
-  let tzName = timeZoneFromPath $ tzPath
-  (utcM, calDateM, leaps)  <- loadZoneFromOlsonFile file
-  return (utcM, calDateM, leaps, tzName)
+  let tzName = timeZoneNameFromPath $ tzPath
+  (utcM, calDateM)  <- loadZoneFromOlsonFile file
+  return (utcM, calDateM, tzName)
+
+loadAvailableZones :: IO [String]
+loadAvailableZones = traverseDir tzdbDir
+  where
+    toZoneName file = makeRelative tzdbDir file
+    toResult file = do
+      bs <- BS.readFile $ file
+      let valid = isOlsonFile bs
+      if valid
+        then return [toZoneName file]
+        else return []
+    traverseDir top = do
+      ds <- getDirectoryContents top
+      paths <- forM (filter (not . flip elem [".", ".."]) ds) $ \d -> do
+        let path = top </> d
+        s <- getFileStatus path
+        if isDirectory s
+          then traverseDir path
+          else toResult path
+      return (concat paths)
 
 -- helper functions
 
@@ -73,13 +81,11 @@ defaultLoadZoneFromOlsonFile file = do
   exists <- doesFileExist $ file
   unless exists (throwIO TimeZoneDoesNotExistException)
   bs <- BS.readFile $ file
-  (utcM, calDateM, leapM) <- getTransitions bs
-  return (utcM, calDateM, leapM)
+  (utcM, calDateM) <- getTransitions bs
+  return (utcM, calDateM)
 
--- helper functions
-
-timeZoneFromPath :: FilePath -> String
-timeZoneFromPath = intercalate "/" . drp . foldr collect [[]]
+timeZoneNameFromPath :: FilePath -> String
+timeZoneNameFromPath = intercalate "/" . drp . foldr collect [[]]
   where
     drp = drop 1 . dropWhile (/= "zoneinfo")
     collect ch l@(x:xs)

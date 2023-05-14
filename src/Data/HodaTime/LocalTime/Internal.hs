@@ -6,12 +6,10 @@ module Data.HodaTime.LocalTime.Internal
   ,Minute
   ,Second
   ,Nanosecond
-  ,fromInstant  -- TODO: Remove
   ,midnight
 )
 where
 
-import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..), CalendarDateTime(..), CalendarDate, day, IsCalendar(..))
 import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs)
 import Data.HodaTime.Constants (secondsPerDay)
@@ -70,11 +68,6 @@ instance IsCalendar cal => HasLocalTime (CalendarDateTime cal) where
 
   nanosecond f (CalendarDateTime cd lt) = CalendarDateTime cd <$> nanosecond f lt
   {-# INLINE nanosecond #-}
-
--- Constructors
-
-fromInstant :: Instant -> LocalTime                   -- NOTE: This should never go to top level as Instant -> LocalTime is not supported, you must go through a ZonedDateTime
-fromInstant (Instant _ secs nsecs) = LocalTime secs nsecs
 
 -- | Private function for constructing a localtime at midnight
 midnight :: LocalTime

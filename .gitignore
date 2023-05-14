@@ -13,3 +13,4 @@ cabal.config
 .settings
 .project
 .stack-work
+stack.yaml.lock

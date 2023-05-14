@@ -34,8 +34,8 @@ unitTests = testGroup "Unit tests"
 mathPropSC :: TestTree
 mathPropSC = localOption (SC.SmallCheckDepth 18) $ testGroup "Math"  -- NOTE: Max offset size is 18/-18 so we set the depth to make sure everything in that range is tested
   [
-     SC.testProperty "fromHours x `add` fromHours y == fromHours (x+y)" $ test fromHours add (+)
-    ,SC.testProperty "fromHours x `minus` fromHours y == fromHours (x-y)" $ test fromHours minus (-)
+     SC.testProperty "fromHours x `addClamped` fromHours y == fromHours (x+y)" $ test fromHours addClamped (+)
+    ,SC.testProperty "fromHours x `minusClamped` fromHours y == fromHours (x-y)" $ test fromHours minusClamped (-)
   ]
 
 secondProps :: TestTree
@@ -52,10 +52,10 @@ secondProps = testGroup "Seconds conversion"
 mathProps :: TestTree
 mathProps = testGroup "Math"
   [
-     QC.testProperty "fromSeconds x `add` fromSeconds y == fromSeconds (x+y)" $ test fromSeconds add (+)
-    ,QC.testProperty "fromSeconds x `minus` fromSeconds y == fromSeconds (x-y)" $ test fromSeconds minus (-)
-    ,QC.testProperty "fromMinutes x `add` fromMinutes y == fromMinutes (x+y)" $ test fromMinutes add (+)
-    ,QC.testProperty "fromMinutes x `minus` fromMinutes y == fromMinutes (x-y)" $ test fromMinutes minus (-)
+     QC.testProperty "fromSeconds x `addClamped` fromSeconds y == fromSeconds (x+y)" $ test fromSeconds addClamped (+)
+    ,QC.testProperty "fromSeconds x `minusClamped` fromSeconds y == fromSeconds (x-y)" $ test fromSeconds minusClamped (-)
+    ,QC.testProperty "fromMinutes x `addClamped` fromMinutes y == fromMinutes (x+y)" $ test fromMinutes addClamped (+)
+    ,QC.testProperty "fromMinutes x `minusClamped` fromMinutes y == fromMinutes (x-y)" $ test fromMinutes minusClamped (-)
   ]
 
 lensProps :: TestTree
@@ -73,7 +73,7 @@ lensProps = testGroup "Lens"
   ]
   where
     offset :: Int -> Int -> Int -> Offset   -- Only needed so the compiler can decide which concreate type to use
-    offset s m h = fromSeconds s `add` fromMinutes m `add` fromHours h
+    offset s m h = fromSeconds s `addClamped` fromMinutes m `addClamped` fromHours h
     offsetEq (s, m, h) off = get seconds off == s && get minutes off == m && get hours off == h
     _1 f (a,b,c) = (\a' -> (a',b,c)) <$> f a
     _2 f (a,b,c) = (\b' -> (a,b',c)) <$> f b
