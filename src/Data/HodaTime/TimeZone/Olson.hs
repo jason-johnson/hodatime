@@ -41,7 +41,7 @@ getTransitions bs = case runGetOrFail getTransitions' bs of
     getTransitions' = do
       header@(Header magic version _ _ _ _ _ _) <- getHeader
       unless (magic == "TZif") (fail $ "unknown magic: " ++ magic)
-      (getInt, header'@(Header _ _ isGmtCount isStdCount _ _ typeCount _)) <- getCorrectHeader header
+      (getInt, header'@(Header _ _ _ _ _ _ typeCount _)) <- getCorrectHeader header
       unless
         (typeCount >= 1)
         (fail $ "format issue: ttypecnt must be at least 1 but is " ++ show typeCount)
