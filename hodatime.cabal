@@ -78,6 +78,7 @@ library
                    Data.HodaTime.Pattern,
                    Data.HodaTime.Pattern.LocalTime,
                    Data.HodaTime.Pattern.CalendarDate,
+                   Data.HodaTime.Pattern.CalendarDateTime,
                    Data.HodaTime.Pattern.ZonedDateTime,
                    Data.HodaTime.Exceptions
   other-modules:
