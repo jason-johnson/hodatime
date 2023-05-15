@@ -38,7 +38,7 @@ import Data.Typeable (Typeable)
 -- Exceptions
 
 -- | Parse failed on the given string
-data ParseFailedException = ParseFailedException String
+newtype ParseFailedException = ParseFailedException String
   deriving (Typeable, Show)
 
 instance Exception ParseFailedException
