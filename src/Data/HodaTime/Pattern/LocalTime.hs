@@ -8,6 +8,7 @@ module Data.HodaTime.Pattern.LocalTime
   ,minute'
   ,second
   ,second'
+  ,time
 )
 where
 
@@ -54,3 +55,6 @@ second = pat_lens LT.second p_sixty f_shown_two "second: 00-59"
 
 second' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
 second' = pat_lens' PT.second LT.second p_sixty f_shown_two "second: 00-59"
+
+time ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
+time = hour <% char ':' <> minute <% char ':' <> second

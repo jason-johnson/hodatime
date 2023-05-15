@@ -7,6 +7,7 @@ module Data.HodaTime.Pattern.CalendarDate
    day
   ,month
   ,year
+  ,date
 )
 where
 
@@ -22,8 +23,9 @@ import Formatting (left, (%.), later)
 
 -- d1 = maybe (error "duh") id $ calendarDate 1 January 2000
 -- d2 = maybe (error "duh") id $ calendarDate 3 March 2020
--- pat = year 4 <% char '/'
--- parse' (year 4 <% char '/' <> month <% char '/' <> day <% char ' ' <> hour <% char ':' <> minute <% char ':' <> second) "2000/March/01 01:01:01" dt
+-- format Data.HodaTime.Pattern.CalendarDate.date d1
+-- format Data.HodaTime.Pattern.CalendarDate.date d2
+-- parse Data.HodaTime.Pattern.CalendarDate.date "2000/March/01" :: IO (CalendarDate Gregorian)
 
 year :: HasDate d => Int -> Pattern (d -> d) (d -> String) String
 year c = pat_lens CDT.year p fmt $ "year: " ++ zeros ++ "-" ++ nines
@@ -48,3 +50,6 @@ day = pat_lens CDT.day (p_a <|> p_b) f_shown_two "day: 01-31"
   where
     p_a = digitsToInt <$> oneOf ['0'..'2'] <*> digit
     p_b = digitsToInt <$> P.char '3' <*> oneOf ['0', '1']
+
+date :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
+date = year 4 <% char '/' <> month <% char '/' <> day
