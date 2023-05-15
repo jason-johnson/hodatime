@@ -106,6 +106,8 @@ instance IsCalendar cal => HasLocalTime (CalendarDateTime cal) where
   nanosecond f (CalendarDateTime cd lt) = CalendarDateTime cd <$> nanosecond f lt
   {-# INLINE nanosecond #-}
 
+-- TODO:  Add an AM/PM lens which shows the current AM/PM based on if the time is after 12, and will add 12 to any number less than 12
+
 -- | Private function for constructing a localtime at midnight
 midnight :: LocalTime
 midnight = LocalTime 0 0
