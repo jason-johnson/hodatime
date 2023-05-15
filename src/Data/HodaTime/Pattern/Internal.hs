@@ -24,7 +24,6 @@ module Data.HodaTime.Pattern.Internal
 where
 
 import Control.Monad.Catch (MonadThrow, throwM)
-import Data.Semigroup ((<>), Semigroup)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Text.Parsec hiding (many, optional, (<|>), parse)
