@@ -41,6 +41,7 @@ pyyyy = pat_lens CDT.year p fmt "year: 0000-9999"
     p = read <$> count 4 digit
     fmt x = left 4 '0' %. f_shown x
 
+-- | Month of year specified as a number - zero-padded
 pMM :: HasDate d => Pattern (d -> d) (d -> String) String
 pMM = pat_lens monthl p fmt "month: 01-12"
   where
