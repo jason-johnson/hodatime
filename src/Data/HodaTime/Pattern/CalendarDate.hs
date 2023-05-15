@@ -71,7 +71,7 @@ pdd = pat_lens CDT.day (p_a <|> p_b) f_shown_two "day: 01-31"
     p_b = digitsToInt <$> P.char '3' <*> oneOf ['0', '1']
 
 -- | This is the short date pattern, currently defined as "dd/MM/yyyy".
-pd :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
+pd :: HasDate d => Pattern (d -> d) (d -> String) String
 pd = pdd <% char '/' <> pMM <% char '/' <> pyyyy
 
 -- | This is the long date pattern, currently defined as "dddd, dd MMMM yyyy".
