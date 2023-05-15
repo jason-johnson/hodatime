@@ -42,10 +42,12 @@ pyyyy = pat_lens CDT.year p fmt "year: 0000-9999"
     fmt x = left 4 '0' %. f_shown x
 
 pMM :: HasDate d => Pattern (d -> d) (d -> String) String
-pMM = pat_lens monthl (p_a <|> p_b) f_shown_two "month: 01-12"
+pMM = pat_lens monthl p fmt "month: 01-12"
   where
+    p = pred <$> p_a <|> p_b
     p_a = digitsToInt <$> P.char '0' <*> digit
     p_b = digitsToInt <$> P.char '1' <*> oneOf ['0'..'2']
+    fmt x = left 2 '0' %. later (TLB.fromText . T.pack . show . succ . x)
 
 -- | Full month name, parsed case-insensitively.  Formats in title case
 pMMMM :: forall cal d c. (d ~ c cal, IsCalendar cal, HasDate d, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
@@ -68,9 +70,9 @@ pdd = pat_lens CDT.day (p_a <|> p_b) f_shown_two "day: 01-31"
     p_a = digitsToInt <$> oneOf ['0'..'2'] <*> digit
     p_b = digitsToInt <$> P.char '3' <*> oneOf ['0', '1']
 
--- | This is the short date pattern, currently defined as "dd/mm/yyyy".
+-- | This is the short date pattern, currently defined as "dd/MM/yyyy".
 pd :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
-pd = pdd <% char '/' <> pMMMM <% char '/' <> pyyyy
+pd = pdd <% char '/' <> pMM <% char '/' <> pyyyy
 
 -- | This is the long date pattern, currently defined as "dddd, dd MMMM yyyy".
 pD :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
