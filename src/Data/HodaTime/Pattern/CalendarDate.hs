@@ -45,7 +45,7 @@ pyyyy = pat_lens CDT.year p fmt "year: 0000-9999"
 pMM :: HasDate d => Pattern (d -> d) (d -> String) String
 pMM = pat_lens monthl p fmt "month: 01-12"
   where
-    p = pred <$> p_a <|> p_b
+    p = pred <$> (p_a <|> p_b)
     p_a = digitsToInt <$> P.char '0' <*> digit
     p_b = digitsToInt <$> P.char '1' <*> oneOf ['0'..'2']
     fmt x = left 2 '0' %. later (TLB.fromText . T.pack . show . succ . x)
