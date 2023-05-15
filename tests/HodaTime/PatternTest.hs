@@ -50,6 +50,6 @@ calDateProps = testGroup "CalendarDateTime conversion"
   where
     testFormatToParseIdentity (RandomStandardDate y mon d) (RandomTime h m s) = monadicIO $ do
       let cdt = maybe (error "impossible") id $ at <$> G.calendarDate d (toEnum mon) y <*> localTime h m s 0
-      let pat = pat_year 4 <% char '/' <> pat_month <% char '/' <> pat_day <% char ' ' <> pat_hour <% char ':' <> pat_minute <% char ':' <> pat_second
+      let pat = year 4 <% char '/' <> month <% char '/' <> day <% char ' ' <> hour <% char ':' <> minute <% char ':' <> second
       cdt' <- run $ parse pat $ format pat cdt
       QCM.assert $ cdt == cdt'
