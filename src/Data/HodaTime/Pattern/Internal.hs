@@ -35,10 +35,6 @@ import Data.HodaTime.Pattern.ApplyParse (DefaultForParse(..), ApplyParse(..))
 import Control.Exception (Exception)
 import Data.Typeable (Typeable)
 
--- TODO: Remove these when we get %> fixed
-import Formatting (runFormat)
-import Formatting.Internal (Format(..))
-
 -- Exceptions
 
 -- | Parse failed on the given string
