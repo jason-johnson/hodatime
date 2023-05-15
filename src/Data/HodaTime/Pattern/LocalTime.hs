@@ -66,14 +66,6 @@ pss = pat_lens LT.second p_sixty f_shown_two "second: 00-59"
 second' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
 second' = pat_lens' PT.second LT.second p_sixty f_shown_two "second: 00-59"
 
--- | Short format pattern. Currently defined as "HH:mm" but should eventually follow the locale
-pt :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
-pt = pHH <% char ':' <> pmm
-
--- | Long format pattern. Currently defined as "HH:mm:ss" but should eventually follow locale
-pT ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
-pT = pHH <% char ':' <> pmm <% char ':' <> pss
-
 -- | 12 hour clock time period designation short form; either A or P
 pp ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
 pp = error "to be implemented"  -- TODO: use the AM/PM lense
@@ -81,3 +73,11 @@ pp = error "to be implemented"  -- TODO: use the AM/PM lense
 -- | 12 hour clock time period designation full form; either AM or PM
 ppp ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
 ppp = error "to be implemented"  -- TODO: use the AM/PM lense
+
+-- | Short format pattern. Currently defined as "HH:mm" but should eventually follow the locale
+pt :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
+pt = pHH <% char ':' <> pmm
+
+-- | Long format pattern. Currently defined as "HH:mm:ss" but should eventually follow locale
+pT ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
+pT = pHH <% char ':' <> pmm <% char ':' <> pss
