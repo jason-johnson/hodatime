@@ -3,11 +3,15 @@
 {-# LANGUAGE GADTs #-}
 module Data.HodaTime.Pattern.CalendarDate
 (
+  -- * Standard Patterns
+   date
+  -- * Custom Patterns
+  --
+  -- | Used to create specialized patterns
   -- * Patterns
-   day
+  ,day
   ,month
   ,year
-  ,date
 )
 where
 

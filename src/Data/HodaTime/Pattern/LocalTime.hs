@@ -1,14 +1,17 @@
 module Data.HodaTime.Pattern.LocalTime
 (
-  -- * Patterns
-   hour
+  -- * Standard Patterns
+  time
+  -- * Custom Patterns
+  --
+  -- | Used to create specialized patterns
+  ,hour
   ,hour'
   ,hour_12
   ,minute
   ,minute'
   ,second
   ,second'
-  ,time
 )
 where
 
