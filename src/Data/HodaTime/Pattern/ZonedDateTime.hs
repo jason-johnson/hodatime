@@ -34,6 +34,11 @@ data ZonedDateTimeInfo cal m =
     ,zone :: String
   }
 
+-- d1 = maybe (error "duh") id $ on <$> localTime 1 2 3 0 <*> calendarDate 1 January 2000
+-- d2 = maybe (error "duh") id $ on <$> localTime 1 2 3 0 <*> calendarDate 3 March 2020
+-- z1 = utc >>= return . fromCalendarDateTimeLeniently d1
+-- z2 = utc >>= return . fromCalendarDateTimeLeniently d2
+
 pat_yearz :: (MonadThrow m, IsCalendar cal) => Int -> Pattern (ZonedDateTimeInfo cal m -> ZonedDateTimeInfo cal m) (ZonedDateTime cal -> String) String
 pat_yearz c = Pattern p fmt
   where
