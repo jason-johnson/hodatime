@@ -28,9 +28,9 @@ import Text.Parsec (oneOf, digit)
 import qualified Text.Parsec as P (char)
 
 -- x = maybe (error "duh") id $ localTime 1 2 3 0
--- pat = pHH <% char ':' <> pmm <% char ':' <> pss
--- parse pat "01:01:01" :: IO LocalTime
--- format pat x
+-- parse pT "01:01:01" :: IO LocalTime
+-- format pT x
+-- format pt x
 
 -- | The double digit hour of day in the 12-hour clock; a value 1-12. When parsing, if no am/pm designator is specified, the parsed value is in the morning.
 phh :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
