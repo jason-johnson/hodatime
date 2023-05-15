@@ -4,12 +4,14 @@
 module Data.HodaTime.Pattern.CalendarDate
 (
   -- * Standard Patterns
-   date
+   pd
+  ,pD
   -- * Custom Patterns
   --
   -- | Used to create specialized patterns
   -- * Patterns
   ,pyyyy
+  ,pMM
   ,pMMMM
   ,pdd
 )
@@ -23,7 +25,7 @@ import qualified  Data.Text.Lazy.Builder as TLB
 import Data.Char(toLower, toUpper)
 import Control.Applicative ((<|>))
 import Text.Parsec (digit, count, choice, oneOf, try)
-import qualified Text.Parsec as P (char, string)
+import qualified Text.Parsec as P (char)
 import Formatting (left, (%.), later)
 
 -- d1 = maybe (error "duh") id $ calendarDate 1 January 2000
@@ -39,6 +41,12 @@ pyyyy = pat_lens CDT.year p fmt "year: 0000-9999"
     p = read <$> count 4 digit
     fmt x = left 4 '0' %. f_shown x
 
+pMM :: HasDate d => Pattern (d -> d) (d -> String) String
+pMM = pat_lens monthl (p_a <|> p_b) f_shown_two "month: 01-12"
+  where
+    p_a = digitsToInt <$> P.char '0' <*> digit
+    p_b = digitsToInt <$> P.char '1' <*> oneOf ['0'..'2']
+
 -- | Full month name, parsed case-insensitively.  Formats in title case
 pMMMM :: forall cal d c. (d ~ c cal, IsCalendar cal, HasDate d, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
 pMMMM = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
@@ -53,12 +61,17 @@ pMMMM = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
     p' = (fromEnum :: Month cal -> Int) . read <$> months
     fmt' x = later (TLB.fromText . T.pack . show . (toEnum :: Int -> Month cal) . x)
 
--- | Day of month - zero-padded; 
+-- | Day of month - zero-padded
 pdd :: HasDate d => Pattern (d -> d) (d -> String) String
 pdd = pat_lens CDT.day (p_a <|> p_b) f_shown_two "day: 01-31"
   where
     p_a = digitsToInt <$> oneOf ['0'..'2'] <*> digit
     p_b = digitsToInt <$> P.char '3' <*> oneOf ['0', '1']
 
-date :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
-date = pyyyy <% char '/' <> pMMMM <% char '/' <> pdd
+-- | This is the short date pattern, currently defined as "dd/mm/yyyy".
+pd :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
+pd = pdd <% char '/' <> pMMMM <% char '/' <> pyyyy
+
+-- | This is the long date pattern, currently defined as "dddd, dd MMMM yyyy".
+pD :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
+pD = pdd <% char ' ' <> pMMMM <% char ' ' <> pyyyy
