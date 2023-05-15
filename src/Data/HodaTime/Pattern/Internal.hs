@@ -13,8 +13,8 @@ module Data.HodaTime.Pattern.Internal
   ,format
   ,(<>)         -- TODO: Remove
   ,(<%)
-  ,pat_string
-  ,pat_char
+  ,string
+  ,char
   ,pat_lens
   ,pat_lens'
   ,digitsToInt
@@ -28,7 +28,8 @@ where
 import Control.Monad.Catch (MonadThrow, throwM)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
-import Text.Parsec hiding (many, optional, (<|>), parse)
+import Text.Parsec hiding (many, optional, (<|>), parse, string, char)
+import qualified Text.Parsec as P (string, char)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
 import Data.HodaTime.Internal.Lens (view, set, Lens)
@@ -135,14 +136,14 @@ f_shown x = later (TLB.fromText . T.pack . show . x)
 f_shown_two :: Show b => (a -> b) -> Format r (a -> r)
 f_shown_two x = left 2 '0' %. f_shown x
 
-pat_string :: String -> Pattern String String String
-pat_string s = Pattern p_str f_str
+string :: String -> Pattern String String String
+string s = Pattern p_str f_str
   where
-    p_str = string s
+    p_str = P.string s
     f_str = now (fromString s)
 
-pat_char :: Char -> Pattern Char String String
-pat_char c = Pattern p_char f_char
+char :: Char -> Pattern Char String String
+char c = Pattern p_char f_char
   where
-    p_char = char c
+    p_char = P.char c
     f_char = now (TLB.singleton c)

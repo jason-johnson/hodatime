@@ -17,7 +17,8 @@ import Control.Monad.Catch (MonadThrow, throwM)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Control.Applicative ((<|>))
-import Text.Parsec (digit, count, string, choice, oneOf, char, (<?>))
+import Text.Parsec (digit, count, string, choice, oneOf, (<?>))
+import qualified Text.Parsec as P (char)
 import Formatting (left, (%.), later)
 
 data ZonedDateTimeInfo cal m =
@@ -50,5 +51,5 @@ pat_dayz = Pattern p fmt
   where
     p = (\d -> \zdti -> zdti { day = pure d}) <$> (p_a <|> p_b) <?> "day: 01-31"
     p_a = digitsToInt <$> oneOf ['0'..'2'] <*> digit
-    p_b = digitsToInt <$> char '3' <*> oneOf ['0', '1']
+    p_b = digitsToInt <$> P.char '3' <*> oneOf ['0', '1']
     fmt = left 2 '0' %. f_shown ZDT.day

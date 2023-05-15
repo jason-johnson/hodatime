@@ -20,8 +20,8 @@ module Data.HodaTime.Pattern
   -- * Pattern operators
   ,(<%)
   -- * Patterns
-  ,pat_string
-  ,pat_char
+  ,string
+  ,char
   -- * Exceptions
   ,ParseFailedException
 )
