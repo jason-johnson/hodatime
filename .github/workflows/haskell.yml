@@ -8,99 +8,10 @@ on:
 permissions:
   contents: read
 
-jobs:
-  version:
-    name: version
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v0
-        with:
-          versionSpec: '5.x'
-          preferLatestVersion: true
-
-      - name: Determine Version
-        uses: gittools/actions/gitversion/execute@v0
-              
-      - name: Display GitVersion variables (without prefix)
-        run: |
-          echo "Major: ${{ env.major }}"
-          echo "Minor: ${{ env.minor }}"
-          echo "Patch: ${{ env.patch }}"
-          echo "PreReleaseTag: ${{ env.preReleaseTag }}"
-          echo "PreReleaseTagWithDash: ${{ env.preReleaseTagWithDash }}"
-          echo "PreReleaseLabel: ${{ env.preReleaseLabel }}"
-          echo "PreReleaseNumber: ${{ env.preReleaseNumber }}"
-          echo "WeightedPreReleaseNumber: ${{ env.weightedPreReleaseNumber }}"
-          echo "BuildMetaData: ${{ env.buildMetaData }}"
-          echo "BuildMetaDataPadded: ${{ env.buildMetaDataPadded }}"
-          echo "FullBuildMetaData: ${{ env.fullBuildMetaData }}"
-          echo "MajorMinorPatch: ${{ env.majorMinorPatch }}"
-          echo "SemVer: ${{ env.semVer }}"
-          echo "LegacySemVer: ${{ env.legacySemVer }}"
-          echo "LegacySemVerPadded: ${{ env.legacySemVerPadded }}"
-          echo "AssemblySemVer: ${{ env.assemblySemVer }}"
-          echo "AssemblySemFileVer: ${{ env.assemblySemFileVer }}"
-          echo "FullSemVer: ${{ env.fullSemVer }}"
-          echo "InformationalVersion: ${{ env.informationalVersion }}"
-          echo "BranchName: ${{ env.branchName }}"
-          echo "EscapedBranchName: ${{ env.escapedBranchName }}"
-          echo "Sha: ${{ env.sha }}"
-          echo "ShortSha: ${{ env.shortSha }}"
-          echo "NuGetVersionV2: ${{ env.nuGetVersionV2 }}"
-          echo "NuGetVersion: ${{ env.nuGetVersion }}"
-          echo "NuGetPreReleaseTagV2: ${{ env.nuGetPreReleaseTagV2 }}"
-          echo "NuGetPreReleaseTag: ${{ env.nuGetPreReleaseTag }}"
-          echo "VersionSourceSha: ${{ env.versionSourceSha }}"
-          echo "CommitsSinceVersionSource: ${{ env.commitsSinceVersionSource }}"
-          echo "CommitsSinceVersionSourcePadded: ${{ env.commitsSinceVersionSourcePadded }}"
-          echo "UncommittedChanges: ${{ env.uncommittedChanges }}"
-          echo "CommitDate: ${{ env.commitDate }}"
-
-      - name: Display GitVersion variables (with prefix)
-        run: |
-          echo "Major: ${{ env.GitVersion_Major }}"
-          echo "Minor: ${{ env.GitVersion_Minor }}"
-          echo "Patch: ${{ env.GitVersion_Patch }}"
-          echo "PreReleaseTag: ${{ env.GitVersion_PreReleaseTag }}"
-          echo "PreReleaseTagWithDash: ${{ env.GitVersion_PreReleaseTagWithDash }}"
-          echo "PreReleaseLabel: ${{ env.GitVersion_PreReleaseLabel }}"
-          echo "PreReleaseNumber: ${{ env.GitVersion_PreReleaseNumber }}"
-          echo "WeightedPreReleaseNumber: ${{ env.GitVersion_WeightedPreReleaseNumber }}"
-          echo "BuildMetaData: ${{ env.GitVersion_BuildMetaData }}"
-          echo "BuildMetaDataPadded: ${{ env.GitVersion_BuildMetaDataPadded }}"
-          echo "FullBuildMetaData: ${{ env.GitVersion_FullBuildMetaData }}"
-          echo "MajorMinorPatch: ${{ env.GitVersion_MajorMinorPatch }}"
-          echo "SemVer: ${{ env.GitVersion_SemVer }}"
-          echo "LegacySemVer: ${{ env.GitVersion_LegacySemVer }}"
-          echo "LegacySemVerPadded: ${{ env.GitVersion_LegacySemVerPadded }}"
-          echo "AssemblySemVer: ${{ env.GitVersion_AssemblySemVer }}"
-          echo "AssemblySemFileVer: ${{ env.GitVersion_AssemblySemFileVer }}"
-          echo "FullSemVer: ${{ env.GitVersion_FullSemVer }}"
-          echo "InformationalVersion: ${{ env.GitVersion_InformationalVersion }}"
-          echo "BranchName: ${{ env.GitVersion_BranchName }}"
-          echo "EscapedBranchName: ${{ env.GitVersion_EscapedBranchName }}"
-          echo "Sha: ${{ env.GitVersion_Sha }}"
-          echo "ShortSha: ${{ env.GitVersion_ShortSha }}"
-          echo "NuGetVersionV2: ${{ env.GitVersion_NuGetVersionV2 }}"
-          echo "NuGetVersion: ${{ env.GitVersion_NuGetVersion }}"
-          echo "NuGetPreReleaseTagV2: ${{ env.GitVersion_NuGetPreReleaseTagV2 }}"
-          echo "NuGetPreReleaseTag: ${{ env.GitVersion_NuGetPreReleaseTag }}"
-          echo "VersionSourceSha: ${{ env.GitVersion_VersionSourceSha }}"
-          echo "CommitsSinceVersionSource: ${{ env.GitVersion_CommitsSinceVersionSource }}"
-          echo "CommitsSinceVersionSourcePadded: ${{ env.GitVersion_CommitsSinceVersionSourcePadded }}"
-          echo "UncommittedChanges: ${{ env.GitVersion_UncommittedChanges }}"
-          echo "CommitDate: ${{ env.GitVersion_CommitDate }}"
-      
+jobs:      
   test:
     name: test
     runs-on: ${{ matrix.os }}
-    needs: version
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -146,3 +57,14 @@ jobs:
 
       - name: test project
         run: stack test
+
+  publish:
+    name: publish hackage
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        
+      - name: cabal sdist
+        run: cabal sdist -o outdir/
