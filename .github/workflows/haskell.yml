@@ -75,4 +75,4 @@ jobs:
           echo "hodatime_version=$VERSION" >> "$GITHUB_ENV"
 
       - name: publish code
-        run: cabal upload outdir/hodatime-${{ env.hodatime_version }}.tar.gz
+        run: cabal upload -u $HACKAGE_USER -p $HACKAGE_PASSWORD outdir/hodatime-${{ env.hodatime_version }}.tar.gz
