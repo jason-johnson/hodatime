@@ -9,8 +9,18 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: build
+  version:
+    name: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0
+        with:
+          versionSpec: '5.x'
+          preferLatestVersion: true
+      
+  test:
+    name: test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
