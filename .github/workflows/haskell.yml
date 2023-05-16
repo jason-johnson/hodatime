@@ -65,9 +65,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
-        
-      - name: cabal sdist
-        run: cabal sdist -o outdir/
 
       - name: get version
         run: |
@@ -75,6 +72,8 @@ jobs:
           echo "hodatime_version=$VERSION" >> "$GITHUB_ENV"
 
       - name: publish code
-        run: cabal upload -u $HACKAGE_USER -p $HACKAGE_PASSWORD outdir/hodatime-${{ env.hodatime_version }}.tar.gz
+        run: |
+          cabal sdist -o outdir/
+          cabal upload -u $HACKAGE_USER -p $HACKAGE_PASSWORD outdir/hodatime-${{ env.hodatime_version }}.tar.gz
         env:
           HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
