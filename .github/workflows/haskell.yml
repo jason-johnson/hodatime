@@ -69,9 +69,8 @@ jobs:
       - name: cabal sdist
         run: cabal sdist -o outdir/
 
-      - name: Upload output
-        uses: actions/upload-artifact@v3
-        with:
-          name: package
-          path: |
-            outdir
+      - name: get version
+        run: HT_VERSION=$(grep "^version:" hodatime.cabal | awk -F':' '{ print $2 }' | xargs echo -n )
+
+      - name: publish code
+        run: cabal upload outdir/hodatime-$HT_VERSION.tar.gz
