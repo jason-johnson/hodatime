@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Calendar.Iso
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- This is the module for 'CalendarDate' and 'CalendarDateTime' in the 'Iso' 8601 calendar.  This calendar is the same as the 'Gregorian' calendar except for how week dates are calculated.
+----------------------------------------------------------------------------
 module Data.HodaTime.Calendar.Iso
 (
   fromWeekDate

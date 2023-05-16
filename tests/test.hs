@@ -7,12 +7,13 @@ import HodaTime.LocalTimeTest
 import HodaTime.Calendar.GregorianTest
 import HodaTime.CalendarDateTimeTest
 import HodaTime.ZonedDateTimeTest
+import HodaTime.PatternTest
 
 main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [instantTests, durationTests, offsetTests, localTimeTests, gregorianTests, calendarDateTimeTests, zonedDateTimeTests]
+tests = testGroup "Tests" [instantTests, durationTests, offsetTests, localTimeTests, gregorianTests, calendarDateTimeTests, zonedDateTimeTests, patternTests]
 
 {-
 unitTests :: TestTree

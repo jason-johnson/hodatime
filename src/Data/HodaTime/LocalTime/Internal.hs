@@ -6,15 +6,52 @@ module Data.HodaTime.LocalTime.Internal
   ,Minute
   ,Second
   ,Nanosecond
+  ,localTime
   ,midnight
+  ,InvalidHourException(..)
+  ,InvalidMinuteException(..)
+  ,InvalidSecondException(..)
+  ,InvalidNanoSecondException(..)
 )
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..), CalendarDateTime(..), CalendarDate, day, IsCalendar(..))
-import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs)
+import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs, secondsFromHours, secondsFromMinutes)
 import Data.HodaTime.Constants (secondsPerDay)
 import Data.Functor.Identity (Identity(..))
 import Data.Word (Word32)
+import Control.Monad (unless)
+import Control.Monad.Catch (MonadThrow, throwM)
+import Control.Exception (Exception)
+import Data.Typeable (Typeable)
+
+-- Exceptions
+
+-- | Given hour was not valid
+data InvalidHourException = InvalidHourException
+  deriving (Typeable, Show)
+
+instance Exception InvalidHourException
+
+-- | Given minute was not valid
+data InvalidMinuteException = InvalidMinuteException
+  deriving (Typeable, Show)
+
+instance Exception InvalidMinuteException
+
+-- | Given second was not valid
+data InvalidSecondException = InvalidSecondException
+  deriving (Typeable, Show)
+
+instance Exception InvalidSecondException
+
+-- | Given nanosecond was not valid
+data InvalidNanoSecondException = InvalidNanoSecondException
+  deriving (Typeable, Show)
+
+instance Exception InvalidNanoSecondException
+
+-- Types
 
 type Hour = Int
 type Minute = Int
@@ -69,6 +106,8 @@ instance IsCalendar cal => HasLocalTime (CalendarDateTime cal) where
   nanosecond f (CalendarDateTime cd lt) = CalendarDateTime cd <$> nanosecond f lt
   {-# INLINE nanosecond #-}
 
+-- TODO:  Add an AM/PM lens which shows the current AM/PM based on if the time is after 12, and will add 12 to any number less than 12
+
 -- | Private function for constructing a localtime at midnight
 midnight :: LocalTime
 midnight = LocalTime 0 0
@@ -85,3 +124,17 @@ fromSecondsRolled date nsecs secs = CalendarDateTime date' $ LocalTime secs' nse
     where
       (d, secs') = secs `divMod` secondsPerDay
       date' = if d == 0 then date else runIdentity . day (Identity . (+ fromIntegral d)) $ date  -- NOTE: inlining the modify lens here
+
+-- constructors
+
+-- | Create a new 'LocalTime' from an hour, minute, second and nanosecond if values are valid
+localTime :: MonadThrow m => Hour -> Minute -> Second -> Nanosecond -> m LocalTime
+localTime h m s ns = do
+  unless (h < 24 && h >= 0) $ throwM InvalidHourException
+  unless (m < 60 && m >= 0) $ throwM InvalidMinuteException
+  unless (s < 60 && m >= 0) $ throwM InvalidSecondException
+  unless (ns >= 0) $ throwM InvalidNanoSecondException
+  return $ LocalTime (h' + m' + fromIntegral s) (fromIntegral ns)
+  where
+    h' = secondsFromHours h
+    m' = secondsFromMinutes m

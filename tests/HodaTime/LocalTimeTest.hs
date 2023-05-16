@@ -10,7 +10,7 @@ import Test.Tasty.HUnit
 import Data.Maybe (fromJust)
 
 import HodaTime.Util
-import Data.HodaTime.LocalTime (localTime, HasLocalTime(..))
+import Data.HodaTime.LocalTime (localTime, LocalTime, HasLocalTime(..))
 
 localTimeTests :: TestTree
 localTimeTests = testGroup "LocalTime Tests" [qcProps, unitTests]
@@ -58,4 +58,5 @@ rolloverUnits = testGroup "Rollover"
     ,testCase "22:57:57 + 3725s == 00:00:02" $ modify (+3725) second <$> time @?= localTime 0 0 2 0
   ]
   where
+    time :: Maybe LocalTime
     time = localTime 22 57 57 0

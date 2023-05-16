@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Data.HodaTime.Instant
+-- Module      :  Data.HodaTime.ZonedDateTime
 -- Copyright   :  (C) 2017 Jason Johnson
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
@@ -26,18 +26,25 @@ module Data.HodaTime.ZonedDateTime
   -- * Accessors
   ,inDst
   ,zoneAbbreviation
+  ,year
+  ,month
+  ,day
+  ,hour
+  ,minute
+  ,second
+  ,nanosecond
   -- * Special constructors
   ,fromCalendarDateTimeAll
   ,resolve
   -- * Exceptions
-  ,DateTimeDoesNotExistException(..)
-  ,DateTimeAmbiguousException(..)
+  ,DateTimeDoesNotExistException
+  ,DateTimeAmbiguousException
 )
 where
 
 import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime)
-import Data.HodaTime.LocalTime.Internal (second)
+import qualified Data.HodaTime.LocalTime.Internal as LT(second)
 import Data.HodaTime.Offset.Internal (Offset(..))
 import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
 import Control.Exception (Exception)
@@ -69,7 +76,7 @@ fromCalendarDateTimeLeniently = resolve ambiguous skipped
     ambiguous zdt _ = zdt
     skipped (ZonedDateTime _ _ (TransitionInfo (Offset bOff) _ _)) (ZonedDateTime cdt tz ti@(TransitionInfo (Offset aOff) _ _)) = ZonedDateTime cdt' tz ti
       where
-        cdt' = modify (\s -> s + aOff - bOff) second cdt
+        cdt' = modify (\s -> s + aOff - bOff) LT.second cdt
         modify f l = head . l ((:[]) . f)                 -- TODO: We may want to break down and define the 3 lens primitives we need somewhere
 
 -- | Returns the mapping of this 'CalendarDateTime' within the given 'TimeZone', with "strict" rules applied such that ambiguous or skipped date times

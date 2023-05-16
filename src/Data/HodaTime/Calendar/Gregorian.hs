@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Calendar.Gregorian
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- This is the module for 'CalendarDate' and 'CalendarDateTime' in the 'Gregorian' calendar.
+----------------------------------------------------------------------------
 module Data.HodaTime.Calendar.Gregorian
 (
   -- * Constructors
@@ -17,6 +28,8 @@ import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI
 import Control.Monad (guard)
 
 -- Constructors
+
+-- TODO: smart constructors hard coded to Maybe, make them like LocalTime
 
 -- | Smart constuctor for Gregorian calendar date.
 calendarDate :: DayOfMonth -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
