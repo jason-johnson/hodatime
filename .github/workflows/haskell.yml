@@ -76,3 +76,5 @@ jobs:
 
       - name: publish code
         run: cabal upload -u $HACKAGE_USER -p $HACKAGE_PASSWORD outdir/hodatime-${{ env.hodatime_version }}.tar.gz
+        env:
+          HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
