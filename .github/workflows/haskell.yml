@@ -71,9 +71,9 @@ jobs:
           VERSION=$(grep "^version:" hodatime.cabal | awk -F':' '{ print $2 }' | xargs echo -n )
           echo "hodatime_version=$VERSION" >> "$GITHUB_ENV"
 
-      - name: publish code
+      - name: publish to hackage
         run: |
-          cabal sdist -o outdir/
-          cabal upload -u $HACKAGE_USER -p $HACKAGE_PASSWORD outdir/hodatime-${{ env.hodatime_version }}.tar.gz
+          cabal sdist | tail -1 | xargs cabal upload -u $HACKAGE_USER -p $HACKAGE_PASSWORD "$@"
+          cabal haddock --haddock-for-hackage | tail -1 | xargs cabal upload -u $HACKAGE_USER -p $HACKAGE_PASSWORD -d "$@"
         env:
           HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
