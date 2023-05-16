@@ -68,3 +68,10 @@ jobs:
         
       - name: cabal sdist
         run: cabal sdist -o outdir/
+
+      - name: Upload output
+        uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: |
+            outdir
