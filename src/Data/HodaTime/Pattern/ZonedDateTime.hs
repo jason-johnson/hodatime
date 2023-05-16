@@ -1,3 +1,19 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.ZonedDateTime
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- This is the module for patterns for 'ZonedDateTime'.  It contains all patterns needed to format and parse 'ZoneDateTime's.
+--
+-- === NOTE
+--
+-- This module currently doesn't work.  Our suggestion is to convert it first to a 'CalendarDateTime' with `toCalendarDateTime`
+-- and use the patterns for that type.
+----------------------------------------------------------------------------
 module Data.HodaTime.Pattern.ZonedDateTime
 (
   -- TODO: We don't expose these, they are building blocks
