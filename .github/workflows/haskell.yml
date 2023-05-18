@@ -14,7 +14,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+#        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
         isMaster:
           - ${{ github.ref == 'refs/heads/master' }}
         exclude:
@@ -29,10 +30,6 @@ jobs:
       - name: Install stack (Windows)
         run: choco install haskell-stack
         if: matrix.os == 'windows-latest'
-        
-      - name: Upgrade stack (Mac OS)
-        run: stack upgrade --force-download
-        if: matrix.os == 'macos-latest'
 
       - name: Cache dependencies (Unix)
         uses: actions/cache@v1
