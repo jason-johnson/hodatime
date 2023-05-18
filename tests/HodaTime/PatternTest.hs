@@ -71,7 +71,7 @@ calDateProps = testGroup "CalendarDate conversion"
   ]
   where
     testCdFormatToParseIdentity pat (RandomStandardDate y mon d) = monadicIO $ do
-      let cd = fromMaybe (error "impossible") $ G.calendarDate d (toEnum mon) y
+      let cd = fromMaybe (error "impossible") $ G.calendarDate d mon y
       cd' <- run $ parse pat $ format pat cd
       QCM.assert $ cd == cd'
 
