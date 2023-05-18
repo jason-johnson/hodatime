@@ -8,9 +8,9 @@ on:
 permissions:
   contents: read
 
-jobs:
-  build:
-    name: build
+jobs:      
+  test:
+    name: test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -25,10 +25,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
-
-#      - name: Install stack (MacOS)
-#        run: curl -sSL https://get.haskellstack.org/ | sh
-#        if: matrix.os == 'macos-latest'
 
       - name: Install stack (Windows)
         run: choco install haskell-stack
@@ -57,3 +53,25 @@ jobs:
 
       - name: test project
         run: stack test
+
+  publish:
+    name: publish hackage
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: get version
+        run: |
+          VERSION=$(grep "^version:" hodatime.cabal | awk -F':' '{ print $2 }' | xargs echo -n )
+          echo "hodatime_version=$VERSION" >> "$GITHUB_ENV"
+
+      - name: publish to hackage
+        run: |
+          cabal update
+          export CABALCMD=$([ "${{ env.GITHUB_REF_TYPE }}" == 'tag' ] && echo "cabal upload --publish" || echo "cabal upload")
+          cabal sdist | tail -1 | xargs $CABALCMD -u "${{ vars.HACKAGE_USER }}" -p "$HACKAGE_PASSWORD" "$@"
+          cabal haddock --haddock-for-hackage | tail -1 | xargs cabal upload -u "${{ vars.HACKAGE_USER }}" -p "$HACKAGE_PASSWORD" -d "$@"
+        env:
+          HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
