@@ -7,9 +7,8 @@ module Data.HodaTime.Pattern.CalendarDate
    pd
   ,pD
   -- * Custom Patterns
-  --
-  -- | Used to create specialized patterns
-  -- * Patterns
+    --
+    -- | Used to create specialized patterns
   ,pyyyy
   ,pMM
   ,pMMMM
