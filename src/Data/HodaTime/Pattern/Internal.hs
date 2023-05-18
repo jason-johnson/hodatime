@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
 
 module Data.HodaTime.Pattern.Internal
 (
@@ -11,9 +13,8 @@ module Data.HodaTime.Pattern.Internal
   ,format
   ,(<>)         -- TODO: Remove
   ,(<%)
-  ,(%>)
-  ,pat_string
-  ,pat_char
+  ,string
+  ,char
   ,pat_lens
   ,pat_lens'
   ,digitsToInt
@@ -25,10 +26,10 @@ module Data.HodaTime.Pattern.Internal
 where
 
 import Control.Monad.Catch (MonadThrow, throwM)
-import Data.Semigroup ((<>), Semigroup)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
-import Text.Parsec hiding (many, optional, (<|>), parse)
+import Text.Parsec hiding (many, optional, (<|>), parse, string, char)
+import qualified Text.Parsec as P (string, char)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
 import Data.HodaTime.Internal.Lens (view, set, Lens)
@@ -36,14 +37,10 @@ import Data.HodaTime.Pattern.ApplyParse (DefaultForParse(..), ApplyParse(..))
 import Control.Exception (Exception)
 import Data.Typeable (Typeable)
 
--- TODO: Remove these when we get %> fixed
-import Formatting (runFormat)
-import Formatting.Internal (Format(..))
-
 -- Exceptions
 
 -- | Parse failed on the given string
-data ParseFailedException = ParseFailedException String
+newtype ParseFailedException = ParseFailedException String
   deriving (Typeable, Show)
 
 instance Exception ParseFailedException
@@ -64,12 +61,18 @@ data Pattern a b r = Pattern
     par = parse1 <* parse2
     fmt = format1 % format2
 
--- | Merge a static pattern with one that operates on a data type (BUG: currently ignores the left pattern on format operations)
-(%>) :: Pattern c r r -> Pattern (a -> a) (a -> r) r -> Pattern (a -> a) (a -> r) r
+{-
+-- | Merge a static pattern with one that operates on a data type
+
+-- NOTE: The following doesn't work, I believe because of how much we're fixing the types removes the ability to apply (%) in either direction.
+-- NOTE: But in fact, (<%) above is sufficient, the library can work fine without offering the other option
+
+(%>) :: Pattern c r r -> Pattern a b r -> Pattern a b r
 (Pattern parse1 format1) %> (Pattern parse2 format2) = Pattern par fmt
   where
     par = parse1 *> parse2
-    fmt = Format $ runFormat format1 *> runFormat format2   -- TODO: discards the formatter on the left
+    fmt = format1 % format2
+-}
 
 instance Semigroup (Pattern (a -> a) (b -> r) r) where
   (Pattern parse1 format1) <> (Pattern parse2 format2) = Pattern par fmt
@@ -133,14 +136,14 @@ f_shown x = later (TLB.fromText . T.pack . show . x)
 f_shown_two :: Show b => (a -> b) -> Format r (a -> r)
 f_shown_two x = left 2 '0' %. f_shown x
 
-pat_string :: String -> Pattern String String String
-pat_string s = Pattern p_str f_str
+string :: String -> Pattern String String String
+string s = Pattern p_str f_str
   where
-    p_str = string s
+    p_str = P.string s
     f_str = now (fromString s)
 
-pat_char :: Char -> Pattern Char String String
-pat_char c = Pattern p_char f_char
+char :: Char -> Pattern Char String String
+char c = Pattern p_char f_char
   where
-    p_char = char c
+    p_char = P.char c
     f_char = now (TLB.singleton c)

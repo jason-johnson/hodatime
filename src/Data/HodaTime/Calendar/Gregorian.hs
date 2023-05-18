@@ -29,6 +29,8 @@ import Control.Monad (guard)
 
 -- Constructors
 
+-- TODO: smart constructors hard coded to Maybe, make them like LocalTime
+
 -- | Smart constuctor for Gregorian calendar date.
 calendarDate :: DayOfMonth -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
 calendarDate d m y = do

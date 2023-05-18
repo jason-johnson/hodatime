@@ -17,12 +17,13 @@ module Data.HodaTime.Pattern
   ,parse
   ,parse'
   ,format
-  -- * Pattern operators
+  -- * Standard Patterns
+  -- * Custom Patterns
+  --
+  -- | Used to create specialized patterns
+  ,string
+  ,char
   ,(<%)
-  ,(%>)
-  -- * Patterns
-  ,pat_string
-  ,pat_char
   -- * Exceptions
   ,ParseFailedException
 )

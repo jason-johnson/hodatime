@@ -36,6 +36,9 @@ fromInstant instant tz = ZonedDateTime cdt tz ti
     instant' = adjustInstant offset instant
     cdt = fromAdjustedInstant instant'
 
+-- TODO: We'd like to define lenses here but they must all be getters.  Then we could take advantage of the type class, but to do that we probably have to pull the functor constraint to the
+-- TODO: class level.  This would be a big undertaking so we'll look at it after the merge
+
 -- | Accessor for the Year of a 'ZonedDateTime'.
 year :: IsCalendar cal => ZonedDateTime cal -> CDT.Year
 year (ZonedDateTime cdt _ _) = view CDT.year cdt

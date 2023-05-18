@@ -1,0 +1,78 @@
+name: Haskell CI
+
+on:
+  push:
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: read
+
+jobs:      
+  test:
+    name: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+#        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
+        isMaster:
+          - ${{ github.ref == 'refs/heads/master' }}
+        exclude:
+          - isMaster: false
+            os: macos-latest
+          - isMaster: false
+            os: windows-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Install stack (Windows)
+        run: choco install haskell-stack
+        if: matrix.os == 'windows-latest'
+
+      - name: Cache dependencies (Unix)
+        uses: actions/cache@v1
+        if: matrix.os != 'windows-latest'
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-store-${{ hashFiles('generator/stack.yaml.lock') }}-${{ hashFiles('generator/generator.cabal') }}
+
+      - name: Cache dependencies (Windows)
+        uses: actions/cache@v1
+        if: matrix.os == 'windows-latest'
+        with:
+          path: 'C:\Users\runneradmin\AppData\Roaming\stack'
+          key: ${{ runner.os }}-store-${{ hashFiles('generator/stack.yaml.lock') }}-${{ hashFiles('generator/generator.cabal') }}
+
+      - name: Cache GHC (Windows)
+        uses: actions/cache@v1
+        if: matrix.os == 'windows-latest'
+        with:
+          path: 'C:\Users\runneradmin\AppData\Local\Programs\stack'
+          key: ghc-${{ hashFiles('generator/stack.yaml.lock') }}
+
+      - name: test project
+        run: stack test
+
+  publish:
+    name: publish hackage
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: get version
+        run: |
+          VERSION=$(grep "^version:" hodatime.cabal | awk -F':' '{ print $2 }' | xargs echo -n )
+          echo "hodatime_version=$VERSION" >> "$GITHUB_ENV"
+
+      - name: publish to hackage
+        run: |
+          cabal update
+          export CABALCMD=$([ "${{ env.GITHUB_REF_TYPE }}" == 'tag' ] && echo "cabal upload --publish" || echo "cabal upload")
+          cabal sdist | tail -1 | xargs $CABALCMD -u "${{ vars.HACKAGE_USER }}" -p "$HACKAGE_PASSWORD" "$@"
+          cabal haddock --haddock-for-hackage | tail -1 | xargs cabal upload -u "${{ vars.HACKAGE_USER }}" -p "$HACKAGE_PASSWORD" -d "$@"
+        env:
+          HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}

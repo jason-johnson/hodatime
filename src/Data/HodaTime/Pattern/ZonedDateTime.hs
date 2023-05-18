@@ -1,3 +1,19 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.ZonedDateTime
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- This is the module for patterns for 'ZonedDateTime'.  It contains all patterns needed to format and parse 'ZoneDateTime's.
+--
+-- === NOTE
+--
+-- This module currently doesn't work.  Our suggestion is to convert it first to a 'CalendarDateTime' with `toCalendarDateTime`
+-- and use the patterns for that type.
+----------------------------------------------------------------------------
 module Data.HodaTime.Pattern.ZonedDateTime
 (
   -- TODO: We don't expose these, they are building blocks
@@ -17,7 +33,8 @@ import Control.Monad.Catch (MonadThrow, throwM)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Control.Applicative ((<|>))
-import Text.Parsec (digit, count, string, choice, oneOf, char, (<?>))
+import Text.Parsec (digit, count, string, choice, oneOf, (<?>))
+import qualified Text.Parsec as P (char)
 import Formatting (left, (%.), later)
 
 data ZonedDateTimeInfo cal m =
@@ -32,6 +49,11 @@ data ZonedDateTimeInfo cal m =
     ,nanoSecond :: Int
     ,zone :: String
   }
+
+-- d1 = maybe (error "duh") id $ on <$> localTime 1 2 3 0 <*> calendarDate 1 January 2000
+-- d2 = maybe (error "duh") id $ on <$> localTime 1 2 3 0 <*> calendarDate 3 March 2020
+-- z1 = utc >>= return . fromCalendarDateTimeLeniently d1
+-- z2 = utc >>= return . fromCalendarDateTimeLeniently d2
 
 pat_yearz :: (MonadThrow m, IsCalendar cal) => Int -> Pattern (ZonedDateTimeInfo cal m -> ZonedDateTimeInfo cal m) (ZonedDateTime cal -> String) String
 pat_yearz c = Pattern p fmt
@@ -50,5 +72,5 @@ pat_dayz = Pattern p fmt
   where
     p = (\d -> \zdti -> zdti { day = pure d}) <$> (p_a <|> p_b) <?> "day: 01-31"
     p_a = digitsToInt <$> oneOf ['0'..'2'] <*> digit
-    p_b = digitsToInt <$> char '3' <*> oneOf ['0', '1']
+    p_b = digitsToInt <$> P.char '3' <*> oneOf ['0', '1']
     fmt = left 2 '0' %. f_shown ZDT.day
