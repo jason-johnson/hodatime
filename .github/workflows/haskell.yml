@@ -29,6 +29,10 @@ jobs:
       - name: Install stack (Windows)
         run: choco install haskell-stack
         if: matrix.os == 'windows-latest'
+        
+      - name: Upgrade stack (Mac OS)
+        run: stack upgrade --force-download
+        if: matrix.os == 'macos-latest'
 
       - name: Cache dependencies (Unix)
         uses: actions/cache@v1
