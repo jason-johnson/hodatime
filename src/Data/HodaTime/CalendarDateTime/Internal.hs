@@ -146,4 +146,4 @@ class IsCalendarDateTime cal where
 
 -- | Returns a 'CalendarDateTime' of the 'CalendarDate' at the given 'LocalTime'
 at :: CalendarDate cal -> LocalTime -> CalendarDateTime cal
-at date time = CalendarDateTime date time
+at = CalendarDateTime
