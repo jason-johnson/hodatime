@@ -13,21 +13,28 @@ where
 
 import Data.Word (Word16)
 import Data.Bits (shift, (.|.), (.&.), shiftR)
+import Data.Array.Unboxed (array, UArray)
 
-type DTCacheTableDaysEntry = Word16
-type DTCacheTableHoursEntry = Word16
+type DTCacheDaysTable = UArray Int Word16
+type DTCacheHoursTable = UArray Int Word16
 
-data DTCacheTable = DTCacheTable [DTCacheTableDaysEntry] [DTCacheTableDaysEntry] [DTCacheTableHoursEntry]
+data DTCacheTable = DTCacheTable DTCacheDaysTable DTCacheHoursTable
 
+-- TODO: Since the actual Gregorian cycle is 400 years, does this strategy give correct dates?
+
+-- The Cache Table holds years and hours in the following format:
+-- +-----+----+----+  +----+----+----+
+-- |0-100|1-12|1-31|  |0-11|0-59|0-59|
+-- +-----+----+----+  +----+----+----+
+--    7     4   5        4    6    6
+-- Meaning we can store 100 years of days and 12 hours of seconds in 16 bits each
 cacheTable :: DTCacheTable
-cacheTable = DTCacheTable days negDays hours where
-  days = firstYear ++ restYears
+cacheTable = DTCacheTable days hours where
+  toArray xs = array (0, length xs) $ zip [0..] xs
+  days = toArray $ firstYear ++ restYears
   firstYear = [ encodeDate 0 m d | m <- [2..11], d <- daysInMonth m 0]
-  restYears = [ encodeDate y m d | y <- [1..127], m <- [0..11], d <- daysInMonth m y]
-  negDays = 0 : negFirstYear ++ restPrevYears                                                   -- TODO: instead of 0 it should be undefined, as this should never be accessed
-  negFirstYear = [ encodeDate 0 m d | m <- [1,0], d <- reverse . daysInMonth m $ 0]
-  restPrevYears = [ encodeDate y m d | y <- [1..127], m <- [11,10..0], d <- reverse . daysInMonth m $ - y]   -- NOTE: all that matters is the feb calculation which is fixed by negating the year
-  hours = [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
+  restYears = [ encodeDate y m d | y <- [1..100], m <- [0..11], d <- daysInMonth m y]
+  hours = toArray [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
 
 -- encode
 

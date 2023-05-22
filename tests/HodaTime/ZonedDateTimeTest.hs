@@ -45,7 +45,7 @@ calDateProps = testGroup "CalendarDateTime conversion"
   where
     testCalToZonedIdentity zone (RandomStandardDate y mon d) (RandomTime h m s) = monadicIO $ do
       tz <- run (timeZone zone)
-      let cdt = at <$> G.calendarDate d (toEnum mon) y <*> localTime h m s 0
+      let cdt = at <$> G.calendarDate d mon y <*> localTime h m s 0
       let zdt = join $ flip fromCalendarDateTimeStrictly tz <$> cdt
       let cdt' = toCalendarDateTime <$> zdt
       QCM.assert $ cdt == cdt'

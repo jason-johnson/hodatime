@@ -1,11 +1,6 @@
 module Data.HodaTime.Constants
 (
-   daysPerCycle
-  ,daysPerCentury
-  ,daysPerFourYears
-  ,monthsPerYear
-  ,daysPerWeek
-  ,hoursPerDay
+   hoursPerDay
   ,minutesPerDay
   ,minutesPerHour
   ,secondsPerDay
@@ -21,21 +16,6 @@ module Data.HodaTime.Constants
 where
 
 -- Time constants
-
-daysPerCycle :: Num a => a      -- NOTE: A "cycle" is 400 years
-daysPerCycle = 146097
-
-daysPerCentury :: Num a => a
-daysPerCentury = 36524
-
-daysPerFourYears :: Num a => a
-daysPerFourYears = 1461
-
-monthsPerYear :: Num a => a
-monthsPerYear = 12
-
-daysPerWeek :: Num a => a
-daysPerWeek = 7
 
 hoursPerDay :: Num a => a
 hoursPerDay = 24
