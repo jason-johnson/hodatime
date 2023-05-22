@@ -151,7 +151,6 @@ benchmark bench
                    bench.hs
   other-modules:
                    HodaTime.OffsetBench,
-                   Data.HodaTime.Calendar.Constants
                    Data.HodaTime.Calendar.Gregorian
                    Data.HodaTime.Calendar.Gregorian.CacheTable
                    Data.HodaTime.Calendar.Gregorian.Internal
