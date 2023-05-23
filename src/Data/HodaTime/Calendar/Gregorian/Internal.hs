@@ -13,6 +13,7 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,nthDayToDayOfMonth
   ,dayOfWeekFromDays
   ,instantToYearMonthDay
+  ,yearMonthDayToCycleCenturyDays
 )
 where
 
@@ -129,6 +130,7 @@ maxDaysInMonth m _
   | m == April || m == June || m == September || m == November  = 30
   | otherwise                                                   = 31
 
+yearMonthDayToCycleCenturyDays :: Year -> Month Gregorian -> DayOfMonth -> (Int, Int, Int)
 yearMonthDayToCycleCenturyDays y m d = (cycles, centuries, days)
   where
     y' = if m < March then y - 2001 else y - 2000
