@@ -114,7 +114,7 @@ commonMonthDayOffsets :: Num a => [a]
 commonMonthDayOffsets = 0 : rest
   where
     rest = zipWith (+) daysPerMonth (0:rest)
-    daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28]         -- NOTE: rotated (TODO BUG: Why do we need Feb?  That will be past end of year, thus impossible)
+    daysPerMonth = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31]
 
 -- | The issue is that 4 * daysPerCentury will be one less than daysPerCycle.  The reason for this is that the Gregorian calendar adds one more day per 400 year cycle
 --   and this day is missing from adding up 4 individual centuries.  We have the same issue again with 4 years (i.e. 365*4 is daysPerFourYears - 1)
