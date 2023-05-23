@@ -7,6 +7,7 @@ module Data.HodaTime.CalendarDateTime.Internal
   ,WeekNumber
   ,DayOfMonth
   ,CalendarDate(..)
+  ,NCalendarDate(..)
   ,CalendarDateTime(..)
   ,IsCalendar(..)
   ,HasDate(..)
@@ -17,7 +18,7 @@ module Data.HodaTime.CalendarDateTime.Internal
 where
 
 import Data.HodaTime.Instant.Internal (Instant)
-import Data.Int (Int32)
+import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
 
 -- CalendarDate
@@ -39,12 +40,11 @@ type Year = Int
 type DayOfMonth = Int
 type WeekNumber = Int
 
--- TODO: We may want to add a "cycle" field to the calendarDate that counts 400 year cyles.  This would allow days to be non-negative
---       and it would mean that one table can translate all possible days since they repeat each cycle
+data CalendarDate calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdMonth :: Word8, cdYear :: Word32 }
+  deriving (Eq, Show, Ord)  -- TODO: Get rid of Show and define the other instances to only use cdDays
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
--- Note: We keep the date in 2 formats, redundantly.  We depend on lazy evaluation to only produce the portion that is actually used
-data CalendarDate calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdMonth :: Word8, cdYear :: Word32 }
+data NCalendarDate calendar = NCalendarDate { ncdCycle :: Int8, ncdCentury :: Word8, ncdDays :: Word32 }
   deriving (Eq, Show, Ord)  -- TODO: Get rid of Show and define the other instances to only use cdDays
 
 -- NOTE: This is a test form of the calendar date that only stores the cycle.  Everything else will be pulled from the date cache table, as required
