@@ -24,9 +24,15 @@ import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 import Data.Array.Unboxed ((!))
-import Control.Monad (guard)
+import Control.Monad (guard, when)
 
 -- Constants
+
+yearsPerCycle :: Num a => a
+yearsPerCycle = 400
+
+leapDaysPerCentury :: Num a => a
+leapDaysPerCentury = 24
 
 daysPerCycle :: Num a => a      -- NOTE: A "cycle" is 400 years
 daysPerCycle = 146097
@@ -122,6 +128,16 @@ maxDaysInMonth February y
 maxDaysInMonth m _
   | m == April || m == June || m == September || m == November  = 30
   | otherwise                                                   = 31
+
+yearMonthDayToCycleCenturyDays y m d = (cycles, centuries, days)
+  where
+    y' = if m < March then y - 2001 else y - 2000
+    (cycles, years) = y' `divMod` yearsPerCycle
+    (centuries, years') = years `divMod` 100
+    leapDays = leapDaysPerCentury * centuries + (years' + 1) `div` 4 - (years' + 1) `div` 100 + (centuries * 100 + years' + 1) `div` yearsPerCycle
+    yearDays = years' * daysPerStandardYear
+    m' = if m > February then fromEnum m - 2 else fromEnum m + 10
+    days = yearDays + leapDays + commonMonthDayOffsets !! m' + d - 1
 
 -- NOTE: Epoch is March 1 2000 because that has nicest properties that is near our current time.
 -- TODO: The addition of leap days below will add from the previous year.  We need to determine if this is a bug
