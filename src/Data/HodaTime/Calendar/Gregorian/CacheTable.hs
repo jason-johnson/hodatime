@@ -31,9 +31,10 @@ data DTCacheTable = DTCacheTable DTCacheDaysTable DTCacheHoursTable
 cacheTable :: DTCacheTable
 cacheTable = DTCacheTable days hours where
   toArray xs = array (0, length xs) $ zip [0..] xs
-  days = toArray $ firstYear ++ restYears
-  firstYear = [ encodeDate 0 m d | m <- [2..11], d <- daysInMonth m 0]
-  restYears = [ encodeDate y m d | y <- [1..100], m <- [0..11], d <- daysInMonth m y]
+  days = toArray $ firstYear ++ years ++ lastYear
+  firstYear = [ encodeDate 0 m d | m <- [2..11], d <- daysInMonth m 0]
+  years = [ encodeDate y m d | y <- [1..99], m <- [0..11], d <- daysInMonth m y]
+  lastYear = [ encodeDate 100 m d | m <- [0, 1], d <- daysInMonth m 100]
   hours = toArray [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
 
 -- encode
