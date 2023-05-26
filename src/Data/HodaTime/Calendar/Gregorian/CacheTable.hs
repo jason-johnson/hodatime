@@ -30,7 +30,7 @@ data DTCacheTable = DTCacheTable DTCacheDaysTable DTCacheHoursTable
 -- Meaning we can store 100 years of days and 12 hours of seconds in 16 bits each
 cacheTable :: DTCacheTable
 cacheTable = DTCacheTable days hours where
-  toArray xs = array (0, length xs) $ zip [0..] xs
+  toArray xs = array (0, length xs - 1) $ zip [0..] xs
   days = toArray $ firstYear ++ years ++ lastYear
   firstYear = [ encodeDate 0 m d | m <- [2..11], d <- daysInMonth m 0]
   years = [ encodeDate y m d | y <- [1..99], m <- [0..11], d <- daysInMonth m y]
@@ -53,7 +53,7 @@ daysInMonth 1 y
   | isLeap                                                               = [1..29]
   | otherwise                                                            = [1..28]
   where
-    y' = y + 2000
+    y' = y + 1 + 2000
     isLeap
       | 0 == y' `mod` 100 = 0 == y' `mod` 400
       | otherwise    = 0 == y' `mod` 4
