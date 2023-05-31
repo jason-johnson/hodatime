@@ -20,7 +20,10 @@ type DTCacheHoursTable = UArray Int Word16
 
 data DTCacheTable = DTCacheTable DTCacheDaysTable DTCacheHoursTable
 
--- TODO: Since the actual Gregorian cycle is 400 years, does this strategy give correct dates?
+-- TODO: The start date is offset but otherwise the months are all in their
+--        unrotated form (i.e. Jan/Feb are in their normal year, not the previous year).
+--        does this hurt anything?  It's nice for decoding but maybe some math expects
+--        Jan/Feb to be (year - 1)
 
 -- The Cache Table holds years and hours in the following format:
 -- +-----+----+----+  +----+----+----+
@@ -48,18 +51,18 @@ monthShift = 5
 encodeDate :: Word16 -> Word16 -> Word16 -> Word16
 encodeDate y m d = shift y yearShift .|. shift m monthShift .|. d
 
+-- Annoying to semi replicate this logic but otherwise we have to move much of this code to Internal to use the enums
 daysInMonth :: Word16 -> Word16 -> [Word16]
 daysInMonth 1 y
-  | isLeap                                                               = [1..29]
-  | otherwise                                                            = [1..28]
+  | isLeap                                      = [1..29]
+  | otherwise                                   = [1..28]
   where
-    y' = y + 1 + 2000
     isLeap
-      | 0 == y' `mod` 100 = 0 == y' `mod` 400
-      | otherwise    = 0 == y' `mod` 4
+      | 0 == y `mod` 100                        = False           -- 400+ is not possible here
+      | otherwise                               = 0 == y `mod` 4
 daysInMonth n _
-  | n == 3 || n == 5 || n == 8 || n == 10                                = [1..30]
-  | otherwise                                                            = [1..31]
+  | n == 3 || n == 5 || n == 8 || n == 10       = [1..30]
+  | otherwise                                   = [1..31]
 
 hourShift :: Num a => a
 hourShift = 12
