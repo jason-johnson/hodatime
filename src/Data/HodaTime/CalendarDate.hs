@@ -20,8 +20,9 @@ module Data.HodaTime.CalendarDate
   ,WeekNumber
   ,DayOfMonth
   ,CalendarDate
+  ,NCalendarDate
   ,HasDate(..)
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDate(..), DayNth(..), DayOfMonth, Year, WeekNumber, HasDate(..))
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDate(..), NCalendarDate(..), DayNth(..), DayOfMonth, Year, WeekNumber, HasDate(..))

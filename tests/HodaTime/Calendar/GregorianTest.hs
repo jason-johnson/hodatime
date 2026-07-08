@@ -7,12 +7,12 @@ where
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
-import Data.Maybe (fromJust, catMaybes)
+import Data.Maybe (fromJust, catMaybes, isNothing)
 import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..))
-import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, Month(..), DayOfWeek(..))
+import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), NCalendarDate, CalendarDate)
+import Data.HodaTime.Calendar.Gregorian (calendarDate, ncalendarDate, fromNthDay, Month(..), DayOfWeek(..), Gregorian)
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import qualified Data.HodaTime.Calendar.Iso as Iso
 
@@ -20,10 +20,10 @@ gregorianTests :: TestTree
 gregorianTests = testGroup "Gregorian Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps]
+qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps, nCalendarDateProps]
 
 unitTests :: TestTree
-unitTests = testGroup "Unit tests" [constructorUnits, lensUnits]
+unitTests = testGroup "Unit tests" [constructorUnits, lensUnits, nCalendarDateUnits]
 
 constructorProps :: TestTree
 constructorProps = testGroup "Constructor"
@@ -121,3 +121,72 @@ lensUnits = testGroup "Lens"
       leapFeb = calendarDate 29 February 2000
       endYear = calendarDate 31 December 2000
       firstValidDate = calendarDate 15 October 1582
+
+-- NCalendarDate helpers
+
+-- Compare NCalendarDate and CalendarDate by their year/month/day
+ncdSameAs :: Maybe (NCalendarDate Gregorian) -> Maybe (CalendarDate Gregorian) -> Bool
+ncdSameAs Nothing Nothing = True
+ncdSameAs (Just ncd) (Just cd) =
+  get day ncd == get day cd &&
+  (fromEnum . month $ ncd) == (fromEnum . month $ cd) &&
+  get year ncd == get year cd
+ncdSameAs _ _ = False
+
+nCalendarDateProps :: TestTree
+nCalendarDateProps = testGroup "NCalendarDate (checked by QuickCheck)"
+  [
+    QC.testProperty "ncalendarDate and calendarDate represent the same date" $
+      \(Positive y) m (Positive d) ->
+        let y' = 1900 + y
+        in ncdSameAs (ncalendarDate d m y') (calendarDate d m y')
+  , QC.testProperty "day lens on NCalendarDate matches CalendarDate" $
+      \(RandomStandardDate y m d) adj ->
+        let ncd = fromJust $ ncalendarDate d m y
+            cd  = fromJust $ calendarDate  d m y
+        in get day (modify (+ adj) day ncd) == get day (modify (+ adj) day cd)
+  , QC.testProperty "monthl lens on NCalendarDate matches CalendarDate" $
+      \(RandomStandardDate y m d) adj ->
+        let ncd = fromJust $ ncalendarDate d m y
+            cd  = fromJust $ calendarDate  d m y
+        in (fromEnum . month $ modify (+ adj) monthl ncd) == (fromEnum . month $ modify (+ adj) monthl cd)
+  , QC.testProperty "year lens on NCalendarDate matches CalendarDate" $
+      \(CycleYear y) m (Positive d) (Positive yAdj) ->
+        let y' = 2000 + y
+            d' = min d 28
+            ncd = fromJust $ ncalendarDate d' m y'
+            cd  = fromJust $ calendarDate  d' m y'
+        in get year (modify (+ yAdj) year ncd) == get year (modify (+ yAdj) year cd)
+  , QC.testProperty "dayOfWeek on NCalendarDate matches CalendarDate" $
+      \(RandomStandardDate y m d) ->
+        let ncd = fromJust $ ncalendarDate d m y
+            cd  = fromJust $ calendarDate  d m y
+        in fromEnum (dayOfWeek ncd) == fromEnum (dayOfWeek cd)
+  ]
+
+nCalendarDateUnits :: TestTree
+nCalendarDateUnits = testGroup "NCalendarDate Unit tests"
+  [
+    testCase "ncalendarDate 30 February 2000 is Nothing"  $ ncalendarDate 30 February 2000 @?= (Nothing :: Maybe (NCalendarDate Gregorian))
+  , testCase "ncalendarDate 1 October 1582 is Nothing"    $ ncalendarDate 1 October 1582  @?= (Nothing :: Maybe (NCalendarDate Gregorian))
+  , testCase "ncalendarDate 15 October 1582 is valid"     $ (isNothing $ ncalendarDate 15 October 1582) @?= (False :: Bool)
+  , testCase "ncalendarDate 29 February 2000 is valid"    $ (isNothing $ ncalendarDate 29 February 2000) @?= (False :: Bool)
+  , testCase "31-January-2000 + 2M, day == 31"
+      $ get day (modify (+2) monthl ncdJanEnd) @?= 31
+  , testCase "31-January-2000 + 1M, month == February"
+      $ month (modify (+1) monthl ncdJanEnd) @?= February
+  , testCase "29-February-2000 + 1Y, day == 28"
+      $ get day (modify (+1) year ncdLeapFeb) @?= 28
+  , testCase "31-December-2000 + 1D, year == 2001"
+      $ get year (modify (+1) day ncdEndYear) @?= 2001
+  , testCase "ncalendarDate same day/month/year as calendarDate (Oct 15 1582)"
+      $ ncdSameAs (ncalendarDate 15 October 1582) (calendarDate 15 October 1582) @?= True
+  , testCase "ncalendarDate same day/month/year as calendarDate (March 1 2000)"
+      $ ncdSameAs (ncalendarDate 1 March 2000) (calendarDate 1 March 2000) @?= True
+  , testCase "ncalendarDate same day/month/year as calendarDate (Feb 29 2000)"
+      $ ncdSameAs (ncalendarDate 29 February 2000) (calendarDate 29 February 2000) @?= True
+  ]
+    where
+      ncdJanEnd  = fromJust $ ncalendarDate 31 January  2000
+      ncdLeapFeb = fromJust $ ncalendarDate 29 February 2000
+      ncdEndYear = fromJust $ ncalendarDate 31 December 2000

@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Data.HodaTime.Calendar.Gregorian.Internal
 (
    daysToYearMonthDay
@@ -14,10 +15,12 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,dayOfWeekFromDays
   ,instantToYearMonthDay
   ,yearMonthDayToCycleCenturyDays
+  ,ncdToDays
+  ,absDaysToNcd
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), NCalendarDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), HasDate(..))
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
 import Data.HodaTime.Instant.Internal (Instant(..))
@@ -136,7 +139,7 @@ yearMonthDayToCycleCenturyDays y m d = (cycles, centuries, days)
     y' = if m < March then y - 2001 else y - 2000
     (cycles, years) = y' `divMod` yearsPerCycle
     (centuries, years') = years `divMod` 100
-    leapDays = leapDaysPerCentury * centuries + (years' + 1) `div` 4 - (years' + 1) `div` 100 + (centuries * 100 + years' + 1) `div` yearsPerCycle
+    leapDays = leapDaysPerCentury * centuries + years' `div` 4 - years' `div` 100 + (centuries * 100 + years') `div` yearsPerCycle
     yearDays = years' * daysPerStandardYear
     m' = if m > February then fromEnum m - 2 else fromEnum m + 10
     days = yearDays + leapDays + commonMonthDayOffsets !! m' + d - 1
@@ -174,3 +177,37 @@ daysToYearMonthDay days = (fromIntegral y', m'', fromIntegral d')
 -- here to avoid circular dependancy between Instant and Gregorian
 instantToYearMonthDay :: Instant -> (Word32, Word8, Word8)
 instantToYearMonthDay (Instant days _ _) = daysToYearMonthDay days
+
+-- | Convert an NCalendarDate Gregorian to absolute days from epoch (March 1 2000).
+--   Encoding: absdays = cycle * daysPerCycle + century * (100 * daysPerStandardYear) + centuryDays
+ncdToDays :: NCalendarDate Gregorian -> Int32
+ncdToDays (NCalendarDate cycles centuries cdays) =
+  fromIntegral cycles * daysPerCycle + fromIntegral centuries * (100 * daysPerStandardYear) + fromIntegral cdays
+
+-- | Convert absolute days from epoch back to an NCalendarDate Gregorian.
+absDaysToNcd :: Int32 -> NCalendarDate Gregorian
+absDaysToNcd days = NCalendarDate (fromIntegral cycles) (fromIntegral centuries) (fromIntegral cdays)
+  where
+    (y, m, d) = daysToYearMonthDay days
+    (cycles, centuries, cdays) = yearMonthDayToCycleCenturyDays (fromIntegral y) (toEnum (fromIntegral m)) (fromIntegral d)
+
+-- | Convert an NCalendarDate Gregorian to a CalendarDate Gregorian via absolute days.
+ncdToCalDate :: NCalendarDate Gregorian -> CalendarDate Gregorian
+ncdToCalDate ncd = CalendarDate days d m y
+  where
+    days = ncdToDays ncd
+    (y, m, d) = daysToYearMonthDay days
+
+instance HasDate (NCalendarDate Gregorian) where
+  type DoW (NCalendarDate Gregorian) = DayOfWeek Gregorian
+  type MoY (NCalendarDate Gregorian) = Month Gregorian
+  day f ncd = absDaysToNcd . cdDays <$> day f (ncdToCalDate ncd)
+  {-# INLINE day #-}
+  month = month . ncdToCalDate
+  monthl f ncd = absDaysToNcd . cdDays <$> monthl f (ncdToCalDate ncd)
+  {-# INLINE monthl #-}
+  year f ncd = absDaysToNcd . cdDays <$> year f (ncdToCalDate ncd)
+  {-# INLINE year #-}
+  dayOfWeek = dayOfWeek . ncdToCalDate
+  next n dow = absDaysToNcd . cdDays . next n dow . ncdToCalDate
+  previous n dow = absDaysToNcd . cdDays . previous n dow . ncdToCalDate

@@ -14,3 +14,5 @@ cabal.config
 .project
 .stack-work
 stack.yaml.lock
+dist-newstyle/
+build/

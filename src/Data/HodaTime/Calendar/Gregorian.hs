@@ -20,6 +20,8 @@ module Data.HodaTime.Calendar.Gregorian
   ,Month(..)
   ,DayOfWeek(..)
   ,Gregorian
+  ,NCalendarDate
+  ,CalendarDate
 )
 where
 
@@ -27,6 +29,7 @@ import Data.HodaTime.Calendar.Gregorian.Internal hiding (fromWeekDate)
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDate(..), NCalendarDate(..), DayNth, DayOfMonth, Year, WeekNumber)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI
 import Control.Monad (guard)
+import Data.Int (Int32)
 
 -- Constructors
 
@@ -44,8 +47,9 @@ calendarDate d m y = do
 ncalendarDate :: DayOfMonth -> Month Gregorian -> Year -> Maybe (NCalendarDate Gregorian)
 ncalendarDate d m y = do
   guard $ d > 0 && d <= maxDaysInMonth m y
+  let absDays = fromIntegral (yearMonthDayToDays y m d) :: Int32
+  guard $ absDays > invalidDayThresh
   let (cycles, centuries, days) = yearMonthDayToCycleCenturyDays y m d
-  guard $ days > invalidDayThresh
   return $ NCalendarDate (fromIntegral cycles) (fromIntegral centuries) (fromIntegral days)
 
 -- | Smart constuctor for Gregorian calendar date based on relative month day.
