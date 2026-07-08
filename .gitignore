@@ -1,4 +1,6 @@
 dist
+dist-newstyle
+build
 cabal-dev
 *.o
 *.hi
