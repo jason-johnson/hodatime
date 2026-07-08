@@ -43,7 +43,7 @@ calendarDate d m y = do
   guard $ days > invalidDayThresh
   return $ CalendarDate days (fromIntegral d) (fromIntegral . fromEnum $ m) (fromIntegral y)
 
--- | Smart constuctor for Gregorian calendar date.
+-- | Smart constructor for Gregorian calendar date.
 ncalendarDate :: DayOfMonth -> Month Gregorian -> Year -> Maybe (NCalendarDate Gregorian)
 ncalendarDate d m y = do
   guard $ d > 0 && d <= maxDaysInMonth m y
