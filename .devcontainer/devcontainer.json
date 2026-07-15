@@ -1,7 +1,20 @@
+y// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/images/tree/main/src/base-debian
 {
   "name": "Haskell (Community)",
-  "build": {
-    "dockerfile": "Dockerfile"
+  // Official Haskell image ships GHC + cabal + stack precompiled, so there is no
+  // build-time ghcup/./configure step to fail. More info: https://hub.docker.com/_/haskell
+  // Use a bullseye tag: the default "9.4.8" is on Debian buster (EOL), whose apt
+  // repos 404, which breaks apt-based features like common-utils.
+  "image": "haskell:9.6.7-bullseye",
+  "features": {
+    // Adds the non-root "vscode" user, git and common shell tooling (replaces the
+    // old library-scripts/common-debian.sh + Dockerfile).
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode",
+      "installZsh": true,
+      "upgradePackages": false
+    }
   },
   // Configure tool-specific properties.
   "customizations": {
