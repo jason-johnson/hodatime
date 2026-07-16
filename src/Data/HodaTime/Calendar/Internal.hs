@@ -6,6 +6,10 @@ module Data.HodaTime.Calendar.Internal
   ,mkCommonMonthLens
   ,mkYearLens
   ,moveByDow
+  ,mkCommonDayLensN
+  ,mkCommonMonthLensN
+  ,mkYearLensN
+  ,moveByDowN
   ,dayOfWeekFromDays
   ,commonMonthDayOffsets
   ,borders
@@ -15,7 +19,7 @@ module Data.HodaTime.Calendar.Internal
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDate(..), IsCalendar(..), Year, DayOfMonth)
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDate(..), NCalendarDate, IsCalendar(..), Year, DayOfMonth)
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 import Control.Arrow ((>>>), first)
@@ -50,6 +54,22 @@ mkCommonDayLens preStartDay yearMonthDayToDays daysToyearMonthDays f (CalendarDa
         in CalendarDate days' d' m' y'
 {-# INLINE mkCommonDayLens #-}
 
+mkCommonDayLensN :: (IsCalendar cal, Functor f, Enum (Month cal)) =>
+     Int
+  -> (Year -> Month cal -> DayOfMonth -> Int)
+  -> (NCalendarDate cal -> (Word32, Word8, Word8))
+  -> (Int32 -> NCalendarDate cal)
+  -> (DayOfMonth -> f DayOfMonth)
+  -> NCalendarDate cal
+  -> f (NCalendarDate cal)
+mkCommonDayLensN preStartDay yearMonthDayToDays ncdToYmd daysToNcd f ncd = mkncd . (rest+) <$> f (fromIntegral d)
+    where
+      (y, m, d) = ncdToYmd ncd
+      rest = pred $ yearMonthDayToDays (fromIntegral y) (toEnum . fromIntegral $ m) 1
+      mkncd days = daysToNcd days'
+        where days' = fromIntegral $ if days > preStartDay then days else preStartDay + 1
+{-# INLINE mkCommonDayLensN #-}
+
 mkCommonMonthLens :: (IsCalendar cal, Functor f, Enum (Month cal)) =>
      (Int, Int, Word8)
   -> (Month cal -> Year -> Int)
@@ -67,6 +87,27 @@ mkCommonMonthLens firstDayTuple maxDaysInMonth yearMonthDayToDays f (CalendarDat
           d'' = if d' > mdim then mdim else d'
           days = yearMonthDayToDays y'' (toEnum m') (fromIntegral d'')
 {-# INLINE mkCommonMonthLens #-}
+
+mkCommonMonthLensN :: (IsCalendar cal, Functor f, Enum (Month cal)) =>
+     (Int, Int, Word8)
+  -> (Month cal -> Year -> Int)
+  -> (Year -> Month cal -> DayOfMonth -> Int)
+  -> (NCalendarDate cal -> (Word32, Word8, Word8))
+  -> (Int32 -> NCalendarDate cal)
+  -> (Int -> f Int)
+  -> NCalendarDate cal
+  -> f (NCalendarDate cal)
+mkCommonMonthLensN firstDayTuple maxDaysInMonth yearMonthDayToDays ncdToYmd daysToNcd f ncd = mkncd <$> f (fromIntegral m)
+    where
+      (y, m, d) = ncdToYmd ncd
+      mkncd months = daysToNcd (fromIntegral days)
+        where
+          (y', months') = flip divMod 12 >>> first (+ fromIntegral y) $ months
+          (y'', m', d') = if (y', months', d) < firstDayTuple then firstDayTuple else (y', months', d)
+          mdim = fromIntegral $ maxDaysInMonth (toEnum m') y'
+          d'' = if d' > mdim then mdim else d'
+          days = yearMonthDayToDays y'' (toEnum m') (fromIntegral d'')
+{-# INLINE mkCommonMonthLensN #-}
 
 mkYearLens :: (IsCalendar cal, Functor f, Enum (Month cal)) =>
      (Int, Word8, Word8)
@@ -86,6 +127,27 @@ mkYearLens firstDayTuple maxDaysInMonth yearMonthDayToDays f (CalendarDate _ d m
           days = fromIntegral $ yearMonthDayToDays y'' m'' (fromIntegral d'')        
 {-# INLINE mkYearLens #-}
 
+mkYearLensN :: (IsCalendar cal, Functor f, Enum (Month cal)) =>
+     (Int, Word8, Word8)
+  -> (Month cal -> Year -> Int)
+  -> (Year -> Month cal -> DayOfMonth -> Int)
+  -> (NCalendarDate cal -> (Word32, Word8, Word8))
+  -> (Int32 -> NCalendarDate cal)
+  -> (Int -> f Int)
+  -> NCalendarDate cal
+  -> f (NCalendarDate cal)
+mkYearLensN firstDayTuple maxDaysInMonth yearMonthDayToDays ncdToYmd daysToNcd f ncd = mkncd <$> f (fromIntegral y)
+    where
+      (y, m, d) = ncdToYmd ncd
+      mkncd y' = daysToNcd days
+        where
+          (y'', m', d') = if (y', m, d) < firstDayTuple then firstDayTuple else (y', m, d)
+          m'' = toEnum . fromIntegral $ m'
+          mdim = fromIntegral $ maxDaysInMonth m'' y''
+          d'' = if d' > mdim then mdim else d'
+          days = fromIntegral $ yearMonthDayToDays y'' m'' (fromIntegral d'')
+{-# INLINE mkYearLensN #-}
+
 moveByDow :: (IsCalendar cal, Enum (DayOfWeek cal)) =>
      (Int32 -> (Word32, Word8, Word8))
   -> DayOfWeek cal
@@ -104,6 +166,24 @@ moveByDow daysToYearMonthDay epochDayOfWeek n dow distanceF adjust cmp days = Ca
     distance = distanceF targetDow currentDoW
     days' = fromIntegral $ fromIntegral days `adjust` (7 * n') `adjust` distance
     (y, m, d) = daysToYearMonthDay days'
+
+moveByDowN :: (IsCalendar cal, Enum (DayOfWeek cal)) =>
+     DayOfWeek cal
+  -> Int
+  -> DayOfWeek cal
+  -> (Int -> Int -> Int)
+  -> (Int -> Int -> Int)
+  -> (Int -> Int -> Bool)
+  -> (Int32 -> NCalendarDate cal)
+  -> Int
+  -> NCalendarDate cal
+moveByDowN epochDayOfWeek n dow distanceF adjust cmp daysToNcd days = daysToNcd days'
+  where
+    n' = if targetDow `cmp` currentDoW then n-1 else n
+    currentDoW = dayOfWeekFromDays epochDayOfWeek days
+    targetDow = fromIntegral . fromEnum $ dow
+    distance = distanceF targetDow currentDoW
+    days' = fromIntegral $ fromIntegral days `adjust` (7 * n') `adjust` distance
 
 dayOfWeekFromDays :: (IsCalendar cal, Enum (DayOfWeek cal)) => DayOfWeek cal -> Int -> Int
 dayOfWeekFromDays epochDayOfWeek = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
