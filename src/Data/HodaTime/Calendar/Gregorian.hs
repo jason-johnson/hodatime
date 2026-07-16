@@ -44,9 +44,9 @@ calendarDate d m y = do
 ncalendarDate :: DayOfMonth -> Month Gregorian -> Year -> Maybe (NCalendarDate Gregorian)
 ncalendarDate d m y = do
   guard $ d > 0 && d <= maxDaysInMonth m y
-  let (cycles, centuries, days) = yearMonthDayToCycleCenturyDays y m d
+  let days = fromIntegral $ yearMonthDayToDays y m d
   guard $ days > invalidDayThresh
-  return $ NCalendarDate (fromIntegral cycles) (fromIntegral centuries) (fromIntegral days)
+  return $ daysToNcd days
 
 -- | Smart constuctor for Gregorian calendar date based on relative month day.
 fromNthDay :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)

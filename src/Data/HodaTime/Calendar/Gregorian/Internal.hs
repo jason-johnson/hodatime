@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Data.HodaTime.Calendar.Gregorian.Internal
 (
    daysToYearMonthDay
@@ -14,12 +15,15 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,dayOfWeekFromDays
   ,instantToYearMonthDay
   ,yearMonthDayToCycleCenturyDays
+  ,ncdToDays
+  ,daysToNcd
+  ,ncdToYearMonthDay
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), NCalendarDate(..), HasDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
-import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
+import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, mkCommonDayLensN, mkCommonMonthLensN, mkYearLensN, moveByDowN, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Int (Int32)
@@ -174,3 +178,38 @@ daysToYearMonthDay days = (fromIntegral y', m'', fromIntegral d')
 -- here to avoid circular dependancy between Instant and Gregorian
 instantToYearMonthDay :: Instant -> (Word32, Word8, Word8)
 instantToYearMonthDay (Instant days _ _) = daysToYearMonthDay days
+
+-- NCalendarDate bridge functions
+
+-- | Reconstruct the flat (epoch-relative) day count from an 'NCalendarDate'.  This is the inverse of 'daysToNcd' and must
+--   agree with 'yearMonthDayToDays' so that the cycle\/century\/days representation round-trips against the flat 'CalendarDate'.
+ncdToDays :: NCalendarDate Gregorian -> Int32
+ncdToDays (NCalendarDate cycle century days) = fromIntegral $ cycle' * daysPerCycle + century' * daysPerCentury + days'
+  where
+    cycle' = fromIntegral cycle :: Int
+    century' = fromIntegral century :: Int
+    days' = fromIntegral days :: Int
+
+-- | Decompose a flat (epoch-relative) day count into the cycle\/century\/days representation used by 'NCalendarDate'.
+--   Uses floored 'divMod' so the century and day remainders are always non-negative, matching 'calculateCenturyDays'.
+daysToNcd :: Int32 -> NCalendarDate Gregorian
+daysToNcd days = NCalendarDate (fromIntegral cycles) (fromIntegral centuries) (fromIntegral centuryDays)
+  where
+    (cycles, cycleDays) = (fromIntegral days :: Int) `divMod` daysPerCycle
+    (centuries, centuryDays) = cycleDays `divMod` daysPerCentury
+
+-- | Decode an 'NCalendarDate' to (year, month, day) by routing through the flat day count and the existing decoder.
+ncdToYearMonthDay :: NCalendarDate Gregorian -> (Word32, Word8, Word8)
+ncdToYearMonthDay = daysToYearMonthDay . ncdToDays
+
+instance HasDate (NCalendarDate Gregorian) where
+  type DoW (NCalendarDate Gregorian) = DayOfWeek Gregorian
+  type MoY (NCalendarDate Gregorian) = Month Gregorian
+  day = mkCommonDayLensN invalidDayThresh yearMonthDayToDays ncdToYearMonthDay daysToNcd
+  month ncd = toEnum . fromIntegral $ m
+    where (_, m, _) = ncdToYearMonthDay ncd
+  monthl = mkCommonMonthLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
+  year = mkYearLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
+  dayOfWeek = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral . ncdToDays
+  next n dow = moveByDowN epochDayOfWeek n dow (-) (+) (>) daysToNcd . fromIntegral . ncdToDays
+  previous n dow = moveByDowN epochDayOfWeek n dow subtract (-) (<) daysToNcd . fromIntegral . ncdToDays

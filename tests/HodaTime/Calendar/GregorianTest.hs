@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module HodaTime.Calendar.GregorianTest
 (
   gregorianTests
@@ -11,8 +12,8 @@ import Data.Maybe (fromJust, catMaybes)
 import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..))
-import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, Month(..), DayOfWeek(..))
+import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), HasDate, MoY, DoW)
+import Data.HodaTime.Calendar.Gregorian (calendarDate, ncalendarDate, fromNthDay, Month(..), DayOfWeek(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import qualified Data.HodaTime.Calendar.Iso as Iso
 
@@ -20,10 +21,34 @@ gregorianTests :: TestTree
 gregorianTests = testGroup "Gregorian Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps]
+qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps, ncalendarProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [constructorUnits, lensUnits]
+
+-- | Differential tests: run identical operations on 'CalendarDate' and 'NCalendarDate' and compare the decoded
+--   fields.  'CalendarDate' is already validated against Data.Time, so it serves as the oracle here.
+ncalendarProps :: TestTree
+ncalendarProps = testGroup "NCalendarDate (differential vs CalendarDate)"
+  [
+     QC.testProperty "construct+decode matches CalendarDate" $ testNMatchesCD
+    ,QC.testProperty "monthl add matches CalendarDate" $ testNMonthAdd
+    ,QC.testProperty "day add matches CalendarDate" $ testNDayAdd
+    ,QC.testProperty "year add matches CalendarDate" $ testNYearAdd
+    ,QC.testProperty "next matches CalendarDate" $ testNNext
+    ,QC.testProperty "previous matches CalendarDate" $ testNPrevious
+  ]
+  where
+    fields :: (HasDate d, Enum (MoY d), Enum (DoW d)) => d -> (Int, Int, Int, Int)
+    fields x = (get day x, fromEnum (month x), get year x, fromEnum (dayOfWeek x))
+    same mcd mncd = (fields <$> mcd) == (fields <$> mncd)
+    testNMatchesCD (Positive y) m (Positive d) = same (calendarDate d m y') (ncalendarDate d m y')
+      where y' = 1900 + y
+    testNMonthAdd (RandomStandardDate y m d) add = same (modify (+ add) monthl <$> calendarDate d m y) (modify (+ add) monthl <$> ncalendarDate d m y)
+    testNDayAdd (RandomStandardDate y m d) add = same (modify (+ add) day <$> calendarDate d m y) (modify (+ add) day <$> ncalendarDate d m y)
+    testNYearAdd (RandomStandardDate y m d) add = same (modify (+ add) year <$> calendarDate d m y) (modify (+ add) year <$> ncalendarDate d m y)
+    testNNext dow (Positive n) (RandomStandardDate y m d) = same (next n dow <$> calendarDate d m y) (next n dow <$> ncalendarDate d m y)
+    testNPrevious dow (Positive n) (RandomStandardDate y m d) = same (previous n dow <$> calendarDate d m y) (previous n dow <$> ncalendarDate d m y)
 
 constructorProps :: TestTree
 constructorProps = testGroup "Constructor"
