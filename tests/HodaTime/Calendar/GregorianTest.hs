@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}    -- TODO: remove once CalendarDate/NCalendarDate are merged and the polymorphic `fields` helper is no longer needed
 module HodaTime.Calendar.GregorianTest
 (
   gregorianTests
