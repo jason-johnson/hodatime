@@ -36,9 +36,6 @@ import Control.Monad (guard, when)
 yearsPerCycle :: Num a => a
 yearsPerCycle = 400
 
-leapDaysPerCentury :: Num a => a
-leapDaysPerCentury = 24
-
 daysPerCycle :: Num a => a      -- NOTE: A "cycle" is 400 years
 daysPerCycle = 146097
 
@@ -134,16 +131,19 @@ maxDaysInMonth m _
   | m == April || m == June || m == September || m == November  = 30
   | otherwise                                                   = 31
 
+-- | Construct the (cycle, century, day-in-century) triple directly from a year\/month\/day, without first
+--   computing the flat day count and dividing it back down.  Within a cycle each century is exactly 36524 days
+--   (4*36524 = 146097 - 1, the missing day being the cycle's extra leap day), and within a century the leap rule
+--   reduces to a plain \/4 (the \/100 and \/400 corrections vanish for year-offsets 0..99).  This naturally yields
+--   representation (ii): 'century' is always in [0,3] and the extra leap day falls out as day 36524 of the last century.
 yearMonthDayToCycleCenturyDays :: Year -> Month Gregorian -> DayOfMonth -> (Int, Int, Int)
-yearMonthDayToCycleCenturyDays y m d = (cycles, centuries, days)
+yearMonthDayToCycleCenturyDays y m d = (cyc, century, dic)
   where
-    y' = if m < March then y - 2001 else y - 2000
-    (cycles, years) = y' `divMod` yearsPerCycle
-    (centuries, years') = years `divMod` 100
-    leapDays = leapDaysPerCentury * centuries + (years' + 1) `div` 4 - (years' + 1) `div` 100 + (centuries * 100 + years' + 1) `div` yearsPerCycle
-    yearDays = years' * daysPerStandardYear
+    years = if m < March then y - 2001 else y - 2000
+    (cyc, yearInCycle) = years `divMod` yearsPerCycle
+    (century, yoc) = yearInCycle `divMod` 100
     m' = if m > February then fromEnum m - 2 else fromEnum m + 10
-    days = yearDays + leapDays + commonMonthDayOffsets !! m' + d - 1
+    dic = yoc * daysPerStandardYear + yoc `div` 4 + commonMonthDayOffsets !! m' + d - 1
 
 -- NOTE: Epoch is March 1 2000 because that has nicest properties that is near our current time.
 -- TODO: The addition of leap days below will add from the previous year.  We need to determine if this is a bug
