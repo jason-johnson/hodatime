@@ -184,23 +184,36 @@ instantToYearMonthDay (Instant days _ _) = daysToYearMonthDay days
 -- | Reconstruct the flat (epoch-relative) day count from an 'NCalendarDate'.  This is the inverse of 'daysToNcd' and must
 --   agree with 'yearMonthDayToDays' so that the cycle\/century\/days representation round-trips against the flat 'CalendarDate'.
 ncdToDays :: NCalendarDate Gregorian -> Int32
-ncdToDays (NCalendarDate cycle century days) = fromIntegral $ cycle' * daysPerCycle + century' * daysPerCentury + days'
+ncdToDays (NCalendarDate cyc century days) = fromIntegral $ cyc' * daysPerCycle + century' * daysPerCentury + days'
   where
-    cycle' = fromIntegral cycle :: Int
+    cyc' = fromIntegral cyc :: Int
     century' = fromIntegral century :: Int
     days' = fromIntegral days :: Int
 
 -- | Decompose a flat (epoch-relative) day count into the cycle\/century\/days representation used by 'NCalendarDate'.
 --   Uses floored 'divMod' so the century and day remainders are always non-negative, matching 'calculateCenturyDays'.
+--   Representation (ii): 'century' is always kept in [0,3].  Floored division places the single extra leap day per
+--   cycle at century 4, day 0; we fold that back to day 36524 of the last century so callers never see century 4.
 daysToNcd :: Int32 -> NCalendarDate Gregorian
-daysToNcd days = NCalendarDate (fromIntegral cycles) (fromIntegral centuries) (fromIntegral centuryDays)
+daysToNcd days = NCalendarDate (fromIntegral cycles) (fromIntegral century) (fromIntegral dic)
   where
     (cycles, cycleDays) = (fromIntegral days :: Int) `divMod` daysPerCycle
-    (centuries, centuryDays) = cycleDays `divMod` daysPerCentury
+    (century0, dic0) = cycleDays `divMod` daysPerCentury
+    (century, dic) = if century0 == (4 :: Int) then (3, dic0 + daysPerCentury) else (century0, dic0)
 
--- | Decode an 'NCalendarDate' to (year, month, day) by routing through the flat day count and the existing decoder.
+-- | Decode an 'NCalendarDate' directly to (year, month, day) from its stored fields.  The cycle\/century split is
+--   already present, so month and day come from a single cache-table lookup on 'ncdDays' and the year is simple
+--   arithmetic; there is no need to reconstruct the flat day count and re-run 'calculateCenturyDays'.
 ncdToYearMonthDay :: NCalendarDate Gregorian -> (Word32, Word8, Word8)
-ncdToYearMonthDay = daysToYearMonthDay . ncdToDays
+ncdToYearMonthDay (NCalendarDate cyc century dic)
+  | dic == daysPerCentury = (fromIntegral extraYear, 1, 29)   -- extra-cycle-day: 29 Feb (month 1 = February, 0-based)
+  | otherwise             = (fromIntegral yr, fromIntegral m, fromIntegral d)
+  where
+    cycleYear = fromIntegral cyc * (400 :: Int)
+    extraYear = 2000 + cycleYear + 400
+    yr = 2000 + cycleYear + fromIntegral century * 100 + fromIntegral y
+    (y, m, d) = decodeEntry cacheTable . fromIntegral $ dic
+    decodeEntry (DTCacheTable xs _) = (\x -> (decodeYear x, decodeMonth x, decodeDay x)) . (!) xs
 
 instance HasDate (NCalendarDate Gregorian) where
   type DoW (NCalendarDate Gregorian) = DayOfWeek Gregorian
@@ -210,6 +223,6 @@ instance HasDate (NCalendarDate Gregorian) where
     where (_, m, _) = ncdToYearMonthDay ncd
   monthl = mkCommonMonthLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
   year = mkYearLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
-  dayOfWeek = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral . ncdToDays
+  dayOfWeek (NCalendarDate _ century dic) = toEnum . dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
   next n dow = moveByDowN epochDayOfWeek n dow (-) (+) (>) daysToNcd . fromIntegral . ncdToDays
   previous n dow = moveByDowN epochDayOfWeek n dow subtract (-) (<) daysToNcd . fromIntegral . ncdToDays
