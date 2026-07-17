@@ -23,7 +23,7 @@ where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), NCalendarDate(..), HasDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
-import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, mkCommonDayLensN, mkCommonMonthLensN, mkYearLensN, moveByDowN, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
+import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, mkCommonMonthLensN, mkYearLensN, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Int (Int32)
@@ -218,11 +218,36 @@ ncdToYearMonthDay (NCalendarDate cyc century dic)
 instance HasDate (NCalendarDate Gregorian) where
   type DoW (NCalendarDate Gregorian) = DayOfWeek Gregorian
   type MoY (NCalendarDate Gregorian) = Month Gregorian
-  day = mkCommonDayLensN invalidDayThresh yearMonthDayToDays ncdToYearMonthDay daysToNcd
+  day f ncd = mkncd <$> f (fromIntegral d)
+    where
+      (_, _, d) = ncdToYearMonthDay ncd
+      mkncd d' = shiftDaysWith clampToValid (d' - fromIntegral d) ncd
   month ncd = toEnum . fromIntegral $ m
     where (_, m, _) = ncdToYearMonthDay ncd
   monthl = mkCommonMonthLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
   year = mkYearLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
   dayOfWeek (NCalendarDate _ century dic) = toEnum . dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
-  next n dow = moveByDowN epochDayOfWeek n dow (-) (+) (>) daysToNcd . fromIntegral . ncdToDays
-  previous n dow = moveByDowN epochDayOfWeek n dow subtract (-) (<) daysToNcd . fromIntegral . ncdToDays
+  next n dow ncd@(NCalendarDate _ century dic) = shiftDaysWith id (7 * n' + targetDow - currentDoW) ncd
+    where
+      currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
+      targetDow = fromEnum dow
+      n' = if targetDow > currentDoW then n - 1 else n
+  previous n dow ncd@(NCalendarDate _ century dic) = shiftDaysWith id (negate $ 7 * n' + currentDoW - targetDow) ncd
+    where
+      currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
+      targetDow = fromEnum dow
+      n' = if targetDow < currentDoW then n - 1 else n
+
+-- | Shift a date by 'delta' days.  Fast path: when the shift stays within the current century (and we are safely
+--   past the pre-Gregorian threshold, so cyc >= -1) only 'ncdDays' changes and the cycle\/century are untouched.
+--   Otherwise fall back to reconstructing the flat day count, applying 'onFlat' (e.g. the validity clamp), and
+--   re-decomposing.  The extra-cycle-day (ncdDays == 36524) always fails the in-century bound and takes the slow path.
+shiftDaysWith :: (Int32 -> Int32) -> Int -> NCalendarDate Gregorian -> NCalendarDate Gregorian
+shiftDaysWith onFlat delta ncd@(NCalendarDate cyc century dic)
+  | cyc >= -1 && dic' >= 0 && dic' < daysPerCentury = NCalendarDate cyc century (fromIntegral dic')
+  | otherwise                                       = daysToNcd . onFlat $ ncdToDays ncd + fromIntegral delta
+  where dic' = fromIntegral dic + delta :: Int
+
+-- | Clamp a flat day count so it never precedes the first valid Gregorian date (15 Oct 1582).
+clampToValid :: Int32 -> Int32
+clampToValid days = if days > invalidDayThresh then days else invalidDayThresh + 1

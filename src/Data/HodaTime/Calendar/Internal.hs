@@ -6,10 +6,8 @@ module Data.HodaTime.Calendar.Internal
   ,mkCommonMonthLens
   ,mkYearLens
   ,moveByDow
-  ,mkCommonDayLensN
   ,mkCommonMonthLensN
   ,mkYearLensN
-  ,moveByDowN
   ,dayOfWeekFromDays
   ,commonMonthDayOffsets
   ,borders
@@ -53,22 +51,6 @@ mkCommonDayLens preStartDay yearMonthDayToDays daysToyearMonthDays f (CalendarDa
           (y', m', d') = daysToyearMonthDays days'
         in CalendarDate days' d' m' y'
 {-# INLINE mkCommonDayLens #-}
-
-mkCommonDayLensN :: (IsCalendar cal, Functor f, Enum (Month cal)) =>
-     Int
-  -> (Year -> Month cal -> DayOfMonth -> Int)
-  -> (NCalendarDate cal -> (Word32, Word8, Word8))
-  -> (Int32 -> NCalendarDate cal)
-  -> (DayOfMonth -> f DayOfMonth)
-  -> NCalendarDate cal
-  -> f (NCalendarDate cal)
-mkCommonDayLensN preStartDay yearMonthDayToDays ncdToYmd daysToNcd f ncd = mkncd . (rest+) <$> f (fromIntegral d)
-    where
-      (y, m, d) = ncdToYmd ncd
-      rest = pred $ yearMonthDayToDays (fromIntegral y) (toEnum . fromIntegral $ m) 1
-      mkncd days = daysToNcd days'
-        where days' = fromIntegral $ if days > preStartDay then days else preStartDay + 1
-{-# INLINE mkCommonDayLensN #-}
 
 mkCommonMonthLens :: (IsCalendar cal, Functor f, Enum (Month cal)) =>
      (Int, Int, Word8)
@@ -166,24 +148,6 @@ moveByDow daysToYearMonthDay epochDayOfWeek n dow distanceF adjust cmp days = Ca
     distance = distanceF targetDow currentDoW
     days' = fromIntegral $ fromIntegral days `adjust` (7 * n') `adjust` distance
     (y, m, d) = daysToYearMonthDay days'
-
-moveByDowN :: (IsCalendar cal, Enum (DayOfWeek cal)) =>
-     DayOfWeek cal
-  -> Int
-  -> DayOfWeek cal
-  -> (Int -> Int -> Int)
-  -> (Int -> Int -> Int)
-  -> (Int -> Int -> Bool)
-  -> (Int32 -> NCalendarDate cal)
-  -> Int
-  -> NCalendarDate cal
-moveByDowN epochDayOfWeek n dow distanceF adjust cmp daysToNcd days = daysToNcd days'
-  where
-    n' = if targetDow `cmp` currentDoW then n-1 else n
-    currentDoW = dayOfWeekFromDays epochDayOfWeek days
-    targetDow = fromIntegral . fromEnum $ dow
-    distance = distanceF targetDow currentDoW
-    days' = fromIntegral $ fromIntegral days `adjust` (7 * n') `adjust` distance
 
 dayOfWeekFromDays :: (IsCalendar cal, Enum (DayOfWeek cal)) => DayOfWeek cal -> Int -> Int
 dayOfWeekFromDays epochDayOfWeek = normalize . (fromEnum epochDayOfWeek +) . flip mod 7
