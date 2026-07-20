@@ -35,7 +35,7 @@ scProps :: TestTree
 scProps = testGroup "(checked by SmallCheck)" []
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps ]
+qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, ncalDateProps, localTimeProps ]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
@@ -74,6 +74,21 @@ calDateProps = testGroup "CalendarDate conversion"
       let cd = fromMaybe (error "impossible") $ G.calendarDate d mon y
       cd' <- run $ parse pat $ format pat cd
       QCM.assert $ cd == cd'
+
+-- | Same round-trip as 'calDateProps' but for the packed 'NCalendarDate'.  Exercises the whole public Pattern path
+--   (format + parse) against 'NCalendarDate' via its 'HasDate' and 'DefaultForParse' instances.
+ncalDateProps :: TestTree
+ncalDateProps = testGroup "NCalendarDate conversion"
+  [
+     QC.testProperty "format pd NCalendarDate -> parse pd NCalendarDate == id" $ testNcdFormatToParseIdentity pd
+    ,QC.testProperty "format pD NCalendarDate -> parse pD NCalendarDate == id" $ testNcdFormatToParseIdentity pD
+    ,QC.testProperty "format custom NCalendarDate -> parse custom NCalendarDate == id" $ testNcdFormatToParseIdentity (pyyyy <% char '/' <> pMMMM <% char '/' <> pdd)
+  ]
+  where
+    testNcdFormatToParseIdentity pat (RandomStandardDate y mon d) = monadicIO $ do
+      let ncd = fromMaybe (error "impossible") $ G.ncalendarDate d mon y
+      ncd' <- run $ parse pat $ format pat ncd
+      QCM.assert $ ncd == ncd'
 
 localTimeProps :: TestTree
 localTimeProps = testGroup "LocalTime conversion"

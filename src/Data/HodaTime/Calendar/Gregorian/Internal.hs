@@ -18,6 +18,8 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,ncdToDays
   ,daysToNcd
   ,ncdToYearMonthDay
+  ,ncdFromAdjustedInstant
+  ,ncdToUnadjustedInstant
 )
 where
 
@@ -239,6 +241,17 @@ instance HasDate (NCalendarDate Gregorian) where
       currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
       targetDow = fromEnum dow
       n' = if targetDow < currentDoW then n - 1 else n
+
+-- | Convert an 'Instant' that has already been adjusted to the correct calendar\/time-zone into its 'NCalendarDate'
+--   date and 'LocalTime'.  This is the 'NCalendarDate' analogue of 'fromAdjustedInstant'; the date half goes through
+--   'daysToNcd' (which agrees with 'daysToYearMonthDay') and the time half is a straight passthrough.
+ncdFromAdjustedInstant :: Instant -> (NCalendarDate Gregorian, LocalTime)
+ncdFromAdjustedInstant (Instant days secs nsecs) = (daysToNcd days, LocalTime secs nsecs)
+
+-- | Convert an 'NCalendarDate' plus its 'LocalTime' back into an unadjusted 'Instant'.  The 'NCalendarDate' analogue
+--   of 'toUnadjustedInstant' and the inverse of 'ncdFromAdjustedInstant'.
+ncdToUnadjustedInstant :: NCalendarDate Gregorian -> LocalTime -> Instant
+ncdToUnadjustedInstant ncd (LocalTime secs nsecs) = Instant (ncdToDays ncd) secs nsecs
 
 -- | Shift a date by 'delta' days.  Fast path: when the shift stays within the current century (and we are safely
 --   past the pre-Gregorian threshold, so cyc >= -1) only 'ncdDays' changes and the cycle\/century are untouched.

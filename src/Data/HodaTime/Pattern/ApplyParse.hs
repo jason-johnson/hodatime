@@ -11,7 +11,7 @@ module Data.HodaTime.Pattern.ApplyParse
 where
 
 import Data.HodaTime.LocalTime.Internal (LocalTime(..), localTime)
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, CalendarDate(..), CalendarDateTime(..), at)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, CalendarDate(..), NCalendarDate(..), CalendarDateTime(..), at)
 import Data.HodaTime.Pattern.ParseTypes
 import Control.Monad.Catch (MonadThrow)
 
@@ -31,6 +31,11 @@ instance DefaultForParse LocalTime where
 
 instance IsCalendar cal => DefaultForParse (CalendarDate cal) where
   getDefault = CalendarDate 0 1 2 2000
+
+-- NOTE: representation-level default (cycle 0, century 0, day-in-century 0 = 1.March.2000, the epoch).  As with the
+-- 'CalendarDate' instance, parsing overwrites the fields, so any valid starting date works.
+instance IsCalendar cal => DefaultForParse (NCalendarDate cal) where
+  getDefault = NCalendarDate 0 0 0
 
 instance IsCalendar cal => DefaultForParse (CalendarDateTime cal) where
   getDefault = getDefault `at` getDefault
