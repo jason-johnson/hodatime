@@ -224,6 +224,8 @@ instance HasDate (NCalendarDate Gregorian) where
       mkncd d' = shiftDaysWith clampToValid (d' - fromIntegral d) ncd
   month ncd = toEnum . fromIntegral $ m
     where (_, m, _) = ncdToYearMonthDay ncd
+  yearMonthDay ncd = (fromIntegral y, toEnum . fromIntegral $ m, fromIntegral d)
+    where (y, m, d) = ncdToYearMonthDay ncd
   monthl = mkCommonMonthLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
   year = mkYearLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
   dayOfWeek (NCalendarDate _ century dic) = toEnum . dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic

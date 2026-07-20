@@ -18,6 +18,7 @@ module Data.HodaTime.CalendarDateTime.Internal
 where
 
 import Data.HodaTime.Instant.Internal (Instant)
+import Data.Functor.Const (Const(..))
 import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
 
@@ -97,6 +98,18 @@ class HasDate d where
   -- >>> previous 1 Monday . fromJust $ Gregorian.calendarDate 31 January 2000
   -- CalendarDate 24 January 2000
   previous :: Int -> DoW d -> d -> d
+  -- | Access the year, month and day-of-month components together in a single call, returned as a
+  --   @(year, month, day)@ tuple.
+  --
+  --   This is purely an access optimization for code that needs more than one date component at once.  Reading the
+  --   components individually with 'year', 'month' and 'day' is perfectly correct, but for a packed representation
+  --   (e.g. 'NCalendarDate') each of those accessors independently decodes the stored value, so asking for all three
+  --   separately decodes it three times.  'yearMonthDay' decodes once and hands back every component, which is
+  --   noticeably cheaper on hot paths (for example date formatting).  For representations that already store the
+  --   components separately (e.g. 'CalendarDate') there is nothing to decode and this is simply the three field reads,
+  --   so it is never slower than the individual accessors and callers can use it unconditionally.
+  yearMonthDay :: d -> (Year, MoY d, DayOfMonth)
+  yearMonthDay d = (getConst (year Const d), month d, getConst (day Const d))
 
 instance (IsCalendar cal) => HasDate (CalendarDate cal) where
   type DoW (CalendarDate cal) = DayOfWeek cal
