@@ -44,12 +44,7 @@ data CalendarDate calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdM
   deriving (Eq, Show, Ord)  -- TODO: Get rid of Show and define the other instances to only use cdDays
 
 -- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
--- PERF HYPOTHESIS (verify in the benchmark step): making these fields strict and unpacked, i.e.
---   NCalendarDate { ncdCycle :: {-# UNPACK #-} !Int8, ncdCentury :: {-# UNPACK #-} !Word8, ncdDays :: {-# UNPACK #-} !Word32 }
---   should remove the thunk/boxing overhead that laziness imposes on these tiny integer fields (e.g. the
---   normalization branch in daysToNcd becomes an eager, cheap comparison instead of an allocated thunk).
---   Do NOT assume this is a win until measured against the current lazy fields with the bench/ harness.
-data NCalendarDate calendar = NCalendarDate { ncdCycle :: Int8, ncdCentury :: Word8, ncdDays :: Word32 }
+data NCalendarDate calendar = NCalendarDate { ncdCycle :: {-# UNPACK #-} !Int8, ncdCentury :: {-# UNPACK #-} !Word8, ncdDays :: {-# UNPACK #-} !Word32 }
   deriving (Eq, Show, Ord)  -- TODO: Get rid of Show and define the other instances to only use cdDays
 
 -- NOTE: This is a test form of the calendar date that only stores the cycle.  Everything else will be pulled from the date cache table, as required
