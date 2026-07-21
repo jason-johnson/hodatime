@@ -45,7 +45,7 @@ constructorProps = testGroup "Constructor"
       convertMonth = succ . fromEnum
       testConstructor (Positive y) m (Positive d) = areSame (calendarDate d m y') (fromJulianValid (fromIntegral y') (convertMonth m) d)
         where
-          y' = 1583 + (y `mod` 800)
+          y' = 1 + (y `mod` 2400)     -- NOTE: spans early-medieval (pre-1582) through modern years
 
 lensProps :: TestTree
 lensProps = testGroup "Lens"
@@ -67,6 +67,8 @@ constructorUnits = testGroup "Constructor"
      testCase "30 February 2000 is not a valid date" $ calendarDate 30 February 2000 @?= Nothing
     ,testCase "29 February 1900 IS valid in Julian (1900 is a Julian leap year)" $ (ymd <$> calendarDate 29 February 1900) @?= Just (29, 2, 1900)
     ,testCase "29 February 1900 matches Data.Time" $ (ymd <$> calendarDate 29 February 1900) @?= (juYmd <$> fromJulianValid 1900 2 29)
+    ,testCase "14 October 1066 is valid (long before the 1582 Gregorian cutoff)" $ (ymd <$> calendarDate 14 October 1066) @?= Just (14, 10, 1066)
+    ,testCase "14 October 1066 matches Data.Time" $ (ymd <$> calendarDate 14 October 1066) @?= (juYmd <$> fromJulianValid 1066 10 14)
   ]
     where
       juYmd d = let (ty, tm, td) = toJulian d in (td, tm, fromIntegral ty)

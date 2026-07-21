@@ -87,14 +87,15 @@ instance Arbitrary (J.DayOfWeek J.Julian) where
     x <- choose (0,6)
     return $ toEnum x
 
--- | A random valid Julian date.  The range starts in 1583 to stay clear of the pre-1582 validity threshold, and
---   the day is capped at 28 so every generated (year, month, day) is a real date.
+-- | A random valid Julian date.  Unlike Gregorian (which rejects pre\-1582 dates), the Julian calendar is valid for
+--   all AD years, so the range spans early\-medieval through modern years to exercise the pre\-1582 dates the calendar
+--   exists to represent.  The day is capped at 28 so every generated (year, month, day) is a real date.
 data RandomJulianDate = RandomJulianDate Int (J.Month J.Julian) Int
   deriving (Show)
 
 instance Arbitrary RandomJulianDate where
   arbitrary = do
-    y <- choose (1583,2400)
+    y <- choose (1,2400)
     m <- choose (0,11)
     d <- choose (1,28)
     return $ RandomJulianDate y (toEnum m) d
