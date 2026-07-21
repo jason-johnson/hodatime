@@ -22,6 +22,7 @@ module Data.HodaTime.ZonedDateTime
   -- * Conversion
   ,toCalendarDateTime
   ,toCalendarDate
+  ,toInstant
   ,toLocalTime
   -- * Accessors
   ,inDst
@@ -43,9 +44,10 @@ module Data.HodaTime.ZonedDateTime
 where
 
 import Data.HodaTime.ZonedDateTime.Internal
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate(..), IsCalendarDateTime(..), IsCalendar(..), LocalTime)
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate, IsCalendarDateTime(..), IsCalendar(..), LocalTime)
+import Data.HodaTime.Instant.Internal (Instant)
 import qualified Data.HodaTime.LocalTime.Internal as LT(second)
-import Data.HodaTime.Offset.Internal (Offset(..))
+import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
 import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
@@ -124,6 +126,12 @@ resolve ambiguous skipped cdt tz = go . fmap mkZdt . calDateTransitionsFor insta
 -- | Return the 'CalendarDateTime' represented by this 'ZonedDateTime'.
 toCalendarDateTime :: ZonedDateTime cal -> CalendarDateTime cal
 toCalendarDateTime (ZonedDateTime cdt _  _) = cdt
+
+-- | Return the 'Instant' (a universal, UTC-based moment) represented by this 'ZonedDateTime'.  This is the inverse
+--   of 'fromInstant': it takes the local 'CalendarDateTime' back to its unadjusted instant and then removes the
+--   zone's UTC offset.
+toInstant :: IsCalendarDateTime cal => ZonedDateTime cal -> Instant
+toInstant (ZonedDateTime cdt _ (TransitionInfo (Offset offSecs) _ _)) = adjustInstant (Offset (negate offSecs)) (toUnadjustedInstant cdt)
 
 -- | Return the 'CalendarDate' represented by this 'ZonedDateTime'.
 toCalendarDate :: ZonedDateTime cal -> CalendarDate cal

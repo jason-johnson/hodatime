@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Data.HodaTime.ZonedDateTime.Internal
 (
    ZonedDateTime(..)
@@ -22,7 +25,9 @@ import Data.HodaTime.Internal.Lens (view)
 
 -- | A CalendarDateTime in a specific time zone. A 'ZonedDateTime' is global and maps directly to a single 'Instant'.
 data ZonedDateTime cal = ZonedDateTime { zdtCalendarDateTime :: CalendarDateTime cal, zdtTimeZone :: TimeZone, zdtActiveTransition :: TransitionInfo }
-  deriving (Eq, Show)
+
+deriving instance Eq (CDT.Date cal) => Eq (ZonedDateTime cal)
+deriving instance Show (CDT.Date cal) => Show (ZonedDateTime cal)
 -- TODO: We should have an Ord instance, we can just ignore the timezone field.  It would be especially good so that when CalendarDateTime is equal we can
 -- TODO: compare the TransitionInfo to see which one comes first
 

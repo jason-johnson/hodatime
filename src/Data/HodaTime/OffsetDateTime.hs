@@ -9,6 +9,9 @@
 --
 -- An 'OffsetDateTime' is a date and time combined with an offset from UTC time.  'OffsetDateTime' is the form that HTTP uses to deal with dates and times.
 ----------------------------------------------------------------------------
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Data.HodaTime.OffsetDateTime
 (
   -- * Types
@@ -23,14 +26,16 @@ where
 
 import Data.HodaTime.Offset.Internal
 import Data.HodaTime.Instant.Internal (Instant)
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, IsCalendarDateTime(..))
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, IsCalendarDateTime(..), Date)
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
 import Data.HodaTime.TimeZone.Internal (TimeZone(..), TZIdentifier(..), TransitionInfo, fixedOffsetZone)
 
 -- | A 'CalendarDateTime' with a UTC offset.  This is the format used by e.g. HTTP.  This type has a fixed 'TimeZone' with the name "UTC(+/-)offset".  If the offset is
 -- empty, the name of the 'TimeZone' will be UTC
 newtype OffsetDateTime cal = OffsetDateTime (ZonedDateTime cal)
-  deriving (Eq, Show)    -- TODO: Remove Show
+
+deriving instance Eq (Date cal) => Eq (OffsetDateTime cal)
+deriving instance Show (Date cal) => Show (OffsetDateTime cal)    -- TODO: Remove Show
 
 -- | Create an 'OffsetDateTime' from an 'Instant' and an 'Offset'.
 fromInstantWithOffset :: IsCalendarDateTime cal => Instant -> Offset -> OffsetDateTime cal

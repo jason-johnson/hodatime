@@ -33,7 +33,7 @@ ps = pyyyy <% char '-' <> pMM <% char '-' <> pdd <% char 'T' <> pHH <% char ':' 
 pf :: (HasLocalTime (c cal), HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
 pf = pD <% char ' ' <> pt
 
--- | The full date and time pattern. This is currently "dddd, dd MMMM yyyy HH:mm:ss".
+-- | The full date and time pattern. This is currently "dddd, dd MMMM yyyy HH:mm:ss".
 pF :: (HasLocalTime (c cal), HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
 pF = pD <% char ' ' <> pT
 
@@ -41,6 +41,6 @@ pF = pD <% char ' ' <> pT
 pg :: (HasLocalTime dt, HasDate dt) => Pattern (dt -> dt) (dt -> String) String
 pg = pd <% char ' ' <> pt
 
--- | The short date pattern followed by a space, followed by the long time pattern.
+-- | The short date pattern followed by a space, followed by the long time pattern.
 pG :: (HasLocalTime dt, HasDate dt) => Pattern (dt -> dt) (dt -> String) String
 pG = pd <% char ' ' <> pT

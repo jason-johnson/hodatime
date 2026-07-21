@@ -25,7 +25,7 @@ module Data.HodaTime.Calendar.Julian
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), IsCalendarDateTime(..), DayOfMonth, Year, CalendarDateTime(..), LocalTime(..))
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), DayOfMonth, Year, CalendarDateTime(..), LocalTime(..), Date)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerFourYears)
 import Data.Int (Int32)
@@ -54,39 +54,50 @@ epochDayOfWeek = Wednesday
 data Julian
     
 instance IsCalendar Julian where
-  type Date Julian = CalendarDate Julian
-  
+  data Date Julian = JulianDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word32
+    deriving (Eq, Show, Ord)
+
   data DayOfWeek Julian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
-    
+
   data Month Julian = January | February | March | April | May | June | July | August | September | October | November | December
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
-    
-  day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays daysToYearMonthDay
+
+  fromDays = julianFromDays
+  toDays = julianToDays
+  toYmd = julianToYmd
+
+  day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays julianFromDays julianToYmd
   {-# INLINE day' #-}
-    
-  month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m
-    
-  monthl' = mkCommonMonthLens firstJulDayTuple maxDaysInMonth yearMonthDayToDays
+
+  month' (JulianDate _ _ m _) = toEnum . fromIntegral $ m
+
+  monthl' = mkCommonMonthLens firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
   {-# INLINE monthl' #-}
-    
-  year' = mkYearLens firstJulDayTuple maxDaysInMonth yearMonthDayToDays
+
+  year' = mkYearLens firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
   {-# INLINE year' #-}
-    
-  dayOfWeek' (CalendarDate days _ _ _) = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral $ days
-    
-  next' n dow (CalendarDate days _ _ _) = moveByDow daysToYearMonthDay epochDayOfWeek n dow (-) (+) (>) (fromIntegral days)
-    
-  previous' n dow (CalendarDate days _ _ _) = moveByDow daysToYearMonthDay epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+
+  dayOfWeek' (JulianDate days _ _ _) = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral $ days
+
+  next' n dow (JulianDate days _ _ _) = moveByDow julianFromDays epochDayOfWeek n dow (-) (+) (>) (fromIntegral days)
+
+  previous' n dow (JulianDate days _ _ _) = moveByDow julianFromDays epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
 
 instance IsCalendarDateTime Julian where
-  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime cd lt
-    where
-      cd = CalendarDate days d m y
-      (y, m, d) = daysToYearMonthDay days
-      lt = LocalTime secs nsecs
+  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (julianFromDays days) (LocalTime secs nsecs)
+  toUnadjustedInstant (CalendarDateTime jd (LocalTime secs nsecs)) = Instant (julianToDays jd) secs nsecs
 
-  toUnadjustedInstant (CalendarDateTime (CalendarDate days _ _ _) (LocalTime secs nsecs)) = Instant days secs nsecs
+-- | Build the flat Julian date (denormalized: keeps the day count plus the decoded day\/month\/year).
+julianFromDays :: Int32 -> Date Julian
+julianFromDays days = JulianDate days d m y
+  where (y, m, d) = daysToYearMonthDay days
+
+julianToDays :: Date Julian -> Int32
+julianToDays (JulianDate days _ _ _) = days
+
+julianToYmd :: Date Julian -> (Word32, Word8, Word8)
+julianToYmd (JulianDate _ d m y) = (y, m, d)
 
 -- helper functions
 

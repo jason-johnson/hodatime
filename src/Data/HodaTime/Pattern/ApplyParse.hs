@@ -1,4 +1,5 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Data.HodaTime.Pattern.ApplyParse
 (
    DefaultForParse(..)
@@ -11,7 +12,7 @@ module Data.HodaTime.Pattern.ApplyParse
 where
 
 import Data.HodaTime.LocalTime.Internal (LocalTime(..), localTime)
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, CalendarDate(..), CalendarDateTime(..), at)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), Date, CalendarDateTime(..), at)
 import Data.HodaTime.Pattern.ParseTypes
 import Control.Monad.Catch (MonadThrow)
 
@@ -29,8 +30,8 @@ class DefaultForParse d where
 instance DefaultForParse LocalTime where
   getDefault = LocalTime 0 0
 
-instance IsCalendar cal => DefaultForParse (CalendarDate cal) where
-  getDefault = CalendarDate 0 1 2 2000
+instance IsCalendar cal => DefaultForParse (Date cal) where
+  getDefault = fromDays 0   -- the calendar's epoch; parsing overwrites the fields, so any valid date works
 
 instance IsCalendar cal => DefaultForParse (CalendarDateTime cal) where
   getDefault = getDefault `at` getDefault
@@ -44,7 +45,7 @@ instance ApplyParse TimeInfo LocalTime where
     where
       ti = f defaultTime
 
-instance IsCalendar cal => ApplyParse (DateInfo cal) (CalendarDate cal) where
+instance IsCalendar cal => ApplyParse (DateInfo cal) (Date cal) where
   applyParse f = undefined
 
 {- class ApplyParse r where

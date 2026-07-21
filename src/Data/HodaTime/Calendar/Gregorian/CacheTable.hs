@@ -20,7 +20,10 @@ type DTCacheHoursTable = UArray Int Word16
 
 data DTCacheTable = DTCacheTable DTCacheDaysTable DTCacheHoursTable
 
--- TODO: Since the actual Gregorian cycle is 400 years, does this strategy give correct dates?
+-- TODO: The start date is offset but otherwise the months are all in their
+--        unrotated form (i.e. Jan/Feb are in their normal year, not the previous year).
+--        does this hurt anything?  It's nice for decoding but maybe some math expects
+--        Jan/Feb to be (year - 1)
 
 -- The Cache Table holds years and hours in the following format:
 -- +-----+----+----+  +----+----+----+
@@ -30,10 +33,11 @@ data DTCacheTable = DTCacheTable DTCacheDaysTable DTCacheHoursTable
 -- Meaning we can store 100 years of days and 12 hours of seconds in 16 bits each
 cacheTable :: DTCacheTable
 cacheTable = DTCacheTable days hours where
-  toArray xs = array (0, length xs) $ zip [0..] xs
-  days = toArray $ firstYear ++ restYears
-  firstYear = [ encodeDate 0 m d | m <- [2..11], d <- daysInMonth m 0]
-  restYears = [ encodeDate y m d | y <- [1..100], m <- [0..11], d <- daysInMonth m y]
+  toArray xs = array (0, length xs - 1) $ zip [0..] xs
+  days = toArray $ firstYear ++ years ++ lastYear
+  firstYear = [ encodeDate 0 m d | m <- [2..11], d <- daysInMonth m 0]
+  years = [ encodeDate y m d | y <- [1..99], m <- [0..11], d <- daysInMonth m y]
+  lastYear = [ encodeDate 100 m d | m <- [0, 1], d <- daysInMonth m 100]
   hours = toArray [ encodeTime h m s | h <- [0..11], m <- [0..59], s <- [0..59]]
 
 -- encode
@@ -47,18 +51,18 @@ monthShift = 5
 encodeDate :: Word16 -> Word16 -> Word16 -> Word16
 encodeDate y m d = shift y yearShift .|. shift m monthShift .|. d
 
+-- Annoying to semi replicate this logic but otherwise we have to move much of this code to Internal to use the enums
 daysInMonth :: Word16 -> Word16 -> [Word16]
 daysInMonth 1 y
-  | isLeap                                                               = [1..29]
-  | otherwise                                                            = [1..28]
+  | isLeap                                      = [1..29]
+  | otherwise                                   = [1..28]
   where
-    y' = y + 2000
     isLeap
-      | 0 == y' `mod` 100 = 0 == y' `mod` 400
-      | otherwise    = 0 == y' `mod` 4
+      | 0 == y `mod` 100                        = False           -- 400+ is not possible here
+      | otherwise                               = 0 == y `mod` 4
 daysInMonth n _
-  | n == 3 || n == 5 || n == 8 || n == 10                                = [1..30]
-  | otherwise                                                            = [1..31]
+  | n == 3 || n == 5 || n == 8 || n == 10       = [1..30]
+  | otherwise                                   = [1..31]
 
 hourShift :: Num a => a
 hourShift = 12

@@ -1,4 +1,8 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Data.HodaTime.CalendarDateTime.Internal
 (
@@ -6,7 +10,7 @@ module Data.HodaTime.CalendarDateTime.Internal
   ,Year
   ,WeekNumber
   ,DayOfMonth
-  ,CalendarDate(..)
+  ,CalendarDate
   ,CalendarDateTime(..)
   ,IsCalendar(..)
   ,HasDate(..)
@@ -17,6 +21,7 @@ module Data.HodaTime.CalendarDateTime.Internal
 where
 
 import Data.HodaTime.Instant.Internal (Instant)
+import Data.Functor.Const (Const(..))
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 
@@ -39,29 +44,29 @@ type Year = Int
 type DayOfMonth = Int
 type WeekNumber = Int
 
--- TODO: We may want to add a "cycle" field to the calendarDate that counts 400 year cyles.  This would allow days to be non-negative
---       and it would mean that one table can translate all possible days since they repeat each cycle
-
--- | Represents a specific date within its calendar system, with no reference to any time zone or time of day.
--- Note: We keep the date in 2 formats, redundantly.  We depend on lazy evaluation to only produce the portion that is actually used
-data CalendarDate calendar = CalendarDate { cdDays :: Int32, cdDay :: Word8, cdMonth :: Word8, cdYear :: Word32 }
-  deriving (Eq, Show, Ord)  -- TODO: Get rid of Show and define the other instances to only use cdDays
-
--- NOTE: This is a test form of the calendar date that only stores the cycle.  Everything else will be pulled from the date cache table, as required
---data CalendarDate o calendar = CalendarDate { cdDays :: Int32, cdCycle :: Word8, ldOptions :: o }
---  deriving (Eq, Show, Ord)
+-- | A calendar date in the calendar system @cal@.  This is a public synonym for the per-calendar representation
+--   'Date': each calendar defines its own @data instance Date cal@ (see 'IsCalendar'), so unrelated calendars
+--   (e.g. Gregorian and Hebrew) need share nothing in how a date is stored.
+type CalendarDate cal = Date cal
 
 class IsCalendar cal where
-  type Date cal
+  -- | The per-calendar date representation.  Each calendar picks whatever packing is most natural/efficient for it.
+  data Date cal
   data DayOfWeek cal
   data Month cal
-  day' :: Functor f => (DayOfMonth -> f DayOfMonth) -> CalendarDate cal -> f (CalendarDate cal)
-  month' :: CalendarDate cal -> Month cal
-  monthl' :: Functor f => (Int -> f Int) -> CalendarDate cal -> f (CalendarDate cal)
-  year' :: Functor f => (Year -> f Year) -> CalendarDate cal -> f (CalendarDate cal)
-  dayOfWeek' :: CalendarDate cal -> DayOfWeek cal
-  next' :: Int -> DayOfWeek cal -> CalendarDate cal -> CalendarDate cal
-  previous' :: Int -> DayOfWeek cal -> CalendarDate cal -> CalendarDate cal
+  -- | Build a date from a flat, epoch-relative day count (the calendar's own epoch).
+  fromDays :: Int32 -> Date cal
+  -- | Extract the flat, epoch-relative day count from a date.
+  toDays :: Date cal -> Int32
+  -- | Decode a date to @(year, zero-based month, day-of-month)@.
+  toYmd :: Date cal -> (Word32, Word8, Word8)
+  day' :: Functor f => (DayOfMonth -> f DayOfMonth) -> Date cal -> f (Date cal)
+  month' :: Date cal -> Month cal
+  monthl' :: Functor f => (Int -> f Int) -> Date cal -> f (Date cal)
+  year' :: Functor f => (Year -> f Year) -> Date cal -> f (Date cal)
+  dayOfWeek' :: Date cal -> DayOfWeek cal
+  next' :: Int -> DayOfWeek cal -> Date cal -> Date cal
+  previous' :: Int -> DayOfWeek cal -> Date cal -> Date cal
 
 class HasDate d where
   type DoW d
@@ -97,10 +102,22 @@ class HasDate d where
   -- >>> previous 1 Monday . fromJust $ Gregorian.calendarDate 31 January 2000
   -- CalendarDate 24 January 2000
   previous :: Int -> DoW d -> d -> d
+  -- | Access the year, month and day-of-month components together in a single call, returned as a
+  --   @(year, month, day)@ tuple.
+  --
+  --   This is purely an access optimization for code that needs more than one date component at once.  Reading the
+  --   components individually with 'year', 'month' and 'day' is perfectly correct, but for a packed representation
+  --   (e.g. 'NCalendarDate') each of those accessors independently decodes the stored value, so asking for all three
+  --   separately decodes it three times.  'yearMonthDay' decodes once and hands back every component, which is
+  --   noticeably cheaper on hot paths (for example date formatting).  For representations that already store the
+  --   components separately (e.g. 'CalendarDate') there is nothing to decode and this is simply the three field reads,
+  --   so it is never slower than the individual accessors and callers can use it unconditionally.
+  yearMonthDay :: d -> (Year, MoY d, DayOfMonth)
+  yearMonthDay d = (getConst (year Const d), month d, getConst (day Const d))
 
-instance (IsCalendar cal) => HasDate (CalendarDate cal) where
-  type DoW (CalendarDate cal) = DayOfWeek cal
-  type MoY (CalendarDate cal) = Month cal
+instance (IsCalendar cal) => HasDate (Date cal) where
+  type DoW (Date cal) = DayOfWeek cal
+  type MoY (Date cal) = Month cal
   day = day'
   month = month'
   monthl = monthl'
@@ -121,8 +138,11 @@ data LocalTime = LocalTime { ltSecs :: Word32, ltNsecs :: Word32 }
 --   *not* represent a specific time on the global time line because e.g. "10.March.2006 4pm" is a different instant
 --   in most time zones.  Convert it to a ZonedDateTime first if you wish to convert to an instant (or use a convenience
 --   function).
-data CalendarDateTime calendar = CalendarDateTime (CalendarDate calendar) LocalTime
-  deriving (Eq, Show, Ord)
+data CalendarDateTime calendar = CalendarDateTime (Date calendar) LocalTime
+
+deriving instance Eq (Date cal) => Eq (CalendarDateTime cal)
+deriving instance Ord (Date cal) => Ord (CalendarDateTime cal)
+deriving instance Show (Date cal) => Show (CalendarDateTime cal)
 
 instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   type DoW (CalendarDateTime cal) = DayOfWeek cal
@@ -145,5 +165,5 @@ class IsCalendarDateTime cal where
 -- constructors
 
 -- | Returns a 'CalendarDateTime' of the 'CalendarDate' at the given 'LocalTime'
-at :: CalendarDate cal -> LocalTime -> CalendarDateTime cal
-at date time = CalendarDateTime date time
+at :: Date cal -> LocalTime -> CalendarDateTime cal
+at = CalendarDateTime
