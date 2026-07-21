@@ -24,4 +24,4 @@ module Data.HodaTime.CalendarDate
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDate(..), DayNth(..), DayOfMonth, Year, WeekNumber, HasDate(..))
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDate, DayNth(..), DayOfMonth, Year, WeekNumber, HasDate(..))

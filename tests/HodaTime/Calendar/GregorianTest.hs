@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}    -- TODO: remove once CalendarDate/NCalendarDate are merged and the polymorphic `fields` helper is no longer needed
+{-# LANGUAGE FlexibleContexts #-}    -- for the polymorphic 'ymd' helper's Enum (MoY d) constraint
 module HodaTime.Calendar.GregorianTest
 (
   gregorianTests
@@ -12,8 +12,8 @@ import Data.Maybe (fromJust, catMaybes)
 import Data.Time.Calendar (fromGregorianValid, toGregorian)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), HasDate, MoY, DoW)
-import Data.HodaTime.Calendar.Gregorian (calendarDate, ncalendarDate, fromNthDay, Month(..), DayOfWeek(..))
+import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), HasDate, MoY)
+import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, Month(..), DayOfWeek(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import qualified Data.HodaTime.Calendar.Iso as Iso
 
@@ -21,69 +21,37 @@ gregorianTests :: TestTree
 gregorianTests = testGroup "Gregorian Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps, ncalendarProps]
+qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [constructorUnits, lensUnits, boundaryUnits]
 
--- | Decode any 'HasDate' to comparable primitive fields (day, 0-based month, year, day-of-week).
-decodeFields :: (HasDate d, Enum (MoY d), Enum (DoW d)) => d -> (Int, Int, Int, Int)
-decodeFields x = (get day x, fromEnum (month x), get year x, fromEnum (dayOfWeek x))
-
--- | Decode any 'HasDate' to (day, 1-based month, year) for explicit expected-value assertions.
+-- | Decode a date to (day, 1-based month, year) for explicit expected-value assertions.
 ymd :: (HasDate d, Enum (MoY d)) => d -> (Int, Int, Int)
 ymd x = (get day x, succ . fromEnum $ month x, get year x)
 
--- | True when two (possibly different) date representations decode to the same fields.
-sameDate :: (HasDate a, Enum (MoY a), Enum (DoW a), HasDate b, Enum (MoY b), Enum (DoW b)) => Maybe a -> Maybe b -> Bool
-sameDate mcd mncd = (decodeFields <$> mcd) == (decodeFields <$> mncd)
-
--- | Differential tests: run identical operations on 'CalendarDate' and 'NCalendarDate' and compare the decoded
---   fields.  'CalendarDate' is already validated against Data.Time, so it serves as the oracle here.
-ncalendarProps :: TestTree
-ncalendarProps = testGroup "NCalendarDate (differential vs CalendarDate)"
-  [
-     QC.testProperty "construct+decode matches CalendarDate" $ testNMatchesCD
-    ,QC.testProperty "monthl add matches CalendarDate" $ testNMonthAdd
-    ,QC.testProperty "day add matches CalendarDate" $ testNDayAdd
-    ,QC.testProperty "year add matches CalendarDate" $ testNYearAdd
-    ,QC.testProperty "next matches CalendarDate" $ testNNext
-    ,QC.testProperty "previous matches CalendarDate" $ testNPrevious
-  ]
-  where
-    testNMatchesCD (Positive y) m (Positive d) = sameDate (calendarDate d m y') (ncalendarDate d m y')
-      where y' = 1900 + y
-    testNMonthAdd (RandomStandardDate y m d) add = sameDate (modify (+ add) monthl <$> calendarDate d m y) (modify (+ add) monthl <$> ncalendarDate d m y)
-    testNDayAdd (RandomStandardDate y m d) add = sameDate (modify (+ add) day <$> calendarDate d m y) (modify (+ add) day <$> ncalendarDate d m y)
-    testNYearAdd (RandomStandardDate y m d) add = sameDate (modify (+ add) year <$> calendarDate d m y) (modify (+ add) year <$> ncalendarDate d m y)
-    testNNext dow (Positive n) (RandomStandardDate y m d) = sameDate (next n dow <$> calendarDate d m y) (next n dow <$> ncalendarDate d m y)
-    testNPrevious dow (Positive n) (RandomStandardDate y m d) = sameDate (previous n dow <$> calendarDate d m y) (previous n dow <$> ncalendarDate d m y)
-
--- | Hardcoded boundary tests for 'NCalendarDate'.  These are the discrete, known-tricky transitions (century
---   edges, the cycle edge / extra leap day, and the 1582 validity threshold) that random generators in the
---   1900-2040 range never reach.  Where 'CalendarDate' is a trusted oracle we compare against it ('sameDate');
---   at the cycle extra-day (29 Feb 2400) 'CalendarDate' has no independent test, so we assert explicit values.
+-- | Hardcoded boundary regression tests for the Gregorian cycle representation.  These are the discrete,
+--   known-tricky transitions (century edges, the cycle edge / extra leap day, and the 1582 validity threshold)
+--   that the random generators in the 1900-2040 range never reach.
 boundaryUnits :: TestTree
-boundaryUnits = testGroup "NCalendarDate boundaries"
+boundaryUnits = testGroup "Gregorian boundaries"
   [
   -- century edge: 2100 is NOT a leap year
-     testCase "28 Feb 2100 constructs correctly" $ (ymd <$> ncalendarDate 28 February 2100) @?= Just (28, 2, 2100)
-    ,testCase "29 Feb 2100 is invalid (2100 not leap)" $ ncalendarDate 29 February 2100 @?= Nothing
-    ,testCase "31 Dec 2099 + 1 day == 1 Jan 2100" $ (ymd <$> (modify (+ 1) day <$> ncalendarDate 31 December 2099)) @?= Just (1, 1, 2100)
-    ,testCase "1 Jan 2100 - 1 day == 31 Dec 2099" $ (ymd <$> (modify (subtract 1) day <$> ncalendarDate 1 January 2100)) @?= Just (31, 12, 2099)
-    ,testCase "28 Feb 2100 + 1 day == 1 Mar 2100" $ (ymd <$> (modify (+ 1) day <$> ncalendarDate 28 February 2100)) @?= Just (1, 3, 2100)
-    ,testCase "century edge matches CalendarDate" $ sameDate (calendarDate 28 February 2100) (ncalendarDate 28 February 2100) @? "decode mismatch at 2100"
-  -- cycle edge: 2400 IS a leap year; 29 Feb 2400 is the extra-cycle-day (isExtraCycleDay)
-    ,testCase "29 Feb 2400 constructs correctly (extra-cycle-day)" $ (ymd <$> ncalendarDate 29 February 2400) @?= Just (29, 2, 2400)
-    ,testCase "28 Feb 2400 + 1 day == 29 Feb 2400" $ (ymd <$> (modify (+ 1) day <$> ncalendarDate 28 February 2400)) @?= Just (29, 2, 2400)
-    ,testCase "29 Feb 2400 + 1 day == 1 Mar 2400" $ (ymd <$> (modify (+ 1) day <$> ncalendarDate 29 February 2400)) @?= Just (1, 3, 2400)
-    ,testCase "31 Dec 2399 + 1 day == 1 Jan 2400" $ (ymd <$> (modify (+ 1) day <$> ncalendarDate 31 December 2399)) @?= Just (1, 1, 2400)
-    ,testCase "29 Feb 2400 + 1 year clamps to 28 Feb 2401" $ (ymd <$> (modify (+ 1) year <$> ncalendarDate 29 February 2400)) @?= Just (28, 2, 2401)
-    ,testCase "cycle edge matches CalendarDate" $ sameDate (calendarDate 29 February 2400) (ncalendarDate 29 February 2400) @? "decode mismatch at 2400"
+     testCase "28 Feb 2100 constructs correctly" $ (ymd <$> calendarDate 28 February 2100) @?= Just (28, 2, 2100)
+    ,testCase "29 Feb 2100 is invalid (2100 not leap)" $ calendarDate 29 February 2100 @?= Nothing
+    ,testCase "31 Dec 2099 + 1 day == 1 Jan 2100" $ (ymd <$> (modify (+ 1) day <$> calendarDate 31 December 2099)) @?= Just (1, 1, 2100)
+    ,testCase "1 Jan 2100 - 1 day == 31 Dec 2099" $ (ymd <$> (modify (subtract 1) day <$> calendarDate 1 January 2100)) @?= Just (31, 12, 2099)
+    ,testCase "28 Feb 2100 + 1 day == 1 Mar 2100" $ (ymd <$> (modify (+ 1) day <$> calendarDate 28 February 2100)) @?= Just (1, 3, 2100)
+  -- cycle edge: 2400 IS a leap year; 29 Feb 2400 is the extra-cycle-day
+    ,testCase "29 Feb 2400 constructs correctly (extra-cycle-day)" $ (ymd <$> calendarDate 29 February 2400) @?= Just (29, 2, 2400)
+    ,testCase "28 Feb 2400 + 1 day == 29 Feb 2400" $ (ymd <$> (modify (+ 1) day <$> calendarDate 28 February 2400)) @?= Just (29, 2, 2400)
+    ,testCase "29 Feb 2400 + 1 day == 1 Mar 2400" $ (ymd <$> (modify (+ 1) day <$> calendarDate 29 February 2400)) @?= Just (1, 3, 2400)
+    ,testCase "31 Dec 2399 + 1 day == 1 Jan 2400" $ (ymd <$> (modify (+ 1) day <$> calendarDate 31 December 2399)) @?= Just (1, 1, 2400)
+    ,testCase "29 Feb 2400 + 1 year clamps to 28 Feb 2401" $ (ymd <$> (modify (+ 1) year <$> calendarDate 29 February 2400)) @?= Just (28, 2, 2401)
   -- 1582 validity threshold: 15 Oct 1582 is the first valid Gregorian date
-    ,testCase "1 Oct 1582 is invalid" $ ncalendarDate 1 October 1582 @?= Nothing
-    ,testCase "15 Oct 1582 matches CalendarDate" $ sameDate (calendarDate 15 October 1582) (ncalendarDate 15 October 1582) @? "decode mismatch at 1582 threshold"
-    ,testCase "16 Oct 1582 - 1 day == 15 Oct 1582" $ (ymd <$> (modify (subtract 1) day <$> ncalendarDate 16 October 1582)) @?= Just (15, 10, 1582)
+    ,testCase "1 Oct 1582 is invalid" $ calendarDate 1 October 1582 @?= Nothing
+    ,testCase "15 Oct 1582 constructs correctly" $ (ymd <$> calendarDate 15 October 1582) @?= Just (15, 10, 1582)
+    ,testCase "16 Oct 1582 - 1 day == 15 Oct 1582" $ (ymd <$> (modify (subtract 1) day <$> calendarDate 16 October 1582)) @?= Just (15, 10, 1582)
   ]
 
 constructorProps :: TestTree

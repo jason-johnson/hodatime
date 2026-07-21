@@ -15,23 +15,22 @@ module Data.HodaTime.Calendar.Gregorian.Internal
   ,dayOfWeekFromDays
   ,instantToYearMonthDay
   ,yearMonthDayToCycleCenturyDays
-  ,ncdToDays
-  ,daysToNcd
-  ,ncdToYearMonthDay
-  ,ncdFromAdjustedInstant
-  ,ncdToUnadjustedInstant
+  ,gregorianFromYmd
+  ,gregorianToDays
+  ,daysToGregorian
+  ,gregorianToYearMonthDay
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), CalendarDate(..), NCalendarDate(..), HasDate(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..))
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
-import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, mkCommonMonthLensN, mkYearLensN, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
+import Data.HodaTime.Calendar.Internal (mkCommonMonthLens, mkYearLens, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
-import Data.Int (Int32)
+import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
 import Data.Array.Unboxed ((!))
-import Control.Monad (guard, when)
+import Control.Monad (guard)
 
 -- Constants
 
@@ -55,46 +54,58 @@ epochDayOfWeek = Wednesday
 data Gregorian
     
 instance IsCalendar Gregorian where
-  type Date Gregorian = CalendarDate Gregorian
-    
+  data Date Gregorian = GregorianDate {-# UNPACK #-} !Int8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word32
+    deriving (Eq, Show, Ord)
+
   data DayOfWeek Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
-    
+
   data Month Gregorian = January | February | March | April | May | June | July | August | September | October | November | December
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
-    
-  day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays daysToYearMonthDay
-  {-# INLINE day' #-}
-    
-  month' (CalendarDate _ _ m _) = toEnum . fromIntegral $ m
-    
-  monthl' = mkCommonMonthLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays
+
+  fromDays = daysToGregorian
+  toDays = gregorianToDays
+  toYmd = gregorianToYearMonthDay
+
+  -- Fast path: shift only the day-in-century, leaving cycle\/century untouched when we stay in-century.
+  day' f gd = mkgd <$> f (fromIntegral d)
+    where
+      (_, _, d) = gregorianToYearMonthDay gd
+      mkgd d' = shiftDaysWith clampToValid (d' - fromIntegral d) gd
+
+  month' gd = toEnum . fromIntegral $ m
+    where (_, m, _) = gregorianToYearMonthDay gd
+
+  monthl' = mkCommonMonthLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian
   {-# INLINE monthl' #-}
-    
-  year' = mkYearLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays
+
+  year' = mkYearLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian
   {-# INLINE year' #-}
-    
-  dayOfWeek' (CalendarDate days _ _ _) = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral $ days
-    
-  next' n dow (CalendarDate days _ _ _) = moveByDow daysToYearMonthDay epochDayOfWeek n dow (-) (+) (>) (fromIntegral days)
-    
-  previous' n dow (CalendarDate days _ _ _) = moveByDow daysToYearMonthDay epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+
+  dayOfWeek' (GregorianDate _ century dic) = toEnum . dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
+
+  next' n dow gd@(GregorianDate _ century dic) = shiftDaysWith id (7 * n' + targetDow - currentDoW) gd
+    where
+      currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
+      targetDow = fromEnum dow
+      n' = if targetDow > currentDoW then n - 1 else n
+
+  previous' n dow gd@(GregorianDate _ century dic) = shiftDaysWith id (negate $ 7 * n' + currentDoW - targetDow) gd
+    where
+      currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
+      targetDow = fromEnum dow
+      n' = if targetDow < currentDoW then n - 1 else n
 
 instance IsCalendarDateTime Gregorian where
-  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime cd lt
-    where
-      cd = CalendarDate days d m y
-      (y, m, d) = daysToYearMonthDay days
-      lt = LocalTime secs nsecs
-
-  toUnadjustedInstant (CalendarDateTime (CalendarDate days _ _ _) (LocalTime secs nsecs)) = Instant days secs nsecs
+  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (daysToGregorian days) (LocalTime secs nsecs)
+  toUnadjustedInstant (CalendarDateTime gd (LocalTime secs nsecs)) = Instant (gregorianToDays gd) secs nsecs
 
 -- constructors
 
 fromWeekDate :: Int -> DayOfWeek Gregorian -> WeekNumber -> DayOfWeek Gregorian -> Year -> Maybe (Date Gregorian)
 fromWeekDate minWeekDays wkStartDoW weekNum dow y = do
   guard $ days > invalidDayThresh
-  return $ CalendarDate days d m y'
+  return $ daysToGregorian days
     where
       soyDays = yearMonthDayToDays y January minWeekDays
       soyDoW = dayOfWeekFromDays epochDayOfWeek soyDays
@@ -104,7 +115,6 @@ fromWeekDate minWeekDays wkStartDoW weekNum dow y = do
       startDays = soyDays - startDoWDistance
       weekNum' = pred weekNum
       days = fromIntegral $ startDays + weekNum' * 7 + dowDistance'
-      (y', m, d) = daysToYearMonthDay days
 
 -- helper functions
 
@@ -147,6 +157,12 @@ yearMonthDayToCycleCenturyDays y m d = (cyc, century, dic)
     m' = if m > February then fromEnum m - 2 else fromEnum m + 10
     dic = yoc * daysPerStandardYear + yoc `div` 4 + commonMonthDayOffsets !! m' + d - 1
 
+-- | Build a 'Date' 'Gregorian' directly from a year\/month\/day via 'yearMonthDayToCycleCenturyDays' (keeping the
+--   'GregorianDate' constructor internal to this module).  No validity checking is performed here.
+gregorianFromYmd :: Year -> Month Gregorian -> DayOfMonth -> Date Gregorian
+gregorianFromYmd y m d = GregorianDate (fromIntegral cyc) (fromIntegral century) (fromIntegral dic)
+  where (cyc, century, dic) = yearMonthDayToCycleCenturyDays y m d
+
 -- NOTE: Epoch is March 1 2000 because that has nicest properties that is near our current time.
 -- TODO: The addition of leap days below will add from the previous year.  We need to determine if this is a bug
 -- TODO: and if it is not, why isn't it
@@ -181,33 +197,31 @@ daysToYearMonthDay days = (fromIntegral y', m'', fromIntegral d')
 instantToYearMonthDay :: Instant -> (Word32, Word8, Word8)
 instantToYearMonthDay (Instant days _ _) = daysToYearMonthDay days
 
--- NCalendarDate bridge functions
+-- Date Gregorian bridge functions (cycle\/century\/day-in-century representation)
 
--- | Reconstruct the flat (epoch-relative) day count from an 'NCalendarDate'.  This is the inverse of 'daysToNcd' and must
---   agree with 'yearMonthDayToDays' so that the cycle\/century\/days representation round-trips against the flat 'CalendarDate'.
-ncdToDays :: NCalendarDate Gregorian -> Int32
-ncdToDays (NCalendarDate cyc century days) = fromIntegral $ cyc' * daysPerCycle + century' * daysPerCentury + days'
+-- | Reconstruct the flat (epoch-relative) day count from a 'Date' 'Gregorian'.  Inverse of 'daysToGregorian'; must
+--   agree with 'yearMonthDayToDays' so the cycle representation round-trips against the flat day count.
+gregorianToDays :: Date Gregorian -> Int32
+gregorianToDays (GregorianDate cyc century days) = fromIntegral $ cyc' * daysPerCycle + century' * daysPerCentury + days'
   where
     cyc' = fromIntegral cyc :: Int
     century' = fromIntegral century :: Int
     days' = fromIntegral days :: Int
 
--- | Decompose a flat (epoch-relative) day count into the cycle\/century\/days representation used by 'NCalendarDate'.
---   Uses floored 'divMod' so the century and day remainders are always non-negative, matching 'calculateCenturyDays'.
---   Representation (ii): 'century' is always kept in [0,3].  Floored division places the single extra leap day per
---   cycle at century 4, day 0; we fold that back to day 36524 of the last century so callers never see century 4.
-daysToNcd :: Int32 -> NCalendarDate Gregorian
-daysToNcd days = NCalendarDate (fromIntegral cycles) (fromIntegral century) (fromIntegral dic)
+-- | Decompose a flat (epoch-relative) day count into the cycle\/century\/day-in-century representation.  Uses floored
+--   'divMod' so remainders are non-negative.  Representation (ii): 'century' is always in [0,3]; the single extra leap
+--   day per cycle (which floored division would place at century 4, day 0) is folded back to day 36524 of century 3.
+daysToGregorian :: Int32 -> Date Gregorian
+daysToGregorian days = GregorianDate (fromIntegral cycles) (fromIntegral century) (fromIntegral dic)
   where
     (cycles, cycleDays) = (fromIntegral days :: Int) `divMod` daysPerCycle
     (century0, dic0) = cycleDays `divMod` daysPerCentury
     (century, dic) = if century0 == (4 :: Int) then (3, dic0 + daysPerCentury) else (century0, dic0)
 
--- | Decode an 'NCalendarDate' directly to (year, month, day) from its stored fields.  The cycle\/century split is
---   already present, so month and day come from a single cache-table lookup on 'ncdDays' and the year is simple
---   arithmetic; there is no need to reconstruct the flat day count and re-run 'calculateCenturyDays'.
-ncdToYearMonthDay :: NCalendarDate Gregorian -> (Word32, Word8, Word8)
-ncdToYearMonthDay (NCalendarDate cyc century dic)
+-- | Decode a 'Date' 'Gregorian' directly to (year, zero-based month, day) from its stored fields: the cycle\/century
+--   split is already present, so month and day come from a single cache-table lookup on the day-in-century.
+gregorianToYearMonthDay :: Date Gregorian -> (Word32, Word8, Word8)
+gregorianToYearMonthDay (GregorianDate cyc century dic)
   | dic == daysPerCentury = (fromIntegral extraYear, 1, 29)   -- extra-cycle-day: 29 Feb (month 1 = February, 0-based)
   | otherwise             = (fromIntegral yr, fromIntegral m, fromIntegral d)
   where
@@ -217,50 +231,14 @@ ncdToYearMonthDay (NCalendarDate cyc century dic)
     (y, m, d) = decodeEntry cacheTable . fromIntegral $ dic
     decodeEntry (DTCacheTable xs _) = (\x -> (decodeYear x, decodeMonth x, decodeDay x)) . (!) xs
 
-instance HasDate (NCalendarDate Gregorian) where
-  type DoW (NCalendarDate Gregorian) = DayOfWeek Gregorian
-  type MoY (NCalendarDate Gregorian) = Month Gregorian
-  day f ncd = mkncd <$> f (fromIntegral d)
-    where
-      (_, _, d) = ncdToYearMonthDay ncd
-      mkncd d' = shiftDaysWith clampToValid (d' - fromIntegral d) ncd
-  month ncd = toEnum . fromIntegral $ m
-    where (_, m, _) = ncdToYearMonthDay ncd
-  yearMonthDay ncd = (fromIntegral y, toEnum . fromIntegral $ m, fromIntegral d)
-    where (y, m, d) = ncdToYearMonthDay ncd
-  monthl = mkCommonMonthLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
-  year = mkYearLensN firstGregDayTuple maxDaysInMonth yearMonthDayToDays ncdToYearMonthDay daysToNcd
-  dayOfWeek (NCalendarDate _ century dic) = toEnum . dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
-  next n dow ncd@(NCalendarDate _ century dic) = shiftDaysWith id (7 * n' + targetDow - currentDoW) ncd
-    where
-      currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
-      targetDow = fromEnum dow
-      n' = if targetDow > currentDoW then n - 1 else n
-  previous n dow ncd@(NCalendarDate _ century dic) = shiftDaysWith id (negate $ 7 * n' + currentDoW - targetDow) ncd
-    where
-      currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
-      targetDow = fromEnum dow
-      n' = if targetDow < currentDoW then n - 1 else n
-
--- | Convert an 'Instant' that has already been adjusted to the correct calendar\/time-zone into its 'NCalendarDate'
---   date and 'LocalTime'.  This is the 'NCalendarDate' analogue of 'fromAdjustedInstant'; the date half goes through
---   'daysToNcd' (which agrees with 'daysToYearMonthDay') and the time half is a straight passthrough.
-ncdFromAdjustedInstant :: Instant -> (NCalendarDate Gregorian, LocalTime)
-ncdFromAdjustedInstant (Instant days secs nsecs) = (daysToNcd days, LocalTime secs nsecs)
-
--- | Convert an 'NCalendarDate' plus its 'LocalTime' back into an unadjusted 'Instant'.  The 'NCalendarDate' analogue
---   of 'toUnadjustedInstant' and the inverse of 'ncdFromAdjustedInstant'.
-ncdToUnadjustedInstant :: NCalendarDate Gregorian -> LocalTime -> Instant
-ncdToUnadjustedInstant ncd (LocalTime secs nsecs) = Instant (ncdToDays ncd) secs nsecs
-
 -- | Shift a date by 'delta' days.  Fast path: when the shift stays within the current century (and we are safely
---   past the pre-Gregorian threshold, so cyc >= -1) only 'ncdDays' changes and the cycle\/century are untouched.
---   Otherwise fall back to reconstructing the flat day count, applying 'onFlat' (e.g. the validity clamp), and
---   re-decomposing.  The extra-cycle-day (ncdDays == 36524) always fails the in-century bound and takes the slow path.
-shiftDaysWith :: (Int32 -> Int32) -> Int -> NCalendarDate Gregorian -> NCalendarDate Gregorian
-shiftDaysWith onFlat delta ncd@(NCalendarDate cyc century dic)
-  | cyc >= -1 && dic' >= 0 && dic' < daysPerCentury = NCalendarDate cyc century (fromIntegral dic')
-  | otherwise                                       = daysToNcd . onFlat $ ncdToDays ncd + fromIntegral delta
+--   past the pre-Gregorian threshold, so cyc >= -1) only the day-in-century changes and the cycle\/century are
+--   untouched.  Otherwise fall back to reconstructing the flat day count, applying 'onFlat' (e.g. the validity clamp),
+--   and re-decomposing.  The extra-cycle-day (day-in-century == 36524) always fails the in-century bound.
+shiftDaysWith :: (Int32 -> Int32) -> Int -> Date Gregorian -> Date Gregorian
+shiftDaysWith onFlat delta gd@(GregorianDate cyc century dic)
+  | cyc >= -1 && dic' >= 0 && dic' < daysPerCentury = GregorianDate cyc century (fromIntegral dic')
+  | otherwise                                       = daysToGregorian . onFlat $ gregorianToDays gd + fromIntegral delta
   where dic' = fromIntegral dic + delta :: Int
 
 -- | Clamp a flat day count so it never precedes the first valid Gregorian date (15 Oct 1582).
