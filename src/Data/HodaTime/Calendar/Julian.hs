@@ -14,23 +14,24 @@
 module Data.HodaTime.Calendar.Julian
 (
   -- * Constructors
-  -- calendarDate
+   calendarDate
   --,fromNthDay
   --,fromWeekDate
   -- * Types
-   Month(..)
+  ,Month(..)
   ,DayOfWeek(..)
   ,Julian
   ,yearMonthDayToDays
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), DayOfMonth, Year, CalendarDateTime(..), LocalTime(..), Date)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayOfMonth, Year, CalendarDateTime(..), LocalTime(..), Date)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerFourYears)
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 import Control.Arrow ((>>>), (***), (&&&))
+import Control.Monad (guard)
 import Data.Maybe (fromJust)
 import Data.List (findIndex)
 
@@ -99,6 +100,16 @@ julianToDays (JulianDate days _ _ _) = days
 julianToYmd :: Date Julian -> (Word32, Word8, Word8)
 julianToYmd (JulianDate _ d m y) = (y, m, d)
 
+-- Constructors
+
+-- | Smart constructor for a 'Julian' calendar date.
+calendarDate :: DayOfMonth -> Month Julian -> Year -> Maybe (CalendarDate Julian)
+calendarDate d m y = do
+  guard $ d > 0 && d <= maxDaysInMonth m y
+  let days = fromIntegral $ yearMonthDayToDays y m d
+  guard $ days > invalidDayThresh
+  return $ julianFromDays days
+
 -- helper functions
 
 maxDaysInMonth :: Month Julian -> Year -> Int
@@ -124,7 +135,9 @@ daysToYearMonthDay days = (fromIntegral y, fromIntegral m'', fromIntegral d')
   where
     (fourYears, (remaining, isLeapDay)) = flip divMod daysPerFourYears >>> (* 4) *** id &&& borders daysPerFourYears $ days
     (oneYears, yearDays) = remaining `divMod` daysPerStandardYear
-    m = pred . fromJust . findIndex (\mo -> yearDays < mo) $ commonMonthDayOffsets
+    -- NOTE: the sentinel 'daysPerStandardYear' lets February (yearDays >= the last real offset) be found; without it
+    -- 'findIndex' returns Nothing and 'fromJust' crashes for any late-February date.
+    m = pred . fromJust . findIndex (\mo -> yearDays < mo) $ commonMonthDayOffsets ++ [daysPerStandardYear]
     (m', startDate) = if m >= 10 then (m - 10, 2001) else (m + 2, 2000)
     d = yearDays - commonMonthDayOffsets !! m + 1
     (m'', d') = if isLeapDay then (1, 29) else (m', d)
