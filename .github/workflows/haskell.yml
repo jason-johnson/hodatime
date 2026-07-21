@@ -25,7 +25,7 @@ jobs:
             os: windows-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install stack (Windows)
         run: choco install haskell-stack
@@ -61,7 +61,7 @@ jobs:
     needs: test
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: get version
         run: |
