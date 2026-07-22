@@ -21,7 +21,7 @@ gregorianTests :: TestTree
 gregorianTests = testGroup "Gregorian Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps]
+qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps, nthDayProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [constructorUnits, lensUnits, boundaryUnits]
@@ -90,6 +90,23 @@ lensProps = testGroup "Lens"
     testDirectionRange dir gtlt adjust dow (RandomStandardDate y m d) = let cd = mkcd d m y in dir 1 dow cd `gtlt` modify (adjust 8) day cd
     epochDay = mkcd 1 March 2000
 
+nthDayProps :: TestTree
+nthDayProps = testGroup "fromNthDay / fromWeekDate"
+  [
+     QC.testProperty "fromNthDay First dow is the first such weekday (day 1..7)" testFirst
+    ,QC.testProperty "fromNthDay Last dow is the last such weekday (final week)" testLast
+    ,QC.testProperty "fromWeekDate lands on the requested day-of-week" testWeekDoW
+  ]
+  where
+    testFirst dow (RandomStandardDate y m _) =
+      let r = fromNthDay First dow m y
+      in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 1 && get day d <= 7) r
+    testLast dow (RandomStandardDate y m _) =
+      let r = fromNthDay Last dow m y
+      in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 22) r
+    testWeekDoW dow (RandomStandardDate y _ _) (Positive w) =
+      maybe True ((== dow) . dayOfWeek) (G.fromWeekDate (1 + w `mod` 50) dow y)
+
 constructorUnits :: TestTree
 constructorUnits = testGroup "Constructor"
   [
@@ -102,6 +119,9 @@ constructorUnits = testGroup "Constructor"
     ,testCase "Holidays in year 2000" $ test2k (usaHolidays 2000)
     ,testCase "Holidays in year 2001" $ test2001 (usaHolidays 2001)
     ,testCase "Holidays in year 1582" $ test1582 (usaHolidays 1582)
+    ,testCase "fromNthDay Last, when the month ends on that weekday, is the last day (not a week early)" $
+       let lastDay = fromJust $ calendarDate 31 December 2000    -- 31.Dec.2000 is a Sunday
+       in fromNthDay Last (dayOfWeek lastDay) December 2000 @?= Just lastDay
   ]
     where
       test2k hs = do

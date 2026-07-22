@@ -18,8 +18,8 @@ module Data.HodaTime.Calendar.Julian
 (
   -- * Constructors
    calendarDate
-  --,fromNthDay
-  --,fromWeekDate
+  ,fromNthDay
+  ,fromWeekDate
   -- * Types
   ,Month(..)
   ,DayOfWeek(..)
@@ -27,9 +27,9 @@ module Data.HodaTime.Calendar.Julian
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayOfMonth, Year, CalendarDateTime(..), LocalTime(..), Date)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayNth, DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerFourYears)
+import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerFourYears)
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 import Control.Arrow ((>>>), (***), (&&&))
@@ -127,6 +127,15 @@ calendarDate d m y = do
   let days = fromIntegral $ yearMonthDayToDays y m d
   guard $ days > invalidDayThresh
   return $ julianFromDays days
+
+-- | Smart constructor for a 'Julian' calendar date given as a day relative to a month (e.g. the third Monday of the month).  Returns 'Nothing' if the resulting date is invalid.
+fromNthDay :: DayNth -> DayOfWeek Julian -> Month Julian -> Year -> Maybe (CalendarDate Julian)
+fromNthDay = mkFromNthDay invalidDayThresh epochDayOfWeek yearMonthDayToDays maxDaysInMonth julianFromDays
+
+-- | Smart constructor for a 'Julian' calendar date given as a week date.  Note that this method assumes weeks start on Sunday and the first week of the year is the one
+--   which has at least one day in the new year.
+fromWeekDate :: WeekNumber -> DayOfWeek Julian -> Year -> Maybe (CalendarDate Julian)
+fromWeekDate = mkFromWeekDate invalidDayThresh epochDayOfWeek yearMonthDayToDays julianFromDays 1 Sunday
 
 -- helper functions
 

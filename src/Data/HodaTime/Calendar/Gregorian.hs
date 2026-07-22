@@ -29,6 +29,7 @@ where
 
 import Data.HodaTime.Calendar.Gregorian.Internal hiding (fromWeekDate)
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDate, DayNth, DayOfMonth, Year, WeekNumber)
+import Data.HodaTime.Calendar.Internal (mkFromNthDay)
 import qualified Data.HodaTime.Calendar.Gregorian.Internal as GI
 import Control.Monad (guard)
 
@@ -46,15 +47,7 @@ calendarDate d m y = do
 
 -- | Smart constructor for a 'Gregorian' calendar date given as a day relative to a month (e.g. the third Monday of the month).  Returns 'Nothing' if the resulting date is invalid.
 fromNthDay :: DayNth -> DayOfWeek Gregorian -> Month Gregorian -> Year -> Maybe (CalendarDate Gregorian)
-fromNthDay nth dow m y = do
-  guard $ d > 0 && d <= mdim
-  guard $ days > invalidDayThresh
-  return $ daysToGregorian (fromIntegral days)
-  where
-    nth' = fromEnum nth - 4
-    mdim = maxDaysInMonth m y
-    d = nthDayToDayOfMonth nth' (fromEnum dow) m y
-    days = yearMonthDayToDays y m d
+fromNthDay = mkFromNthDay invalidDayThresh epochDayOfWeek yearMonthDayToDays maxDaysInMonth daysToGregorian
 
 -- | Smart constructor for a 'Gregorian' calendar date given as a week date.  Note that this method assumes weeks start on Sunday and the first week of the year is the one
 --   which has at least one day in the new year.  For ISO compliant behavior use this constructor from the ISO module

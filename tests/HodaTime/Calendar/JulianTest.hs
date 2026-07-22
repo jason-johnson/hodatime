@@ -11,14 +11,14 @@ import Data.Maybe (fromJust)
 import Data.Time.Calendar.Julian (fromJulianValid, toJulian)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, CalendarDate)
-import Data.HodaTime.Calendar.Julian (calendarDate, Julian, Month(..), DayOfWeek(..))
+import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
+import Data.HodaTime.Calendar.Julian (calendarDate, fromNthDay, fromWeekDate, Julian, Month(..), DayOfWeek(..))
 
 julianTests :: TestTree
 julianTests = testGroup "Julian Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps]
+qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps, nthDayProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [constructorUnits, lensUnits]
@@ -61,6 +61,25 @@ lensProps = testGroup "Lens"
     testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
     testRoundTrip (RandomJulianDate y m d) = (ymd <$> calendarDate d m y) == Just (d, succ (fromEnum m), y)
 
+-- | 'fromNthDay' and 'fromWeekDate' are the generic (calendar-agnostic) constructors instantiated for Julian.  These
+--   self-validating properties confirm the shared core works with Julian's own weekday math (no per-calendar formula).
+nthDayProps :: TestTree
+nthDayProps = testGroup "fromNthDay / fromWeekDate"
+  [
+     QC.testProperty "fromNthDay First dow is the first such weekday (day 1..7)" testFirst
+    ,QC.testProperty "fromNthDay Last dow is the last such weekday (final week)" testLast
+    ,QC.testProperty "fromWeekDate lands on the requested day-of-week" testWeekDoW
+  ]
+  where
+    testFirst dow (RandomJulianDate y m _) =
+      let r = fromNthDay First dow m y
+      in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 1 && get day d <= 7) r
+    testLast dow (RandomJulianDate y m _) =
+      let r = fromNthDay Last dow m y
+      in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 22) r
+    testWeekDoW dow (RandomJulianDate y _ _) =
+      maybe True ((== dow) . dayOfWeek) (fromWeekDate 1 dow y)
+
 constructorUnits :: TestTree
 constructorUnits = testGroup "Constructor"
   [
@@ -69,6 +88,9 @@ constructorUnits = testGroup "Constructor"
     ,testCase "29 February 1900 matches Data.Time" $ (ymd <$> calendarDate 29 February 1900) @?= (juYmd <$> fromJulianValid 1900 2 29)
     ,testCase "14 October 1066 is valid (long before the 1582 Gregorian cutoff)" $ (ymd <$> calendarDate 14 October 1066) @?= Just (14, 10, 1066)
     ,testCase "14 October 1066 matches Data.Time" $ (ymd <$> calendarDate 14 October 1066) @?= (juYmd <$> fromJulianValid 1066 10 14)
+    ,testCase "fromNthDay Last, when the month ends on that weekday, is the last day (not a week early)" $
+       let lastDay = fromJust $ calendarDate 28 February 301    -- Feb 301 (not a Julian leap year) ends on a Friday
+       in fromNthDay Last (dayOfWeek lastDay) February 301 @?= Just lastDay
   ]
     where
       juYmd d = let (ty, tm, td) = toJulian d in (td, tm, fromIntegral ty)
