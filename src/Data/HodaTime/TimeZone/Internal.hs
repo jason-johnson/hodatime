@@ -28,7 +28,7 @@ import Data.Maybe (fromMaybe)
 import Data.HodaTime.Instant.Internal (Instant(..), minus, bigBang)
 import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
 import Data.HodaTime.Duration.Internal (fromNanoseconds)
-import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, instantToYearMonthDay)
+import Data.HodaTime.Calendar.Gregorian.Internal (nthDayToDayOfMonth, yearMonthDayToDays, maxDaysInMonth, instantToYearMonthDay)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
@@ -191,7 +191,14 @@ yearExpressionToInstant y = go
         m' = toEnum m
         d = nthDayToDayOfMonth nth day m' y
         days' = fromIntegral $ yearMonthDayToDays y m' d
-    -- TODO: implement the POSIX @Jn@/@n@ transition form.  NOTE: this "Julian" is a day-of-year (the @Jn@ form is
-    --       1..365 ignoring Feb 29, the @n@ form is 0..365 counting it), NOT the Julian *calendar* - it needs a
-    --       day-of-year -> Instant helper, unrelated to Data.HodaTime.Calendar.Julian.
-    go (JulianExpression _cly _d _s) = error "need julian year day function"
+    go (JulianExpression countLeaps day s) = Instant days' (fromIntegral s) 0
+      where
+        -- POSIX day-of-year transition.  The @n@ form (countLeaps == True) is 0-based and counts 29.Feb; the @Jn@
+        -- form (countLeaps == False) is 1-based and never counts 29.Feb, so 1.Mar is always day 60.  NOTE: this is a
+        -- day-of-year, unrelated to the Julian *calendar*.
+        offset
+          | countLeaps          = day
+          | isLeap && day >= 60  = day
+          | otherwise            = day - 1
+        isLeap = maxDaysInMonth (toEnum 1) y == 29
+        days' = fromIntegral $ yearMonthDayToDays y (toEnum 0) 1 + offset
