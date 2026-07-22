@@ -8,9 +8,11 @@
 -- Stability   :  experimental
 -- Portability :  POSIX, Windows
 --
--- This is the module for 'CalendarDate' and 'CalendarDateTime' in the 'Julian' calendar.  The calendar is proleptic in that, while it does start in 45 BC it does not try to account for the fact
--- that before around 4 AD the leap year rule was accidentally implemented as a leap year every three years.  This implementation stores the year unsigned, so its supported range is AD 1 onward
--- (BC years are not representable).  Dates share the same absolute timeline as every other calendar, so in the modern era a Julian date reads 13 days behind the same instant's Gregorian date.
+-- This is the module for 'CalendarDate' and 'CalendarDateTime' in the 'Julian' calendar.  The Julian calendar has a simple leap year rule \- every fourth year is a leap year, with none of the
+-- century exceptions that 'Data.HodaTime.Calendar.Gregorian' later added to keep the calendar aligned to the solar year.  It is proleptic in that, while it only started in 45 BC, this
+-- implementation applies that rule uniformly and does not try to account for the fact that before around 4 AD the leap year rule was accidentally implemented as a leap year every three years.  This
+-- implementation stores the year unsigned, so its supported range is AD 1 onward (BC years are not representable).  Dates share the same absolute timeline as every other calendar, so in the modern
+-- era a Julian date reads 13 days behind the same instant's Gregorian date.
 ----------------------------------------------------------------------------
 module Data.HodaTime.Calendar.Julian
 (
