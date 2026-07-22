@@ -191,4 +191,7 @@ yearExpressionToInstant y = go
         m' = toEnum m
         d = nthDayToDayOfMonth nth day m' y
         days' = fromIntegral $ yearMonthDayToDays y m' d
+    -- TODO: implement the POSIX @Jn@/@n@ transition form.  NOTE: this "Julian" is a day-of-year (the @Jn@ form is
+    --       1..365 ignoring Feb 29, the @n@ form is 0..365 counting it), NOT the Julian *calendar* - it needs a
+    --       day-of-year -> Instant helper, unrelated to Data.HodaTime.Calendar.Julian.
     go (JulianExpression _cly _d _s) = error "need julian year day function"
