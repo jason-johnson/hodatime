@@ -24,7 +24,6 @@ module Data.HodaTime.Calendar.Julian
   ,Month(..)
   ,DayOfWeek(..)
   ,Julian
-  ,yearMonthDayToDays
 )
 where
 
