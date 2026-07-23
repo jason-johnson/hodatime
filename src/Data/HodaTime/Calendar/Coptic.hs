@@ -45,7 +45,9 @@ daysPerMonth = 30
 daysBeforeEpagomenae :: Int
 daysBeforeEpagomenae = 12 * daysPerMonth      -- 360
 
--- | Flat day (shared absolute epoch, day 0 = 1.Mar.2000 Gregorian) of Coptic 1.Thout.1, i.e. 29.Aug.284 Julian.
+-- | Coptic works in its own frame: internal flat day 0 is 1.Thout.1 (= 29.Aug.284 Julian).  Only the 'Instant' bridge
+--   crosses to the universal timeline (day 0 = 1.Mar.2000 Gregorian), where the Coptic epoch sits at this constant, so
+--   'toUnadjustedInstant' adds it and 'fromAdjustedInstant' subtracts it.
 copticEpoch :: Num a => a
 copticEpoch = -626575
 
@@ -59,7 +61,7 @@ invalidDayThresh = fromIntegral $ pred day0
     day0 = yearMonthDayToDays y (toEnum m) d
 
 epochDayOfWeek :: DayOfWeek Coptic
-epochDayOfWeek = Wednesday
+epochDayOfWeek = Friday
 
 -- types
 
@@ -97,8 +99,8 @@ instance IsCalendar Coptic where
   previous' n dow (CopticDate days _ _ _) = moveByDow copticFromDays epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
 
 instance IsCalendarDateTime Coptic where
-  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (copticFromDays days) (LocalTime secs nsecs)
-  toUnadjustedInstant (CalendarDateTime cd (LocalTime secs nsecs)) = Instant (copticToDays cd) secs nsecs
+  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (copticFromDays (days - copticEpoch)) (LocalTime secs nsecs)
+  toUnadjustedInstant (CalendarDateTime cd (LocalTime secs nsecs)) = Instant (copticToDays cd + copticEpoch) secs nsecs
 
 -- | Build the flat Coptic date (denormalized: keeps the day count plus the decoded day\/month\/year).
 copticFromDays :: Int32 -> Date Coptic
@@ -141,12 +143,12 @@ maxDaysInMonth PiKogiEnavot y
 maxDaysInMonth _ _                         = daysPerMonth
 
 yearMonthDayToDays :: Year -> Month Coptic -> DayOfMonth -> Int
-yearMonthDayToDays y m d = copticEpoch + (y - 1) * daysPerStandardYear + y `div` 4 + fromEnum m * daysPerMonth + d - 1
+yearMonthDayToDays y m d = (y - 1) * daysPerStandardYear + y `div` 4 + fromEnum m * daysPerMonth + d - 1
 
 daysToYearMonthDay :: Int32 -> (Int32, Word8, Word8)
 daysToYearMonthDay flatDays = (fromIntegral y, fromIntegral m, fromIntegral d)
   where
-    n = fromIntegral flatDays - copticEpoch                          -- days since 1.Thout.1 (>= 0 for valid dates)
+    n = fromIntegral flatDays                                        -- days since 1.Thout.1 (>= 0 for valid dates)
     (fourYears, remaining) = n `divMod` daysPerFourYears             -- 1461-day cycle, leap year last in each block
     (yearInBlock, dayOfYear)
       | remaining < 365       = (0, remaining)

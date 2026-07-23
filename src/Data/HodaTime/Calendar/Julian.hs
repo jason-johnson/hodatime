@@ -53,16 +53,14 @@ invalidDayThresh = fromIntegral $ pred day0
     day0 = yearMonthDayToDays y (toEnum m) d
 
 epochDayOfWeek :: DayOfWeek Julian
-epochDayOfWeek = Wednesday
+epochDayOfWeek = Tuesday
 
--- | The Julian and (proleptic) Gregorian calendars diverge, so they cannot share a flat day 0 that is a clean date in
---   both.  'Data.HodaTime.Calendar.Gregorian' owns the shared absolute epoch (flat day 0 = 1.Mar.2000 Gregorian), which
---   the Julian calendar labels 17.Feb.2000.  Julian's own clean epoch (1.Mar.2000 Julian) sits 13 days later on that
---   shared timeline, so we shift the internal Julian day count by this constant to place it on the same absolute
---   timeline as every other calendar.  Because it is the gap between two fixed absolute days, the shift is constant for
---   all of time.
-julianEpochShift :: Num a => a
-julianEpochShift = 13
+-- | Julian works in its own frame: internal flat day 0 is 1.Mar.2000 in the Julian calendar.  Only the 'Instant'
+--   bridge crosses to the universal timeline (day 0 = 1.Mar.2000 Gregorian), where Julian's epoch sits 13 days later
+--   (the Julian\/Gregorian divergence), so 'toUnadjustedInstant' adds this offset and 'fromAdjustedInstant' subtracts
+--   it.  Because it is the gap between two fixed absolute days, the offset is constant for all of time.
+julianEpochOffset :: Num a => a
+julianEpochOffset = 13
 
 -- In case we ever decide to generate a 28 year table to store cycles
 -- daysPerSolarCycle :: Num a => a
@@ -104,8 +102,8 @@ instance IsCalendar Julian where
   previous' n dow (JulianDate days _ _ _) = moveByDow julianFromDays epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
 
 instance IsCalendarDateTime Julian where
-  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (julianFromDays days) (LocalTime secs nsecs)
-  toUnadjustedInstant (CalendarDateTime jd (LocalTime secs nsecs)) = Instant (julianToDays jd) secs nsecs
+  fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (julianFromDays (days - julianEpochOffset)) (LocalTime secs nsecs)
+  toUnadjustedInstant (CalendarDateTime jd (LocalTime secs nsecs)) = Instant (julianToDays jd + julianEpochOffset) secs nsecs
 
 -- | Build the flat Julian date (denormalized: keeps the day count plus the decoded day\/month\/year).
 julianFromDays :: Int32 -> Date Julian
@@ -155,12 +153,11 @@ yearMonthDayToDays y m d = days
     m' = if m > February then fromEnum m - 2 else fromEnum m + 10
     years = if m < March then y - 2001 else y - 2000
     yearDays = years * daysPerStandardYear + years `div` 4
-    days = yearDays + commonMonthDayOffsets !! m' + d - 1 + julianEpochShift
+    days = yearDays + commonMonthDayOffsets !! m' + d - 1
 
 daysToYearMonthDay :: Int32 -> (Int32, Word8, Word8)
-daysToYearMonthDay days0 = (fromIntegral y, fromIntegral m'', fromIntegral d')
+daysToYearMonthDay days = (fromIntegral y, fromIntegral m'', fromIntegral d')
   where
-    days = days0 - julianEpochShift
     (fourYears, (remaining, isLeapDay)) = flip divMod daysPerFourYears >>> (* 4) *** id &&& borders daysPerFourYears $ days
     (oneYears, yearDays) = remaining `divMod` daysPerStandardYear
     -- NOTE: the sentinel 'daysPerStandardYear' lets February (yearDays >= the last real offset) be found; without it
