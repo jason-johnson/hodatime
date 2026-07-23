@@ -91,6 +91,7 @@ library
                    Data.HodaTime.Calendar.Internal,
                    Data.HodaTime.Calendar.Gregorian.Internal,
                    Data.HodaTime.Calendar.Gregorian.CacheTable,
+                   Data.HodaTime.Calendar.Persian.Astronomical,
                    Data.HodaTime.CalendarDateTime.Internal,
                    Data.HodaTime.Instant.Internal,
                    Data.HodaTime.Instant.Platform,
@@ -126,9 +127,11 @@ test-suite test
                    HodaTime.Calendar.GregorianTest,
                    HodaTime.Calendar.JulianTest,
                    HodaTime.Calendar.CopticTest,
+                   HodaTime.Calendar.PersianTest,
                    HodaTime.CalendarDateTimeTest,
                    HodaTime.ZonedDateTimeTest,
-                   HodaTime.PatternTest
+                   HodaTime.PatternTest,
+                   HodaTime.WithCalendarTest
   build-depends:
                    base >= 4 && < 5,
                    tasty >= 0.11,
