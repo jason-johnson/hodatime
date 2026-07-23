@@ -5,6 +5,8 @@ module Data.HodaTime.Calendar.Internal
    mkCommonDayLens
   ,mkCommonMonthLens
   ,mkYearLens
+  ,mkFromNthDay
+  ,mkFromWeekDate
   ,moveByDow
   ,dayOfWeekFromDays
   ,commonMonthDayOffsets
@@ -15,10 +17,11 @@ module Data.HodaTime.Calendar.Internal
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (Year, DayOfMonth)
+import Data.HodaTime.CalendarDateTime.Internal (Year, DayOfMonth, DayNth, WeekNumber)
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 import Control.Arrow ((>>>), first)
+import Control.Monad (guard)
 
 -- Constants
 
@@ -94,6 +97,60 @@ mkYearLens firstDayTuple maxDaysInMonth yearMonthDayToDays toYmd fromDays f date
           d'' = if d' > mdim then mdim else d'
           days = fromIntegral $ yearMonthDayToDays y'' m'' (fromIntegral d'')
 {-# INLINE mkYearLens #-}
+
+-- | Build a date from the nth (or nth-from-last) weekday within a month (e.g. \"the third Monday\").  This is the
+--   calendar-agnostic core of a per-calendar @fromNthDay@: it reads the weekday of the anchor day (the 1st, or the
+--   last day of the month for a \"from last\" request) via the calendar's own day count, so it needs no per-calendar
+--   weekday formula.
+mkFromNthDay :: (Enum mon, Enum dow) =>
+     Int                                   -- ^ invalid-day threshold (dates on or before this are rejected)
+  -> dow                                   -- ^ epoch day of week
+  -> (Year -> mon -> DayOfMonth -> Int)    -- ^ yearMonthDayToDays
+  -> (mon -> Year -> Int)                  -- ^ maxDaysInMonth
+  -> (Int32 -> d)                          -- ^ fromDays
+  -> DayNth -> dow -> mon -> Year -> Maybe d
+mkFromNthDay invalidDayThresh epochDayOfWeek yearMonthDayToDays maxDaysInMonth fromDays nth dow m y = do
+  guard $ d > 0 && d <= mdim
+  guard $ days > invalidDayThresh
+  return $ fromDays (fromIntegral days)
+    where
+      nth' = fromEnum nth - 4
+      mdim = maxDaysInMonth m y
+      target = fromEnum dow
+      -- forward (nth' >= 0) counts from the first of the month; \"from last\" (nth' < 0) counts back from the last day.
+      -- Using the backward distance for the from-last case is what makes \"the last Friday\" land on the final Friday
+      -- even when the month ends exactly on that weekday (where a naive forward offset would be a week short).
+      d | nth' < 0  = mdim - backwardDist + 7 * (nth' + 1)
+        | otherwise = 1    + forwardDist  + 7 * nth'
+      forwardDist  = (target - dowOf 1)    `mod` 7
+      backwardDist = (dowOf mdim - target) `mod` 7
+      dowOf dom = dayOfWeekFromDays epochDayOfWeek (yearMonthDayToDays y m dom)
+      days = yearMonthDayToDays y m d
+{-# INLINE mkFromNthDay #-}
+
+-- | Build a date from a week-numbering rule.  @minWeekDays@ and @weekStart@ define the rule (e.g. @1 Sunday@ for the
+--   simple rule where week 1 is the first week with any day in the new year, or @4 Monday@ for ISO-8601).  This is the
+--   calendar-agnostic core of a per-calendar @fromWeekDate@.
+mkFromWeekDate :: (Enum mon, Enum dow) =>
+     Int                                   -- ^ invalid-day threshold
+  -> dow                                   -- ^ epoch day of week
+  -> (Year -> mon -> DayOfMonth -> Int)    -- ^ yearMonthDayToDays
+  -> (Int32 -> d)                          -- ^ fromDays
+  -> Int                                   -- ^ minimum days of the new year that fall in week 1
+  -> dow                                   -- ^ first day of the week
+  -> WeekNumber -> dow -> Year -> Maybe d
+mkFromWeekDate invalidDayThresh epochDayOfWeek yearMonthDayToDays fromDays minWeekDays wkStartDoW weekNum dow y = do
+  guard $ days > invalidDayThresh
+  return $ fromDays (fromIntegral days)
+    where
+      soyDays = yearMonthDayToDays y (toEnum 0) minWeekDays
+      soyDoW = dayOfWeekFromDays epochDayOfWeek soyDays
+      startDoWDistance = soyDoW - fromEnum wkStartDoW
+      dowDistance = fromEnum dow - fromEnum wkStartDoW
+      dowDistance' = if dowDistance < 0 then dowDistance + 7 else dowDistance
+      startDays = soyDays - startDoWDistance
+      days = startDays + pred weekNum * 7 + dowDistance'
+{-# INLINE mkFromWeekDate #-}
 
 moveByDow :: Enum dow =>
      (Int32 -> d)

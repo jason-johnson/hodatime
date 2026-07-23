@@ -16,11 +16,8 @@ import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), Date, CalendarDa
 import Data.HodaTime.Pattern.ParseTypes
 import Control.Monad.Catch (MonadThrow)
 
+defaultTime :: TimeInfo
 defaultTime = TimeInfo 0 0 0 0
-
-defaultDate = DateInfo Nothing Nothing Nothing
-
-defaultDateTime = DateTimeInfo defaultDate defaultTime
 
 -- Class
 
@@ -46,7 +43,7 @@ instance ApplyParse TimeInfo LocalTime where
       ti = f defaultTime
 
 instance IsCalendar cal => ApplyParse (DateInfo cal) (Date cal) where
-  applyParse f = undefined
+  applyParse _ = undefined
 
 {- class ApplyParse r where
   type StartData r

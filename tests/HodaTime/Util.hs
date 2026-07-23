@@ -5,6 +5,7 @@ module HodaTime.Util
   ,RandomTime(..)
   ,CycleYear(..)
   ,RandomStandardDate(..)
+  ,RandomJulianDate(..)
   ,get
   ,modify
   ,set
@@ -17,6 +18,7 @@ import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
 
 import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), Gregorian)
+import qualified Data.HodaTime.Calendar.Julian as J
 
 -- arbitrary data and instances
 
@@ -74,6 +76,29 @@ instance Arbitrary RandomStandardDate where
     m <- choose (0,11)
     d <- choose (1,28)
     return $ RandomStandardDate y (toEnum m) d
+
+instance Arbitrary (J.Month J.Julian) where
+  arbitrary = do
+    x <- choose (0,11)
+    return $ toEnum x
+
+instance Arbitrary (J.DayOfWeek J.Julian) where
+  arbitrary = do
+    x <- choose (0,6)
+    return $ toEnum x
+
+-- | A random valid Julian date.  Unlike Gregorian (which rejects pre\-1582 dates), the Julian calendar is valid for
+--   all AD years, so the range spans early\-medieval through modern years to exercise the pre\-1582 dates the calendar
+--   exists to represent.  The day is capped at 28 so every generated (year, month, day) is a real date.
+data RandomJulianDate = RandomJulianDate Int (J.Month J.Julian) Int
+  deriving (Show)
+
+instance Arbitrary RandomJulianDate where
+  arbitrary = do
+    y <- choose (1,2400)
+    m <- choose (0,11)
+    d <- choose (1,28)
+    return $ RandomJulianDate y (toEnum m) d
 
 -- Lenses
 

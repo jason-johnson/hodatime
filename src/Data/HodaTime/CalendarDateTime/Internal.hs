@@ -107,11 +107,12 @@ class HasDate d where
   --
   --   This is purely an access optimization for code that needs more than one date component at once.  Reading the
   --   components individually with 'year', 'month' and 'day' is perfectly correct, but for a packed representation
-  --   (e.g. 'NCalendarDate') each of those accessors independently decodes the stored value, so asking for all three
-  --   separately decodes it three times.  'yearMonthDay' decodes once and hands back every component, which is
-  --   noticeably cheaper on hot paths (for example date formatting).  For representations that already store the
-  --   components separately (e.g. 'CalendarDate') there is nothing to decode and this is simply the three field reads,
-  --   so it is never slower than the individual accessors and callers can use it unconditionally.
+  --   (such as the Gregorian 'Date', which stores a cycle\/century\/day-in-century triple) each of those accessors
+  --   independently decodes the stored value, so asking for all three separately decodes it three times.
+  --   'yearMonthDay' decodes once and hands back every component, which is noticeably cheaper on hot paths (for
+  --   example date formatting).  For representations that already store the components separately (such as the Julian
+  --   'Date') there is nothing to decode and this is simply the three field reads, so it is never slower than the
+  --   individual accessors and callers can use it unconditionally.
   yearMonthDay :: d -> (Year, MoY d, DayOfMonth)
   yearMonthDay d = (getConst (year Const d), month d, getConst (day Const d))
 

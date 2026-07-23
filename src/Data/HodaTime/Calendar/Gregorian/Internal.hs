@@ -24,13 +24,12 @@ where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
-import Data.HodaTime.Calendar.Internal (mkCommonMonthLens, mkYearLens, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
+import Data.HodaTime.Calendar.Internal (mkCommonMonthLens, mkYearLens, mkFromWeekDate, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
 import Data.Array.Unboxed ((!))
-import Control.Monad (guard)
 
 -- Constants
 
@@ -103,30 +102,20 @@ instance IsCalendarDateTime Gregorian where
 -- constructors
 
 fromWeekDate :: Int -> DayOfWeek Gregorian -> WeekNumber -> DayOfWeek Gregorian -> Year -> Maybe (Date Gregorian)
-fromWeekDate minWeekDays wkStartDoW weekNum dow y = do
-  guard $ days > invalidDayThresh
-  return $ daysToGregorian days
-    where
-      soyDays = yearMonthDayToDays y January minWeekDays
-      soyDoW = dayOfWeekFromDays epochDayOfWeek soyDays
-      startDoWDistance = fromEnum soyDoW - fromEnum wkStartDoW
-      dowDistance = fromEnum dow - fromEnum wkStartDoW
-      dowDistance' = if dowDistance < 0 then dowDistance + 7 else dowDistance
-      startDays = soyDays - startDoWDistance
-      weekNum' = pred weekNum
-      days = fromIntegral $ startDays + weekNum' * 7 + dowDistance'
+fromWeekDate = mkFromWeekDate invalidDayThresh epochDayOfWeek yearMonthDayToDays daysToGregorian
 
 -- helper functions
 
 nthDayToDayOfMonth :: Int -> Int -> Month Gregorian -> Int -> Int
-nthDayToDayOfMonth nth day month y = dom + d' + 7 * nth
+nthDayToDayOfMonth nth day month y
+  | nth < 0   = mdm - backwardDist + 7 * (nth + 1)      -- NOTE: "from last" (POSIX week 5 -> nth -1) counts back from the last day, so the final weekday is not missed when the month ends exactly on it
+  | otherwise = 1   + forwardDist  + 7 * nth
   where
     mdm = maxDaysInMonth month y
-    dom = if nth < 0 then mdm else 1
+    forwardDist  = (day - dowOf 1)   `mod` 7
+    backwardDist = (dowOf mdm - day) `mod` 7
+    dowOf dom = (dom + (13 * m' - 1) `div` 5 + yrhs + (yrhs `div` 4) + (ylhs `div` 4) - 2 * ylhs) `mod` 7
     m = fromEnum month
-    dow = (dom + (13 * m' - 1) `div` 5 + yrhs + (yrhs `div` 4) + (ylhs `div` 4) - 2 * ylhs) `mod` 7
-    d = day - dow
-    d' = if d < 0 then d + 7 else d
     (m', y') = if m < 2 then (m + 11, y - 1) else (m - 1, y)
     yrhs = y' `mod` 100
     ylhs = y' `div` 100

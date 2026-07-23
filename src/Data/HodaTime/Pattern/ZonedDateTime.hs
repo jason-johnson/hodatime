@@ -29,13 +29,11 @@ import Data.HodaTime.Pattern.Internal
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, Month)
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
 import qualified Data.HodaTime.ZonedDateTime.Internal as ZDT
-import Control.Monad.Catch (MonadThrow, throwM)
-import qualified  Data.Text as T
-import qualified  Data.Text.Lazy.Builder as TLB
+import Control.Monad.Catch (MonadThrow)
 import Control.Applicative ((<|>))
-import Text.Parsec (digit, count, string, choice, oneOf, (<?>))
+import Text.Parsec (digit, count, oneOf, (<?>))
 import qualified Text.Parsec as P (char)
-import Formatting (left, (%.), later)
+import Formatting (left, (%.))
 
 data ZonedDateTimeInfo cal m =
   ZonedDateTimeInfo

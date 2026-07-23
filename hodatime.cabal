@@ -124,6 +124,7 @@ test-suite test
                    HodaTime.DurationTest,
                    HodaTime.OffsetTest,
                    HodaTime.Calendar.GregorianTest,
+                   HodaTime.Calendar.JulianTest,
                    HodaTime.CalendarDateTimeTest,
                    HodaTime.ZonedDateTimeTest,
                    HodaTime.PatternTest
