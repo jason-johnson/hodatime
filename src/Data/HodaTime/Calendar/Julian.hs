@@ -8,11 +8,23 @@
 -- Stability   :  experimental
 -- Portability :  POSIX, Windows
 --
--- This is the module for 'CalendarDate' and 'CalendarDateTime' in the 'Julian' calendar.  The Julian calendar has a simple leap year rule \- every fourth year is a leap year, with none of the
--- century exceptions that 'Data.HodaTime.Calendar.Gregorian' later added to keep the calendar aligned to the solar year.  It is fully proleptic: it applies that rule uniformly to every year, forward
--- and backward (it does not try to account for the fact that before around 4 AD the leap year rule was accidentally implemented as a leap year every three years).  Years use astronomical numbering, so
--- year 1 is AD 1, year 0 is 1 BC, year -1 is 2 BC and so on.  Dates share the same absolute timeline as every other calendar, so in the modern era a Julian date reads 13 days behind the same instant's
--- Gregorian date.
+-- This is the module for 'CalendarDate' and 'CalendarDateTime' in the 'Julian' calendar.  The Julian calendar has a simple leap year rule \- every fourth year is a leap year, with none of the century
+-- exceptions that 'Data.HodaTime.Calendar.Gregorian' later added to keep the calendar aligned to the solar year.  Years use astronomical numbering, so year 1 is AD 1, year 0 is 1 BC, year -1 is 2 BC
+-- and so on; dates run from the calendar's introduction on 1.January.45 BC (year -44) onward, with no upper bound.  Dates share the same absolute timeline as every other calendar, so in the modern era
+-- a Julian date reads 13 days behind the same instant's Gregorian date.  The Julian calendar is not merely historical \- the Eastern Orthodox churches still use it liturgically, so it stays useful for
+-- both past dates and current and future feast-day calculations.
+--
+-- == Proleptic every-fourth-year rule
+--
+-- This implementation applies the clean every-fourth-year rule uniformly from 45 BC onward.  It deliberately does /not/ reproduce the calendar's messy early history, in which the priests who
+-- administered it inserted a leap day every three years by mistake (the "triennial error") until Augustus suspended leap years to realign it, the regular rule only settling in by around AD 8.  We omit
+-- that for two reasons:
+--
+-- * The exact sequence of long years during 45 BC \- AD 7 is genuinely disputed: Scaliger, Ideler and Bennett each reconstruct it differently, so an "accurate" version would just bake one contested
+--   interpretation in as fact.
+--
+-- * By long-standing convention historians and astronomers already cite ancient dates in the /proleptic/ Julian calendar (the clean rule), precisely because the real sequence is uncertain.  For example
+--   "15.March.44 BC" for Caesar's assassination is a proleptic Julian date; modelling the errors would make this library disagree with the way such dates are normally written.
 ----------------------------------------------------------------------------
 module Data.HodaTime.Calendar.Julian
 (
@@ -39,15 +51,18 @@ import Data.List (findIndex)
 
 -- constants
 
--- | Julian uses astronomical year numbering (year 1 = AD 1, year 0 = 1 BC, year -1 = 2 BC, ...) and is fully proleptic
---   \- the every-fourth-year rule is applied forward and backward with no calendar cutoff.  There is therefore no real
---   "first valid date"; these sentinels sit at the bottom of the 'Int32' day representation (the only actual bound) so
---   the shared lens\/constructor helpers never clamp a Julian result.
+-- | Julian dates are valid from the calendar's introduction, 1.January.45 BC (astronomical year -44), onward; earlier
+--   dates are rejected \- the calendar did not exist and this implementation does not extend it backwards.  There is no
+--   upper bound beyond the 'Int32' day representation.  This tuple is also the floor the shared lens\/constructor
+--   helpers clamp to.
 firstJulDayTuple :: (Integral a, Integral b, Integral c) => (a, b, c)
-firstJulDayTuple = (fromIntegral (minBound :: Int32), 0, 1)
+firstJulDayTuple = (-44, 0, 1)        -- NOTE: 1.Jan.45 BC
 
 invalidDayThresh :: Integral a => a
-invalidDayThresh = fromIntegral (minBound :: Int32)
+invalidDayThresh = fromIntegral $ pred day0
+  where
+    (y, m, d) = firstJulDayTuple :: (Year, Int, DayOfMonth)
+    day0 = yearMonthDayToDays y (toEnum m) d
 
 epochDayOfWeek :: DayOfWeek Julian
 epochDayOfWeek = Tuesday

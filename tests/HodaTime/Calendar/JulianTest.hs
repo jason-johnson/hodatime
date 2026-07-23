@@ -45,7 +45,7 @@ constructorProps = testGroup "Constructor"
       convertMonth = succ . fromEnum
       testConstructor y m (Positive d) = areSame (calendarDate d m y') (fromJulianValid (fromIntegral y') (convertMonth m) d)
         where
-          y' = (y `mod` 4801) - 2400     -- NOTE: spans 2400 BC .. AD 2400 (astronomical numbering, year 0 = 1 BC)
+          y' = (y `mod` 2445) - 44     -- NOTE: spans 45 BC (year -44, the calendar's introduction) .. AD 2400
 
 lensProps :: TestTree
 lensProps = testGroup "Lens"
@@ -95,6 +95,7 @@ constructorUnits = testGroup "Constructor"
     ,testCase "1 BC (year 0) 29 February matches Data.Time" $ (ymd <$> calendarDate 29 February 0) @?= (juYmd <$> fromJulianValid 0 2 29)
     ,testCase "2 BC (year -1) is not a leap year: 29 February is invalid" $ calendarDate 29 February (-1) @?= Nothing
     ,testCase "45 BC (year -44) 1 January matches Data.Time" $ (ymd <$> calendarDate 1 January (-44)) @?= (juYmd <$> fromJulianValid (-44) 1 1)
+    ,testCase "46 BC (year -45) is before the calendar's introduction and is rejected" $ calendarDate 31 December (-45) @?= Nothing
   ]
     where
       juYmd d = let (ty, tm, td) = toJulian d in (td, tm, fromIntegral ty)
