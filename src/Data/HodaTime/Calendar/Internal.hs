@@ -57,7 +57,8 @@ mkCommonDayLens preStartDay yearMonthDayToDays fromDays toYmd f date = mkcd . (r
 {-# INLINE mkCommonDayLens #-}
 
 mkCommonMonthLens :: (Functor f, Enum mon) =>
-     (Int, Int, Word8)
+     Int
+  -> (Int, Int, Word8)
   -> (mon -> Year -> Int)
   -> (Year -> mon -> DayOfMonth -> Int)
   -> (d -> (Word32, Word8, Word8))
@@ -65,12 +66,12 @@ mkCommonMonthLens :: (Functor f, Enum mon) =>
   -> (Int -> f Int)
   -> d
   -> f d
-mkCommonMonthLens firstDayTuple maxDaysInMonth yearMonthDayToDays toYmd fromDays f date = mkcd <$> f (fromIntegral m)
+mkCommonMonthLens monthsPerYear firstDayTuple maxDaysInMonth yearMonthDayToDays toYmd fromDays f date = mkcd <$> f (fromIntegral m)
     where
       (y, m, d) = toYmd date
       mkcd months = fromDays (fromIntegral days)
         where
-          (y', months') = flip divMod 12 >>> first (+ fromIntegral y) $ months
+          (y', months') = flip divMod monthsPerYear >>> first (+ fromIntegral y) $ months
           (y'', m', d') = if (y', months', d) < firstDayTuple then firstDayTuple else (y', months', d)
           mdim = fromIntegral $ maxDaysInMonth (toEnum m') y'
           d'' = if d' > mdim then mdim else d'
