@@ -9,10 +9,10 @@
 -- Portability :  POSIX, Windows
 --
 -- This is the module for 'CalendarDate' and 'CalendarDateTime' in the 'Julian' calendar.  The Julian calendar has a simple leap year rule \- every fourth year is a leap year, with none of the
--- century exceptions that 'Data.HodaTime.Calendar.Gregorian' later added to keep the calendar aligned to the solar year.  It is proleptic in that, while it only started in 45 BC, this
--- implementation applies that rule uniformly and does not try to account for the fact that before around 4 AD the leap year rule was accidentally implemented as a leap year every three years.  This
--- implementation stores the year unsigned, so its supported range is AD 1 onward (BC years are not representable).  Dates share the same absolute timeline as every other calendar, so in the modern
--- era a Julian date reads 13 days behind the same instant's Gregorian date.
+-- century exceptions that 'Data.HodaTime.Calendar.Gregorian' later added to keep the calendar aligned to the solar year.  It is fully proleptic: it applies that rule uniformly to every year, forward
+-- and backward (it does not try to account for the fact that before around 4 AD the leap year rule was accidentally implemented as a leap year every three years).  Years use astronomical numbering, so
+-- year 1 is AD 1, year 0 is 1 BC, year -1 is 2 BC and so on.  Dates share the same absolute timeline as every other calendar, so in the modern era a Julian date reads 13 days behind the same instant's
+-- Gregorian date.
 ----------------------------------------------------------------------------
 module Data.HodaTime.Calendar.Julian
 (
@@ -39,18 +39,15 @@ import Data.List (findIndex)
 
 -- constants
 
--- | The Julian calendar predates the Gregorian one, so \- unlike 'Data.HodaTime.Calendar.Gregorian', which is only
---   valid from 15.Oct.1582 \- there is no reason to reject earlier dates here: rejecting pre\-1582 dates is exactly
---   what the Julian calendar exists to represent.  We floor at 1.Jan.AD 1 because the decoded year is stored unsigned
---   ('toYmd' returns a 'Word32' year), so BC years are not representable in this implementation.
+-- | Julian uses astronomical year numbering (year 1 = AD 1, year 0 = 1 BC, year -1 = 2 BC, ...) and is fully proleptic
+--   \- the every-fourth-year rule is applied forward and backward with no calendar cutoff.  There is therefore no real
+--   "first valid date"; these sentinels sit at the bottom of the 'Int32' day representation (the only actual bound) so
+--   the shared lens\/constructor helpers never clamp a Julian result.
 firstJulDayTuple :: (Integral a, Integral b, Integral c) => (a, b, c)
-firstJulDayTuple = (1, 0, 1)        -- NOTE: 1.Jan.AD 1
+firstJulDayTuple = (fromIntegral (minBound :: Int32), 0, 1)
 
 invalidDayThresh :: Integral a => a
-invalidDayThresh = fromIntegral $ pred day0
-  where
-    (y, m, d) = firstJulDayTuple :: (Year, Int, DayOfMonth)
-    day0 = yearMonthDayToDays y (toEnum m) d
+invalidDayThresh = fromIntegral (minBound :: Int32)
 
 epochDayOfWeek :: DayOfWeek Julian
 epochDayOfWeek = Tuesday

@@ -97,7 +97,7 @@ data RandomJulianDate = RandomJulianDate Int (J.Month J.Julian) Int
 
 instance Arbitrary RandomJulianDate where
   arbitrary = do
-    y <- choose (1,2400)
+    y <- choose (-2400,2400)
     m <- choose (0,11)
     d <- choose (1,28)
     return $ RandomJulianDate y (toEnum m) d
