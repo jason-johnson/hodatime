@@ -24,6 +24,10 @@ jobs:
         run: choco install haskell-stack
         if: matrix.os == 'windows-latest'
 
+      - name: Install stack (macOS)
+        run: brew install haskell-stack
+        if: matrix.os == 'macos-latest'
+
       - name: Cache dependencies (Unix)
         uses: actions/cache@v4
         if: matrix.os != 'windows-latest'
