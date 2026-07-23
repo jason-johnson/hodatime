@@ -7,6 +7,7 @@ module HodaTime.Util
   ,RandomStandardDate(..)
   ,RandomJulianDate(..)
   ,RandomCopticDate(..)
+  ,RandomPersianDate(..)
   ,get
   ,modify
   ,set
@@ -21,6 +22,7 @@ import Data.Functor.Identity (Identity(..))
 import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), Gregorian)
 import qualified Data.HodaTime.Calendar.Julian as J
 import qualified Data.HodaTime.Calendar.Coptic as C
+import qualified Data.HodaTime.Calendar.Persian as P
 
 -- arbitrary data and instances
 
@@ -123,6 +125,29 @@ instance Arbitrary RandomCopticDate where
     m <- choose (0,12)
     d <- if m == 12 then choose (1,5) else choose (1,30)
     return $ RandomCopticDate y (toEnum m) d
+
+instance Arbitrary (P.Month P.Persian) where
+  arbitrary = do
+    x <- choose (0,11)
+    return $ toEnum x
+
+instance Arbitrary (P.DayOfWeek P.Persian) where
+  arbitrary = do
+    x <- choose (0,6)
+    return $ toEnum x
+
+-- | A random valid Persian date.  Months 1\-6 have 31 days, months 7\-11 have 30, and 'Esfand' has 29 (30 in a leap
+--   year), so we cap 'Esfand' at 29 to keep every generated (year, month, day) valid regardless of leap year.  The year
+--   is kept within the astronomical calendar's supported range.
+data RandomPersianDate = RandomPersianDate Int (P.Month P.Persian) Int
+  deriving (Show)
+
+instance Arbitrary RandomPersianDate where
+  arbitrary = do
+    y <- choose (1,1500)
+    m <- choose (0,11)
+    d <- if m < 6 then choose (1,31) else if m < 11 then choose (1,30) else choose (1,29)
+    return $ RandomPersianDate y (toEnum m) d
 
 -- Lenses
 
