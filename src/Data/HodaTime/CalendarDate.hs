@@ -21,7 +21,16 @@ module Data.HodaTime.CalendarDate
   ,DayOfMonth
   ,CalendarDate
   ,HasDate(..)
+  ,withCalendar
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDate, DayNth(..), DayOfMonth, Year, WeekNumber, HasDate(..))
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDate, DayNth(..), DayOfMonth, Year, WeekNumber, HasDate(..), CalendarDateTime(..), IsCalendarDateTime(..), at)
+import Data.HodaTime.LocalTime.Internal (midnight)
+
+-- | Re-express a 'CalendarDate' in a different calendar, preserving the same day on the absolute timeline.  For
+--   example, convert a Gregorian date to the Julian (\"Old Calendar\") date still used liturgically by the Eastern
+--   Orthodox church.  The target calendar is chosen by the result type (via @TypeApplications@ or a type annotation).
+withCalendar :: (IsCalendarDateTime a, IsCalendarDateTime b) => CalendarDate a -> CalendarDate b
+withCalendar date = date'
+  where CalendarDateTime date' _ = fromAdjustedInstant (toUnadjustedInstant (date `at` midnight))

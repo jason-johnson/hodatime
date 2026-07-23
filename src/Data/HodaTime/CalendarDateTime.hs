@@ -24,6 +24,8 @@ module Data.HodaTime.CalendarDateTime
   ,on
   ,at
   ,atStartOfDay
+  -- * Conversion
+  ,withCalendar
 )
 where
 
@@ -37,3 +39,9 @@ on = flip CalendarDateTime
 -- | Returns the first valid time in the day specified by 'CalendarDate' within the given 'TimeZone'
 atStartOfDay :: CalendarDate cal -> CalendarDateTime cal
 atStartOfDay =  flip at midnight
+
+-- | Re-express a 'CalendarDateTime' in a different calendar, preserving the same instant on the absolute timeline
+--   (including the time of day).  The target calendar is chosen by the result type (via @TypeApplications@ or a type
+--   annotation).
+withCalendar :: (IsCalendarDateTime a, IsCalendarDateTime b) => CalendarDateTime a -> CalendarDateTime b
+withCalendar = fromAdjustedInstant . toUnadjustedInstant

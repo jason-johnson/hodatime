@@ -24,6 +24,7 @@ module Data.HodaTime.ZonedDateTime
   ,toCalendarDate
   ,toInstant
   ,toLocalTime
+  ,withCalendar
   -- * Accessors
   ,inDst
   ,zoneAbbreviation
@@ -136,6 +137,11 @@ toInstant (ZonedDateTime cdt _ (TransitionInfo (Offset offSecs) _ _)) = adjustIn
 -- | Return the 'CalendarDate' represented by this 'ZonedDateTime'.
 toCalendarDate :: ZonedDateTime cal -> CalendarDate cal
 toCalendarDate (ZonedDateTime (CalendarDateTime cd _) _  _) = cd
+
+-- | Re-express a 'ZonedDateTime' in a different calendar, preserving the exact 'Instant' and time zone; only the
+--   calendar that the local date\/time is labelled in changes.  The target calendar is chosen by the result type.
+withCalendar :: (IsCalendarDateTime a, IsCalendarDateTime b) => ZonedDateTime a -> ZonedDateTime b
+withCalendar (ZonedDateTime cdt tz ti) = ZonedDateTime (fromAdjustedInstant (toUnadjustedInstant cdt)) tz ti
 
 -- | Return the 'LocalTime' represented by this 'ZonedDateTime'.
 toLocalTime :: ZonedDateTime cal -> LocalTime
