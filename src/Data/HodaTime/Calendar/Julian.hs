@@ -31,7 +31,7 @@ import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTi
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerFourYears)
 import Data.Int (Int32)
-import Data.Word (Word8, Word32)
+import Data.Word (Word8)
 import Control.Arrow ((>>>), (***), (&&&))
 import Control.Monad (guard)
 import Data.Maybe (fromJust)
@@ -73,7 +73,7 @@ julianEpochShift = 13
 data Julian
     
 instance IsCalendar Julian where
-  data Date Julian = JulianDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word32
+  data Date Julian = JulianDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
     deriving (Eq, Show, Ord)
 
   data DayOfWeek Julian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
@@ -115,7 +115,7 @@ julianFromDays days = JulianDate days d m y
 julianToDays :: Date Julian -> Int32
 julianToDays (JulianDate days _ _ _) = days
 
-julianToYmd :: Date Julian -> (Word32, Word8, Word8)
+julianToYmd :: Date Julian -> (Int32, Word8, Word8)
 julianToYmd (JulianDate _ d m y) = (y, m, d)
 
 -- Constructors
@@ -157,7 +157,7 @@ yearMonthDayToDays y m d = days
     yearDays = years * daysPerStandardYear + years `div` 4
     days = yearDays + commonMonthDayOffsets !! m' + d - 1 + julianEpochShift
 
-daysToYearMonthDay :: Int32 -> (Word32, Word8, Word8)
+daysToYearMonthDay :: Int32 -> (Int32, Word8, Word8)
 daysToYearMonthDay days0 = (fromIntegral y, fromIntegral m'', fromIntegral d')
   where
     days = days0 - julianEpochShift

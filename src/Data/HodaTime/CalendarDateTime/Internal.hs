@@ -58,8 +58,9 @@ class IsCalendar cal where
   fromDays :: Int32 -> Date cal
   -- | Extract the flat, epoch-relative day count from a date.
   toDays :: Date cal -> Int32
-  -- | Decode a date to @(year, zero-based month, day-of-month)@.
-  toYmd :: Date cal -> (Word32, Word8, Word8)
+  -- | Decode a date to @(year, zero-based month, day-of-month)@.  The year is signed so calendars can represent
+  --   pre-epoch (e.g. BC) years without wraparound.
+  toYmd :: Date cal -> (Int32, Word8, Word8)
   day' :: Functor f => (DayOfMonth -> f DayOfMonth) -> Date cal -> f (Date cal)
   month' :: Date cal -> Month cal
   monthl' :: Functor f => (Int -> f Int) -> Date cal -> f (Date cal)

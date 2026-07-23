@@ -19,7 +19,7 @@ where
 
 import Data.HodaTime.CalendarDateTime.Internal (Year, DayOfMonth, DayNth, WeekNumber)
 import Data.Int (Int32)
-import Data.Word (Word8, Word32)
+import Data.Word (Word8)
 import Control.Arrow ((>>>), first)
 import Control.Monad (guard)
 
@@ -44,7 +44,7 @@ mkCommonDayLens :: (Functor f, Enum mon) =>
      Int
   -> (Year -> mon -> DayOfMonth -> Int)
   -> (Int32 -> d)
-  -> (d -> (Word32, Word8, Word8))
+  -> (d -> (Int32, Word8, Word8))
   -> (DayOfMonth -> f DayOfMonth)
   -> d
   -> f d
@@ -61,7 +61,7 @@ mkCommonMonthLens :: (Functor f, Enum mon) =>
   -> (Int, Int, Word8)
   -> (mon -> Year -> Int)
   -> (Year -> mon -> DayOfMonth -> Int)
-  -> (d -> (Word32, Word8, Word8))
+  -> (d -> (Int32, Word8, Word8))
   -> (Int32 -> d)
   -> (Int -> f Int)
   -> d
@@ -82,7 +82,7 @@ mkYearLens :: (Functor f, Enum mon) =>
      (Int, Word8, Word8)
   -> (mon -> Year -> Int)
   -> (Year -> mon -> DayOfMonth -> Int)
-  -> (d -> (Word32, Word8, Word8))
+  -> (d -> (Int32, Word8, Word8))
   -> (Int32 -> d)
   -> (Int -> f Int)
   -> d

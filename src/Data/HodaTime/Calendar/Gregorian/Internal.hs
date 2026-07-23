@@ -173,7 +173,7 @@ calculateCenturyDays days = (y, centuryDays, isExtraCycleDay)
     (centuryYears, centuryDays) = flip divMod daysPerCentury >>> first (* 100) $ cycleDays
     y = cycleYears + centuryYears
 
-daysToYearMonthDay :: Int32 -> (Word32, Word8, Word8)
+daysToYearMonthDay :: Int32 -> (Int32, Word8, Word8)
 daysToYearMonthDay days = (fromIntegral y', m'', fromIntegral d')
   where
     (centuryYears, centuryDays, isExtraCycleDay) = calculateCenturyDays days
@@ -183,7 +183,7 @@ daysToYearMonthDay days = (fromIntegral y', m'', fromIntegral d')
     (y',m'') = (2000 + centuryYears + fromIntegral y, fromIntegral $ m')
 
 -- here to avoid circular dependancy between Instant and Gregorian
-instantToYearMonthDay :: Instant -> (Word32, Word8, Word8)
+instantToYearMonthDay :: Instant -> (Int32, Word8, Word8)
 instantToYearMonthDay (Instant days _ _) = daysToYearMonthDay days
 
 -- Date Gregorian bridge functions (cycle\/century\/day-in-century representation)
@@ -209,7 +209,7 @@ daysToGregorian days = GregorianDate (fromIntegral cycles) (fromIntegral century
 
 -- | Decode a 'Date' 'Gregorian' directly to (year, zero-based month, day) from its stored fields: the cycle\/century
 --   split is already present, so month and day come from a single cache-table lookup on the day-in-century.
-gregorianToYearMonthDay :: Date Gregorian -> (Word32, Word8, Word8)
+gregorianToYearMonthDay :: Date Gregorian -> (Int32, Word8, Word8)
 gregorianToYearMonthDay (GregorianDate cyc century dic)
   | dic == daysPerCentury = (fromIntegral extraYear, 1, 29)   -- extra-cycle-day: 29 Feb (month 1 = February, 0-based)
   | otherwise             = (fromIntegral yr, fromIntegral m, fromIntegral d)
