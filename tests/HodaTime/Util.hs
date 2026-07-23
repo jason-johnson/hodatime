@@ -6,6 +6,7 @@ module HodaTime.Util
   ,CycleYear(..)
   ,RandomStandardDate(..)
   ,RandomJulianDate(..)
+  ,RandomCopticDate(..)
   ,get
   ,modify
   ,set
@@ -19,6 +20,7 @@ import Data.Functor.Identity (Identity(..))
 
 import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), Gregorian)
 import qualified Data.HodaTime.Calendar.Julian as J
+import qualified Data.HodaTime.Calendar.Coptic as C
 
 -- arbitrary data and instances
 
@@ -99,6 +101,28 @@ instance Arbitrary RandomJulianDate where
     m <- choose (0,11)
     d <- choose (1,28)
     return $ RandomJulianDate y (toEnum m) d
+
+instance Arbitrary (C.Month C.Coptic) where
+  arbitrary = do
+    x <- choose (0,12)
+    return $ toEnum x
+
+instance Arbitrary (C.DayOfWeek C.Coptic) where
+  arbitrary = do
+    x <- choose (0,6)
+    return $ toEnum x
+
+-- | A random valid Coptic date.  Months 1\-12 have 30 days; the thirteenth month (the epagomenal days) has only 5 (6
+--   in a leap year), so we cap its day at 5 to keep every generated (year, month, day) valid regardless of leap year.
+data RandomCopticDate = RandomCopticDate Int (C.Month C.Coptic) Int
+  deriving (Show)
+
+instance Arbitrary RandomCopticDate where
+  arbitrary = do
+    y <- choose (1,2000)
+    m <- choose (0,12)
+    d <- if m == 12 then choose (1,5) else choose (1,30)
+    return $ RandomCopticDate y (toEnum m) d
 
 -- Lenses
 

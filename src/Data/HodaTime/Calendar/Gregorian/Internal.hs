@@ -75,7 +75,7 @@ instance IsCalendar Gregorian where
   month' gd = toEnum . fromIntegral $ m
     where (_, m, _) = gregorianToYearMonthDay gd
 
-  monthl' = mkCommonMonthLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian
+  monthl' = mkCommonMonthLens 12 firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian
   {-# INLINE monthl' #-}
 
   year' = mkYearLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian

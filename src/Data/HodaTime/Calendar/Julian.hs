@@ -91,7 +91,7 @@ instance IsCalendar Julian where
 
   month' (JulianDate _ _ m _) = toEnum . fromIntegral $ m
 
-  monthl' = mkCommonMonthLens firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
+  monthl' = mkCommonMonthLens 12 firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
   {-# INLINE monthl' #-}
 
   year' = mkYearLens firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
