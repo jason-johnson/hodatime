@@ -43,9 +43,9 @@ constructorProps = testGroup "Constructor"
         in get day hdate == tday && (convertMonth . month $ hdate) == tm && get year hdate == fromIntegral ty
       areSame _ _ = False
       convertMonth = succ . fromEnum
-      testConstructor (Positive y) m (Positive d) = areSame (calendarDate d m y') (fromJulianValid (fromIntegral y') (convertMonth m) d)
+      testConstructor y m (Positive d) = areSame (calendarDate d m y') (fromJulianValid (fromIntegral y') (convertMonth m) d)
         where
-          y' = 1 + (y `mod` 2400)     -- NOTE: spans early-medieval (pre-1582) through modern years
+          y' = (y `mod` 2445) - 44     -- NOTE: spans 45 BC (year -44, the calendar's introduction) .. AD 2400
 
 lensProps :: TestTree
 lensProps = testGroup "Lens"
@@ -91,6 +91,11 @@ constructorUnits = testGroup "Constructor"
     ,testCase "fromNthDay Last, when the month ends on that weekday, is the last day (not a week early)" $
        let lastDay = fromJust $ calendarDate 28 February 301    -- Feb 301 (not a Julian leap year) ends on a Friday
        in fromNthDay Last (dayOfWeek lastDay) February 301 @?= Just lastDay
+    ,testCase "1 BC (year 0) is a Julian leap year: 29 February is valid" $ (ymd <$> calendarDate 29 February 0) @?= Just (29, 2, 0)
+    ,testCase "1 BC (year 0) 29 February matches Data.Time" $ (ymd <$> calendarDate 29 February 0) @?= (juYmd <$> fromJulianValid 0 2 29)
+    ,testCase "2 BC (year -1) is not a leap year: 29 February is invalid" $ calendarDate 29 February (-1) @?= Nothing
+    ,testCase "45 BC (year -44) 1 January matches Data.Time" $ (ymd <$> calendarDate 1 January (-44)) @?= (juYmd <$> fromJulianValid (-44) 1 1)
+    ,testCase "46 BC (year -45) is before the calendar's introduction and is rejected" $ calendarDate 31 December (-45) @?= Nothing
   ]
     where
       juYmd d = let (ty, tm, td) = toJulian d in (td, tm, fromIntegral ty)
