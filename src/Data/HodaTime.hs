@@ -182,6 +182,31 @@ __Reading and changing fields.__  Every date type is an instance of @HasDate@, w
 
 Hoda Time takes no dependency on any lens library to provide these; as noted under /Accessors/ above, any lens package will drive them, or you can define the three one-line helpers from @tests\/HodaTime\/Util.hs@ if you would rather not pull one in.
 
+=== Crossing over: offsets and zones
+
+A civil label becomes a point on the timeline only once you attach the missing UTC information, and there are two ways to attach it.  You can give a /fixed/ displacement from UTC — an @Offset@ — or the /full rules/ of a place — a @TimeZone@.  Each produces an anchored type: an @OffsetDateTime@ or a @ZonedDateTime@.
+
+__Offset and OffsetDateTime.__  An @Offset@ is a fixed distance from UTC, such as +02:00, built with @fromHours@, @fromMinutes@, @fromSeconds@ or @empty@ (UTC itself) and adjusted through its @hours@, @minutes@ and @seconds@ lenses.  Offsets are clamped to a maximum of eighteen hours either side of UTC, comfortably covering every real zone.  An @OffsetDateTime@ (from @fromCalendarDateTimeWithOffset@ or @fromInstantWithOffset@) is simply a @CalendarDateTime@ tagged with one — the shape HTTP and other wire formats use, as in @2024-04-23T09:00:00+02:00@.  It is unambiguous, but /dumb/: it records that the offset was +02:00 without knowing that +01:00 applies in winter.  Reach for it when the offset is already a given (a timestamp on the wire, a logged event); reach for a @TimeZone@ when the question involves a place and its rules.
+
+__TimeZone and ZonedDateTime.__  A @TimeZone@ is the whole rulebook for a location — every daylight-saving and offset change in its history.  Because that data comes from the operating system, loading a zone is an @IO@ action: @timeZone "Europe\/Zurich"@, @utc@, @localZone@ for the machine's own setting, or @availableZones@ to list them all.  Resolving a civil date and time in a zone yields a @ZonedDateTime@: a fully pinned-down value that corresponds to exactly one @Instant@.  It answers every question — @year@, @month@, @day@, @hour@ and the rest, plus @inDst@ and @zoneAbbreviation@ — converts to the timeline with @toInstant@ and comes back with @fromInstant@ (equivalently @inTimeZone@).
+
+__Two awkward moments.__  Turning a /local/ @CalendarDateTime@ into a @ZonedDateTime@ is not always a one-to-one mapping, because twice a year the clocks move:
+
+* On the /spring-forward/ night an hour of local time is __skipped__ — a label such as 02:30 simply never occurs, and maps to /no/ instant.
+* On the /fall-back/ night an hour is repeated, so a label is __ambiguous__ — 01:30 happens /twice/, mapping to two different instants.
+
+Most libraries quietly pick an answer and move on.  Hoda Time makes you decide, and gives you four ways to do it, from the most explicit to the most convenient:
+
+[@fromCalendarDateTimeAll@] returns every valid mapping as a list: empty for a skipped time, one element in the ordinary case, and two (earlier then later) for an ambiguous one.  You look and choose.
+
+[@fromCalendarDateTimeStrictly@] the cautious default — it succeeds with the single mapping, or fails in @MonadThrow@ with a @DateTimeDoesNotExistException@ for a skipped time or a @DateTimeAmbiguousException@ for an ambiguous one.  This is the resolver the opening example used.
+
+[@fromCalendarDateTimeLeniently@] never fails: an ambiguous time collapses to the /earlier/ of its two instants, and a skipped time is nudged /forward/ by the length of the gap.
+
+[@resolve@] you supply the policy.  It takes a handler for the ambiguous case (given both matches, earlier and later) and one for the skipped case (given the instant just before the gap and the one just after); @fromCalendarDateTimeStrictly@ and @fromCalendarDateTimeLeniently@ are themselves just @resolve@ with particular handlers.
+
+The reverse journey never has this trouble: going from an @Instant@ to a @ZonedDateTime@ with @fromInstant@ (or @inTimeZone@), and back with @toInstant@, is always unambiguous — an instant is a genuine point on the timeline, and at any point a zone has exactly one offset in force.  The awkwardness is a property of civil labels, not of time itself.
+
 == Cookbook
 
 === USA Holidays
