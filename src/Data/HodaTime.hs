@@ -207,6 +207,39 @@ Most libraries quietly pick an answer and move on.  Hoda Time makes you decide, 
 
 The reverse journey never has this trouble: going from an @Instant@ to a @ZonedDateTime@ with @fromInstant@ (or @inTimeZone@), and back with @toInstant@, is always unambiguous — an instant is a genuine point on the timeline, and at any point a zone has exactly one offset in force.  The awkwardness is a property of civil labels, not of time itself.
 
+=== Calendars
+
+Every date type carries its calendar as a type parameter — @CalendarDate cal@, @CalendarDateTime cal@, @ZonedDateTime cal@.  The tag is a /phantom/: it selects the rules (the month names and lengths, the leap-year rule, the epoch) at no runtime cost, and, more importantly, it stops dates in different calendars from being mixed by accident — combining a Hebrew month with a Gregorian date is a compile error, not a lurking bug.  @Gregorian@ is the default, and the reference against which every other calendar is measured.
+
+You construct dates through the module for the calendar you want, using /that/ calendar's own @calendarDate@ (plus @fromNthDay@ and @fromWeekDate@) and its own @Month@ and @DayOfWeek@ — @January@ for Gregorian, @Tishri@ for Hebrew, @Muharram@ for Islamic, and so on.  The full roster:
+
+[Gregorian — "Data.HodaTime.Calendar.Gregorian"] The civil calendar used across most of the world today, and the timeline's reference point.  It is not proleptic: it begins at the 15 October 1582 changeover.
+
+[ISO — "Data.HodaTime.Calendar.Iso"] Identical to Gregorian for every date; it differs only in week numbering — weeks start on Monday and week 1 is the first with at least four days in the new year.  Use its @fromWeekDate@ for ISO-8601 week dates.
+
+[Julian — "Data.HodaTime.Calendar.Julian"] The \"Old Calendar\" that preceded the Gregorian and is still used liturgically by parts of the Eastern Orthodox church.  Fully proleptic with astronomical year numbering, floored at its introduction in 45 BC.
+
+[Coptic — "Data.HodaTime.Calendar.Coptic"] The Coptic (Alexandrian) calendar: twelve thirty-day months followed by a short thirteenth.
+
+[Persian — "Data.HodaTime.Calendar.Persian"] The astronomical Solar Hijri calendar, Iran's official civil calendar, whose year begins on the spring equinox as observed at Tehran.
+
+[Islamic — "Data.HodaTime.Calendar.Islamic"] The tabular Islamic (Hijri) calendar, /parameterised by its leap-year pattern/ (see below).
+
+[Hebrew — "Data.HodaTime.Calendar.Hebrew"] The Hebrew (Jewish) lunisolar calendar, /parameterised by its month numbering/ (see below).
+
+__Parameterised calendars.__  A couple of calendars come in more than one variant, and rather than bury the choice in a runtime flag Hoda Time lifts it into the type too — just like the calendar itself.  @Islamic@ is tagged with its /leap pattern/ — @IslamicBase15@, @IslamicIndian@, @IslamicHabashAlHasib@, or @IslamicBcl@ (the .NET-compatible Base16 default) — which decides which years of the thirty-year cycle gain a day; @Hebrew@ is tagged with its /month numbering/ — @HebrewCivil@ (counting from Tishri, the default) or @HebrewScriptural@ (counting from Nisan).  Each variant is a distinct type, so a Base15 date can never be confused with a Base16 one, and the plain @calendarDate@ in each module still builds the default variant with no annotation required.
+
+__Converting between calendars.__  Because they all share the one timeline, a single moment can be re-expressed in any of them with @withCalendar@ — there is a version at each level, in "Data.HodaTime.CalendarDate", "Data.HodaTime.CalendarDateTime" and "Data.HodaTime.ZonedDateTime" — which keeps the underlying day (or instant and time zone) and changes only the calendar the value is labelled in.  The target is chosen by the result type:
+
+> import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
+> import qualified Data.HodaTime.Calendar.Julian as Julian
+> import Data.HodaTime.CalendarDate (withCalendar, CalendarDate)
+>
+> -- the Gregorian Christmas, re-expressed as the Julian ("Old Calendar") date still used liturgically
+> julianChristmas :: Maybe (CalendarDate Julian.Julian)
+> julianChristmas = withCalendar <$> calendarDate 25 December 2024
+> -- the same day, which the Julian calendar labels 12 December 2024 (it runs thirteen days behind today)
+
 == Cookbook
 
 === USA Holidays
