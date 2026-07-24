@@ -11,6 +11,7 @@ module Data.HodaTime.Pattern.CalendarDate
   -- | Used to create specialized patterns.
   ,pyyyy
   ,pMM
+  ,pMMM
   ,pMMMM
   ,pdd
   ,pddd
@@ -60,7 +61,19 @@ pMMMM = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
     months = choice . fmap (try . caseInsensitiveString . show) $ [fm..lm]
     p' = (fromEnum :: Month cal -> Int) . read <$> months
     fmt' x = later (TLB.fromText . T.pack . show . (toEnum :: Int -> Month cal) . x)
-
+-- | Abbreviated month name (e.g. @Jan@), parsed case-insensitively and formatted in title case.
+--
+--   NOTE: the abbreviation is simply the first three letters of the month name, so in calendars where two months share
+--   a three-letter prefix (e.g. the Hebrew @AdarI@ and @Adar@) parsing is ambiguous and resolves to the first match in
+--   month order.  Use 'pMMMM' (full name) or 'pMM' (number) when you need an unambiguous round-trip.
+pMMM :: forall cal d c. (d ~ c cal, IsCalendar cal, HasDate d, Bounded (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
+pMMM = pat_lens monthl p' fmt' $ "month: " ++ abbr fm ++ "-" ++ abbr lm
+  where
+    fm = minBound :: Month cal
+    lm = maxBound :: Month cal
+    abbr = take 3 . show
+    p' = choice . fmap (\m -> fromEnum m <$ try (caseInsensitiveString (abbr m))) $ [fm..lm]
+    fmt' x = later (TLB.fromText . T.pack . abbr . (toEnum :: Int -> Month cal) . x)
 -- | Day of month - zero-padded
 pdd :: HasDate d => Pattern (d -> d) (d -> String) String
 pdd = pat_lens CDT.day (p_a <|> p_b) f_shown_two "day: 01-31"
