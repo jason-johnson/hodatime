@@ -8,6 +8,7 @@ module HodaTime.Util
   ,RandomJulianDate(..)
   ,RandomCopticDate(..)
   ,RandomPersianDate(..)
+  ,RandomIslamicDate(..)
   ,get
   ,modify
   ,set
@@ -23,6 +24,7 @@ import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), Gregorian)
 import qualified Data.HodaTime.Calendar.Julian as J
 import qualified Data.HodaTime.Calendar.Coptic as C
 import qualified Data.HodaTime.Calendar.Persian as P
+import qualified Data.HodaTime.Calendar.Islamic as I
 
 -- arbitrary data and instances
 
@@ -148,6 +150,29 @@ instance Arbitrary RandomPersianDate where
     m <- choose (0,11)
     d <- if m < 6 then choose (1,31) else if m < 11 then choose (1,30) else choose (1,29)
     return $ RandomPersianDate y (toEnum m) d
+
+instance Arbitrary (I.Month I.IslamicBcl) where
+  arbitrary = do
+    x <- choose (0,11)
+    return $ toEnum x
+
+instance Arbitrary (I.DayOfWeek I.IslamicBcl) where
+  arbitrary = do
+    x <- choose (0,6)
+    return $ toEnum x
+
+-- | A random valid Islamic date.  Odd-numbered months have 30 days and even-numbered months 29 ('DhulHijjah' gains a
+--   30th only in a leap year), so we cap the even months (including 'DhulHijjah') at 29 to keep every generated
+--   (year, month, day) valid regardless of leap year.
+data RandomIslamicDate = RandomIslamicDate Int (I.Month I.IslamicBcl) Int
+  deriving (Show)
+
+instance Arbitrary RandomIslamicDate where
+  arbitrary = do
+    y <- choose (1,2000)
+    m <- choose (0,11)
+    d <- if even m then choose (1,30) else choose (1,29)
+    return $ RandomIslamicDate y (toEnum m) d
 
 -- Lenses
 
