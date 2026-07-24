@@ -155,6 +155,33 @@ The word /standard/ in @fromStandardDays@ and @fromStandardWeeks@ is a deliberat
 
 __Interval.__  An @Interval@ is a stretch of the timeline fixed by its two endpoints, built with @interval start end@.  It is /half-open/: @contains@ counts the start instant but not the end, so that adjacent intervals tile the timeline without overlapping.  @duration@ returns its length as a @Duration@, and its @start@ and @end@ are exposed as lenses.
 
+=== Civil time
+
+Civil time is the world of labels: a @CalendarDate@ is a date, a @LocalTime@ is a time of day, and a @CalendarDateTime@ is the two together.  None of them names a point on the timeline — that is what makes them /civil/ rather than /physical/ — and each carries its calendar in its type, so a Gregorian date and a Hebrew date can never be mistaken for one another.
+
+__CalendarDate.__  You build a date through the module for the calendar you want, most often "Data.HodaTime.Calendar.Gregorian".  Its @calendarDate@ takes a day, a month and a year and returns a @Maybe@, because a great many (day, month, year) triples are not real dates: 30 February, the 31st of a 30-day month, 29 February in a common year, or — since the Gregorian calendar is not proleptic — anything before the changeover of 15 October 1582.  Rather than silently "fixing" your input, the library hands back @Nothing@ and lets you decide what that should mean.  Two further constructors cover common calendar idioms: @fromNthDay@ for "the fourth Thursday of November", and @fromWeekDate@ for week-numbered dates.
+
+> import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
+> import Data.HodaTime.CalendarDate (dayOfWeek)
+>
+> valentines = calendarDate 14 February 2024     -- Just <14 February 2024>
+> notADate   = calendarDate 30 February 2024     -- Nothing
+>
+> -- read-only components are just functions
+> valentinesDoW = dayOfWeek <$> valentines        -- Just Wednesday
+
+__LocalTime.__  A @LocalTime@ is a wall-clock time with no date, built with @localTime@ from an hour, minute, second and nanosecond.  Clock arithmetic /normalizes/: adding one minute to 23:59 rolls round to 00:00 rather than overflowing, so a @LocalTime@ is always a real time of day.
+
+__CalendarDateTime.__  Glue a date and a time together with @at@ (or its flipped partner @on@) to get a @CalendarDateTime@, and @atStartOfDay@ pairs a date with midnight.  This is still a civil label — the very @CalendarDateTime@ we anchored in the opening example — and it becomes a point on the timeline only once you resolve it against an @Offset@ or a @TimeZone@.
+
+__Reading and changing fields.__  Every date type is an instance of @HasDate@, which offers its components in two forms.  The read-only accessors — @month@, @dayOfWeek@ and the combined @yearMonthDay@ — are ordinary functions.  The mutable components — @day@, @monthl@ (the month as an @Int@, so that arithmetic on it is meaningful) and @year@ — are /lenses/, while @next@ and @previous@ jump to the nth following or preceding weekday.  The lenses are quietly opinionated about the awkward cases:
+
+* @day@ does /not/ clamp: add 400 to it and the month and year roll over accordingly.
+* @monthl@ clamps only as a final step, and only for end-of-month days — so two months after 31 January is 31 March, not the 29 March that some libraries would hand you.
+* @year@ clamps 29 February back to the 28th in a common year.
+
+Hoda Time takes no dependency on any lens library to provide these; as noted under /Accessors/ above, any lens package will drive them, or you can define the three one-line helpers from @tests\/HodaTime\/Util.hs@ if you would rather not pull one in.
+
 == Cookbook
 
 === USA Holidays
