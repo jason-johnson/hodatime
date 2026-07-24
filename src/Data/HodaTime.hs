@@ -99,6 +99,44 @@ Each concept below has its own type and module.  You rarely need all of them at 
 
 == Cookbook
 
+=== Scheduling across time zones
+
+Here is the whole library in miniature.  A meeting is scheduled for 9 in the morning on 23 April 2024 in Zürich, and we want the exact instant at which it happens — and what that same moment reads on a wall clock in New York.
+
+> import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), Gregorian)
+> import Data.HodaTime.LocalTime (localTime)
+> import Data.HodaTime.CalendarDateTime (at)
+> import Data.HodaTime.TimeZone (timeZone)
+> import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromCalendarDateTimeStrictly, toInstant, fromInstant, hour, zoneAbbreviation)
+>
+> main :: IO ()
+> main = do
+>   zurich  <- timeZone "Europe/Zurich"
+>   newYork <- timeZone "America/New_York"
+>
+>   -- civil time: a date and a time of day, combined into a label with no place on the timeline
+>   let Just meeting = at <$> calendarDate 23 April 2024 <*> localTime 9 0 0 0
+>
+>   -- anchor the label in Zürich, then read off the physical instant
+>   here <- fromCalendarDateTimeStrictly meeting zurich
+>   let instant = toInstant here
+>
+>   -- the very same instant, on a New York wall clock (any calendar would do, so we name Gregorian)
+>   let there = fromInstant instant newYork :: ZonedDateTime Gregorian
+>
+>   print (hour here,  zoneAbbreviation here)    -- (9,"CEST")
+>   print (hour there, zoneAbbreviation there)   -- (3,"EDT")
+
+Read top to bottom, the example crosses from civil time to physical time and back:
+
+1. @calendarDate@ and @localTime@ build /civil/ values.  Both return a @Maybe@, because 31 April and 25:00 are not real; combining them with @at@ gives a @CalendarDateTime@ — a label that does not yet name a point on the timeline.
+
+2. @fromCalendarDateTimeStrictly@ resolves that label inside a @TimeZone@, producing a @ZonedDateTime@ that /is/ anchored, and @toInstant@ extracts the pure @Instant@.  We used the /strict/ resolver, which refuses to guess when a local time is skipped or ambiguous — the awkward cases covered in the section on offsets and zones.
+
+3. Because an @Instant@ is just a point on the timeline, @fromInstant@ can re-express it on any zone's wall clock.  New York is six hours behind Zürich in April, so 09:00 CEST is 03:00 EDT.
+
+Notice the type annotation on the New York view: @fromInstant@ can hand back a date in /any/ calendar, so we name the one we want.  That the calendar rides along in the type — and never has to be guessed — is the subject of the section on calendars.
+
 === USA Holidays
 
 >>>import Data.HodaTime.CalendarDate (DayNth(..))
