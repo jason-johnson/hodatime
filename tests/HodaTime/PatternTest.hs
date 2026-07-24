@@ -54,12 +54,19 @@ unitTests = testGroup "Unit tests"
     ,testCase "parse 12-hour+AM/PM 03:04 PM is 15:04"       $ parse hhmmp "03:04 PM" @?= Just (mkLtm 15 4)
     ,testCase "parse 12-hour+AM/PM 12:00 AM is midnight"    $ parse hhmmp "12:00 AM" @?= Just (mkLtm 0 0)
     ,testCase "parse 12-hour+AM/PM 12:00 PM is noon"        $ parse hhmmp "12:00 PM" @?= Just (mkLtm 12 0)
+    ,testCase "format pfrac 3 truncates to milliseconds"    $ format (pfrac 3) (mkLtn 123456789) @?= "123"
+    ,testCase "format pfrac 6 truncates to microseconds"    $ format (pfrac 6) (mkLtn 123456789) @?= "123456"
+    ,testCase "format pfrac 9 shows full nanoseconds"       $ format (pfrac 9) (mkLtn 123456789) @?= "123456789"
+    ,testCase "format pfrac 3 zero-pads"                    $ format (pfrac 3) (mkLtn 7000000) @?= "007"
+    ,testCase "parse pfrac 3 scales up to nanoseconds"      $ parse (pfrac 3) "123" @?= Just (mkLtn 123000000)
+    ,testCase "parse pfrac 9 reads full nanoseconds"        $ parse (pfrac 9) "123456789" @?= Just (mkLtn 123456789)
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
     hhmmp = phh <% char ':' <> pmm <% char ' ' <> ppp
     mkLt h = mkLtm h 0
     mkLtm h m = fromMaybe (error "impossible") (localTime h m 0 0)
+    mkLtn ns = fromMaybe (error "impossible") (localTime 0 0 0 ns)
 
 -- properties
 
@@ -101,6 +108,7 @@ localTimeProps = testGroup "LocalTime conversion"
     ,QC.testProperty "format pT LocalTime -> parse pT LocalTime == id" $ testLtFormatToParseIdentity pT True
     ,QC.testProperty "format custom LocalTime -> parse custom LocalTime == id" $ testLtFormatToParseIdentity (pHH <% char ':' <> pmm <% char ':' <> pss) True
     ,QC.testProperty "format 12-hour+AM/PM LocalTime -> parse == id" $ testLtFormatToParseIdentity (phh <% char ':' <> pmm <% char ' ' <> ppp) False
+    ,QC.testProperty "format pfrac 9 LocalTime -> parse == id (nanoseconds)" testFracRoundTrip
   ]
   where
     seconds True s = s
@@ -108,4 +116,9 @@ localTimeProps = testGroup "LocalTime conversion"
     testLtFormatToParseIdentity pat useSeconds (RandomTime h m s) = monadicIO $ do
       let lt = fromMaybe (error "impossible") $ localTime h m (seconds useSeconds s) 0
       lt' <- run $ parse pat $ format pat lt
+      QCM.assert $ lt == lt'
+    testFracRoundTrip (NonNegative ns0) = monadicIO $ do
+      let ns = ns0 `mod` 1000000000
+      let lt = fromMaybe (error "impossible") $ localTime 0 0 0 ns
+      lt' <- run $ parse (pfrac 9) $ format (pfrac 9) lt
       QCM.assert $ lt == lt'

@@ -10,6 +10,7 @@ module Data.HodaTime.Pattern.LocalTime
   ,phh
   ,pmm
   ,pss
+  ,pfrac
   ,pp
   ,ppp
   ,hour'
@@ -22,13 +23,13 @@ import Data.HodaTime.Pattern.Internal
 import Data.HodaTime.Pattern.ParseTypes (TimeInfo)
 import qualified Data.HodaTime.Pattern.ParseTypes as PT(hour, minute, second)
 import Data.HodaTime.LocalTime.Internal (HasLocalTime)
-import qualified Data.HodaTime.LocalTime.Internal as LT(hour, minute, second)
+import qualified Data.HodaTime.LocalTime.Internal as LT(hour, minute, second, nanosecond)
 import Data.HodaTime.Internal.Lens (view, set)
 import Control.Applicative ((<|>))
-import Formatting (Format, later)
+import Formatting (Format, later, left, (%.))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as TLB
-import Text.Parsec (oneOf, digit, (<?>))
+import Text.Parsec (oneOf, digit, count, (<?>))
 import qualified Text.Parsec as P (char)
 
 -- x = maybe (error "duh") id $ localTime 1 2 3 0
@@ -79,6 +80,23 @@ pss = pat_lens LT.second p_sixty f_shown_two "second: 00-59"
 
 second' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
 second' = pat_lens' PT.second LT.second p_sixty f_shown_two "second: 00-59"
+
+-- | Fractional seconds of a fixed width @n@ (1-9 digits, since the underlying resolution is nanoseconds).  Formatting
+--   shows exactly @n@ zero-padded digits (dropping any finer resolution); parsing reads exactly @n@ digits and scales
+--   them back up to nanoseconds (so @'pfrac' 3@ parses milliseconds).  A width outside 1-9 is a programmer error.
+--
+--   NOTE: this is the first pattern that takes a parameter (all the others are nullary values).  The parameterized form
+--   was chosen because @pf@\/@pF@ are already taken by the standard date\/time patterns and because it covers every
+--   width uniformly.  If parameterized patterns stay rare we may revisit this; a trailing-zero-trimming variant (the
+--   NodaTime @F@ specifier) could also be added later.
+pfrac :: HasLocalTime lt => Int -> Pattern (lt -> lt) (lt -> String) String
+pfrac n
+  | n < 1 || n > 9 = error "pfrac: fractional second width must be between 1 and 9"
+  | otherwise = Pattern par fmt
+  where
+    scale = 10 ^ (9 - n) :: Int
+    par = ((set LT.nanosecond . (* scale) . read) <$> count n digit) <?> ("fractional second: " ++ show n ++ " digits")
+    fmt = left n '0' %. f_shown (\lt -> view LT.nanosecond lt `div` scale)
 
 -- | 12 hour clock time period designation short form; either @A@ or @P@.  See 'ppp' for the long form.
 pp ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
