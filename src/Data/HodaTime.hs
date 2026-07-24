@@ -1,5 +1,5 @@
 {-|
-Module      :  Data.HodaTime.Interval
+Module      :  Data.HodaTime
 Copyright   :  (C) 2017 Jason Johnson
 License     :  BSD-style (see the file LICENSE)
 Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
@@ -61,7 +61,184 @@ favorite lens library or define 3 simple functions (see tests/HodaTime/Util.hs) 
 
 == Core Concepts
 
-<snip - add stuff rest of documentation>
+Almost everything in Hoda Time follows from a single distinction: the difference between /physical time/ and /civil time/.
+
+/Physical time/ is what a stopwatch measures.  It flows at the same rate everywhere, it has no notion of days, months or time zones, and any two observers can agree on it.  A single point on this universal timeline is an @Instant@ (see "Data.HodaTime.Instant"), and the amount of time elapsed between two instants is a @Duration@ (see "Data.HodaTime.Duration").  These are the types to reach for when the question is /"how long did this take?"/ or /"which of these two events happened first?"/ — they cannot mislead you about time zones because they know nothing about them.
+
+/Civil time/ is the human labelling laid on top of that timeline: calendars, wall clocks, "the 23rd of April at nine in the morning".  A label like that is not, on its own, a point on the timeline.  Until you say /where/ it applies it is ambiguous — "9am on the 23rd" happens at different physical instants in Tokyo and in New York.  Hoda Time gives that unanchored label its own type, @CalendarDateTime@ (see "Data.HodaTime.CalendarDateTime"), and deliberately makes it /not/ interchangeable with an @Instant@.  You move between the two worlds on purpose — by supplying the missing information, either a fixed @Offset@ from UTC or a full @TimeZone@ — and never by accident.
+
+This split is the most important idea in the library.  A great many date and time bugs come from treating a wall-clock label as though it were an absolute instant; Hoda Time turns that mistake into a compile error instead of a lurking one.
+
+=== The pieces
+
+Each concept below has its own type and module.  You rarely need all of them at once — start with the one that matches the question you are asking, and follow the links for the detail.
+
+[@Instant@ — "Data.HodaTime.Instant"] A single point on the universal timeline, independent of any calendar or zone.
+
+[@Duration@ — "Data.HodaTime.Duration"] The exact time elapsed between two instants, measured in days, hours, seconds and nanoseconds.  This is /machine/ time — a precise count — as opposed to a calendar-aware amount such as "one month", whose length depends on which month you mean.
+
+[@LocalTime@ — "Data.HodaTime.LocalTime"] A time of day on its own, such as 09:00:00, with no date attached.
+
+[@CalendarDate@ — "Data.HodaTime.CalendarDate"] A date in some calendar, such as 23 April 2024, with no time of day attached.
+
+[@CalendarDateTime@ — "Data.HodaTime.CalendarDateTime"] A date together with a time of day, still /not/ tied to any particular place on the timeline.
+
+[@Offset@ — "Data.HodaTime.Offset"] A fixed displacement from UTC, such as +01:00.
+
+[@OffsetDateTime@ — "Data.HodaTime.OffsetDateTime"] A @CalendarDateTime@ pinned to the timeline by a fixed @Offset@: enough to be unambiguous, but with no knowledge of daylight saving.
+
+[@TimeZone@ — "Data.HodaTime.TimeZone"] The full set of rules for a place, including its history of daylight-saving and offset changes.
+
+[@ZonedDateTime@ — "Data.HodaTime.ZonedDateTime"] A date and time anchored in a real @TimeZone@ — the fully resolved civil time, which therefore also corresponds to a definite @Instant@.
+
+[@Interval@ — "Data.HodaTime.Interval"] The span of physical time between two instants, as a value you can hold and inspect.
+
+[The calendar — "Data.HodaTime.Calendar.Gregorian" and friends] The system of dates itself.  Gregorian is the default, but Julian, Coptic, Persian, Islamic, Hebrew and ISO are all provided; the calendar is carried in the type, so dates from different calendars cannot be silently mixed.
+
+[Patterns — "Data.HodaTime.Pattern"] Parsing text into these types, and formatting them back out again.
+
+=== A first example
+
+Here is the whole library in miniature.  A meeting is scheduled for 9 in the morning on 23 April 2024 in Zürich, and we want the exact instant at which it happens — and what that same moment reads on a wall clock in New York.
+
+> import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), Gregorian)
+> import Data.HodaTime.LocalTime (localTime)
+> import Data.HodaTime.CalendarDateTime (at)
+> import Data.HodaTime.TimeZone (timeZone)
+> import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromCalendarDateTimeStrictly, toInstant, fromInstant, hour, zoneAbbreviation)
+>
+> main :: IO ()
+> main = do
+>   zurich  <- timeZone "Europe/Zurich"
+>   newYork <- timeZone "America/New_York"
+>
+>   -- civil time: a date and a time of day, combined into a label with no place on the timeline
+>   let Just meeting = at <$> calendarDate 23 April 2024 <*> localTime 9 0 0 0
+>
+>   -- anchor the label in Zürich, then read off the physical instant
+>   here <- fromCalendarDateTimeStrictly meeting zurich
+>   let instant = toInstant here
+>
+>   -- the very same instant, on a New York wall clock (any calendar would do, so we name Gregorian)
+>   let there = fromInstant instant newYork :: ZonedDateTime Gregorian
+>
+>   print (hour here,  zoneAbbreviation here)    -- (9,"CEST")
+>   print (hour there, zoneAbbreviation there)   -- (3,"EDT")
+
+Read top to bottom, the example crosses from civil time to physical time and back:
+
+1. @calendarDate@ and @localTime@ build /civil/ values.  Both return a @Maybe@, because 31 April and 25:00 are not real; combining them with @at@ gives a @CalendarDateTime@ — a label that does not yet name a point on the timeline.
+
+2. @fromCalendarDateTimeStrictly@ resolves that label inside a @TimeZone@, producing a @ZonedDateTime@ that /is/ anchored, and @toInstant@ extracts the pure @Instant@.  We used the /strict/ resolver, which refuses to guess when a local time is skipped or ambiguous — the awkward cases covered in the section on offsets and zones.
+
+3. Because an @Instant@ is just a point on the timeline, @fromInstant@ can re-express it on any zone's wall clock.  New York is six hours behind Zürich in April, so 09:00 CEST is 03:00 EDT.
+
+Notice the type annotation on the New York view: @fromInstant@ can hand back a date in /any/ calendar, so we name the one we want.  That the calendar rides along in the type — and never has to be guessed — is the subject of the section on calendars.
+
+=== Physical time
+
+The three physical-time types — @Instant@, @Duration@ and @Interval@ — have one thing in common: they know nothing of calendars or time zones.  They are pure points and lengths on the universal timeline, and every operation on them is exact.
+
+__Instant.__  An @Instant@ is a single moment, the same everywhere.  You will usually get one from the outside world with @now@ (an @IO Instant@), from a @ZonedDateTime@ with @toInstant@, or from a raw count of seconds with @fromSecondsSinceUnixEpoch@.  To read a moment /as/ a date and time you must first choose a zone: @inTimeZone@ turns an @Instant@ into a @ZonedDateTime@.  This is the same rule as everywhere else in the library — there is no calendar view of a moment until you say where you are standing.
+
+__Duration.__  A @Duration@ is the exact gap between two instants, tracked down to the nanosecond.  You build one from a unit — @fromHours@, @fromMinutes@, @fromSeconds@, @fromNanoseconds@ and friends — and shift an instant by it with @add@ and @minus@:
+
+> import Data.HodaTime.Instant (Instant, now, add)
+> import Data.HodaTime.Duration (fromMinutes)
+>
+> ninetyMinutesFromNow :: IO Instant
+> ninetyMinutesFromNow = do
+>   t <- now
+>   return (t `add` fromMinutes 90)
+
+The word /standard/ in @fromStandardDays@ and @fromStandardWeeks@ is a deliberate caution.  A standard day is /exactly/ 24 hours and a standard week /exactly/ seven of them, because a @Duration@ is machine time.  That is not the same thing as "a calendar day": across a daylight-saving change a civil day can run to 23 or 25 hours.  If you mean "the same wall-clock time tomorrow" you are asking a /calendar/ question and should add to a @ZonedDateTime@; if you mean "exactly 24 hours later" you add a @Duration@ to an @Instant@.  Keeping those two apart is, once more, the entire point.
+
+__Interval.__  An @Interval@ is a stretch of the timeline fixed by its two endpoints, built with @interval start end@.  It is /half-open/: @contains@ counts the start instant but not the end, so that adjacent intervals tile the timeline without overlapping.  @duration@ returns its length as a @Duration@, and its @start@ and @end@ are exposed as lenses.
+
+=== Civil time
+
+Civil time is the world of labels: a @CalendarDate@ is a date, a @LocalTime@ is a time of day, and a @CalendarDateTime@ is the two together.  None of them names a point on the timeline — that is what makes them /civil/ rather than /physical/ — and each carries its calendar in its type, so a Gregorian date and a Hebrew date can never be mistaken for one another.
+
+__CalendarDate.__  You build a date through the module for the calendar you want, most often "Data.HodaTime.Calendar.Gregorian".  Its @calendarDate@ takes a day, a month and a year and returns a @Maybe@, because a great many (day, month, year) triples are not real dates: 30 February, the 31st of a 30-day month, 29 February in a common year, or — since the Gregorian calendar is not proleptic — anything before the changeover of 15 October 1582.  Rather than silently "fixing" your input, the library hands back @Nothing@ and lets you decide what that should mean.  Two further constructors cover common calendar idioms: @fromNthDay@ for "the fourth Thursday of November", and @fromWeekDate@ for week-numbered dates.
+
+> import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
+> import Data.HodaTime.CalendarDate (dayOfWeek)
+>
+> valentines = calendarDate 14 February 2024     -- Just <14 February 2024>
+> notADate   = calendarDate 30 February 2024     -- Nothing
+>
+> -- read-only components are just functions
+> valentinesDoW = dayOfWeek <$> valentines        -- Just Wednesday
+
+__LocalTime.__  A @LocalTime@ is a wall-clock time with no date, built with @localTime@ from an hour, minute, second and nanosecond.  Clock arithmetic /normalizes/: adding one minute to 23:59 rolls round to 00:00 rather than overflowing, so a @LocalTime@ is always a real time of day.
+
+__CalendarDateTime.__  Glue a date and a time together with @at@ (or its flipped partner @on@) to get a @CalendarDateTime@, and @atStartOfDay@ pairs a date with midnight.  This is still a civil label — the very @CalendarDateTime@ we anchored in the opening example — and it becomes a point on the timeline only once you resolve it against an @Offset@ or a @TimeZone@.
+
+__Reading and changing fields.__  Every date type is an instance of @HasDate@, which offers its components in two forms.  The read-only accessors — @month@, @dayOfWeek@ and the combined @yearMonthDay@ — are ordinary functions.  The mutable components — @day@, @monthl@ (the month as an @Int@, so that arithmetic on it is meaningful) and @year@ — are /lenses/, while @next@ and @previous@ jump to the nth following or preceding weekday.  The lenses are quietly opinionated about the awkward cases:
+
+* @day@ does /not/ clamp: add 400 to it and the month and year roll over accordingly.
+* @monthl@ clamps only as a final step, and only for end-of-month days — so two months after 31 January is 31 March, not the 29 March that some libraries would hand you.
+* @year@ clamps 29 February back to the 28th in a common year.
+
+Hoda Time takes no dependency on any lens library to provide these; as noted under /Accessors/ above, any lens package will drive them, or you can define the three one-line helpers from @tests\/HodaTime\/Util.hs@ if you would rather not pull one in.
+
+=== Crossing over: offsets and zones
+
+A civil label becomes a point on the timeline only once you attach the missing UTC information, and there are two ways to attach it.  You can give a /fixed/ displacement from UTC — an @Offset@ — or the /full rules/ of a place — a @TimeZone@.  Each produces an anchored type: an @OffsetDateTime@ or a @ZonedDateTime@.
+
+__Offset and OffsetDateTime.__  An @Offset@ is a fixed distance from UTC, such as +02:00, built with @fromHours@, @fromMinutes@, @fromSeconds@ or @empty@ (UTC itself) and adjusted through its @hours@, @minutes@ and @seconds@ lenses.  Offsets are clamped to a maximum of eighteen hours either side of UTC, comfortably covering every real zone.  An @OffsetDateTime@ (from @fromCalendarDateTimeWithOffset@ or @fromInstantWithOffset@) is simply a @CalendarDateTime@ tagged with one — the shape HTTP and other wire formats use, as in @2024-04-23T09:00:00+02:00@.  It is unambiguous, but /dumb/: it records that the offset was +02:00 without knowing that +01:00 applies in winter.  Reach for it when the offset is already a given (a timestamp on the wire, a logged event); reach for a @TimeZone@ when the question involves a place and its rules.
+
+__TimeZone and ZonedDateTime.__  A @TimeZone@ is the whole rulebook for a location — every daylight-saving and offset change in its history.  Because that data comes from the operating system, loading a zone is an @IO@ action: @timeZone "Europe\/Zurich"@, @utc@, @localZone@ for the machine's own setting, or @availableZones@ to list them all.  Resolving a civil date and time in a zone yields a @ZonedDateTime@: a fully pinned-down value that corresponds to exactly one @Instant@.  It answers every question — @year@, @month@, @day@, @hour@ and the rest, plus @inDst@ and @zoneAbbreviation@ — converts to the timeline with @toInstant@ and comes back with @fromInstant@ (equivalently @inTimeZone@).
+
+__Two awkward moments.__  Turning a /local/ @CalendarDateTime@ into a @ZonedDateTime@ is not always a one-to-one mapping, because twice a year the clocks move:
+
+* On the /spring-forward/ night an hour of local time is __skipped__ — a label such as 02:30 simply never occurs, and maps to /no/ instant.
+* On the /fall-back/ night an hour is repeated, so a label is __ambiguous__ — 01:30 happens /twice/, mapping to two different instants.
+
+Most libraries quietly pick an answer and move on.  Hoda Time makes you decide, and gives you four ways to do it, from the most explicit to the most convenient:
+
+[@fromCalendarDateTimeAll@] returns every valid mapping as a list: empty for a skipped time, one element in the ordinary case, and two (earlier then later) for an ambiguous one.  You look and choose.
+
+[@fromCalendarDateTimeStrictly@] the cautious default — it succeeds with the single mapping, or fails in @MonadThrow@ with a @DateTimeDoesNotExistException@ for a skipped time or a @DateTimeAmbiguousException@ for an ambiguous one.  This is the resolver the opening example used.
+
+[@fromCalendarDateTimeLeniently@] never fails: an ambiguous time collapses to the /earlier/ of its two instants, and a skipped time is nudged /forward/ by the length of the gap.
+
+[@resolve@] you supply the policy.  It takes a handler for the ambiguous case (given both matches, earlier and later) and one for the skipped case (given the instant just before the gap and the one just after); @fromCalendarDateTimeStrictly@ and @fromCalendarDateTimeLeniently@ are themselves just @resolve@ with particular handlers.
+
+The reverse journey never has this trouble: going from an @Instant@ to a @ZonedDateTime@ with @fromInstant@ (or @inTimeZone@), and back with @toInstant@, is always unambiguous — an instant is a genuine point on the timeline, and at any point a zone has exactly one offset in force.  The awkwardness is a property of civil labels, not of time itself.
+
+=== Calendars
+
+Every date type carries its calendar as a type parameter — @CalendarDate cal@, @CalendarDateTime cal@, @ZonedDateTime cal@.  The tag is a /phantom/: it selects the rules (the month names and lengths, the leap-year rule, the epoch) at no runtime cost, and, more importantly, it stops dates in different calendars from being mixed by accident — combining a Hebrew month with a Gregorian date is a compile error, not a lurking bug.  @Gregorian@ is the default, and the reference against which every other calendar is measured.
+
+You construct dates through the module for the calendar you want, using /that/ calendar's own @calendarDate@ (plus @fromNthDay@ and @fromWeekDate@) and its own @Month@ and @DayOfWeek@ — @January@ for Gregorian, @Tishri@ for Hebrew, @Muharram@ for Islamic, and so on.  The full roster:
+
+[Gregorian — "Data.HodaTime.Calendar.Gregorian"] The civil calendar used across most of the world today, and the timeline's reference point.  It is not proleptic: it begins at the 15 October 1582 changeover.
+
+[ISO — "Data.HodaTime.Calendar.Iso"] Identical to Gregorian for every date; it differs only in week numbering — weeks start on Monday and week 1 is the first with at least four days in the new year.  Use its @fromWeekDate@ for ISO-8601 week dates.
+
+[Julian — "Data.HodaTime.Calendar.Julian"] The \"Old Calendar\" that preceded the Gregorian and is still used liturgically by parts of the Eastern Orthodox church.  Fully proleptic with astronomical year numbering, floored at its introduction in 45 BC.
+
+[Coptic — "Data.HodaTime.Calendar.Coptic"] The Coptic (Alexandrian) calendar: twelve thirty-day months followed by a short thirteenth.
+
+[Persian — "Data.HodaTime.Calendar.Persian"] The astronomical Solar Hijri calendar, Iran's official civil calendar, whose year begins on the spring equinox as observed at Tehran.
+
+[Islamic — "Data.HodaTime.Calendar.Islamic"] The tabular Islamic (Hijri) calendar, /parameterised by its leap-year pattern/ (see below).
+
+[Hebrew — "Data.HodaTime.Calendar.Hebrew"] The Hebrew (Jewish) lunisolar calendar, /parameterised by its month numbering/ (see below).
+
+__Parameterised calendars.__  A couple of calendars come in more than one variant, and rather than bury the choice in a runtime flag Hoda Time lifts it into the type too — just like the calendar itself.  @Islamic@ is tagged with its /leap pattern/ — @IslamicBase15@, @IslamicIndian@, @IslamicHabashAlHasib@, or @IslamicBcl@ (the .NET-compatible Base16 default) — which decides which years of the thirty-year cycle gain a day; @Hebrew@ is tagged with its /month numbering/ — @HebrewCivil@ (counting from Tishri, the default) or @HebrewScriptural@ (counting from Nisan).  Each variant is a distinct type, so a Base15 date can never be confused with a Base16 one, and the plain @calendarDate@ in each module still builds the default variant with no annotation required.
+
+__Converting between calendars.__  Because they all share the one timeline, a single moment can be re-expressed in any of them with @withCalendar@ — there is a version at each level, in "Data.HodaTime.CalendarDate", "Data.HodaTime.CalendarDateTime" and "Data.HodaTime.ZonedDateTime" — which keeps the underlying day (or instant and time zone) and changes only the calendar the value is labelled in.  The target is chosen by the result type:
+
+> import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
+> import qualified Data.HodaTime.Calendar.Julian as Julian
+> import Data.HodaTime.CalendarDate (withCalendar, CalendarDate)
+>
+> -- the Gregorian Christmas, re-expressed as the Julian ("Old Calendar") date still used liturgically
+> julianChristmas :: Maybe (CalendarDate Julian.Julian)
+> julianChristmas = withCalendar <$> calendarDate 25 December 2024
+> -- the same day, which the Julian calendar labels 12 December 2024 (it runs thirteen days behind today)
 
 == Cookbook
 
