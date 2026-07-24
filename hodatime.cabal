@@ -129,6 +129,7 @@ test-suite test
                    HodaTime.Calendar.CopticTest,
                    HodaTime.Calendar.PersianTest,
                    HodaTime.Calendar.IslamicTest,
+                   HodaTime.Calendar.HebrewTest,
                    HodaTime.CalendarDateTimeTest,
                    HodaTime.ZonedDateTimeTest,
                    HodaTime.PatternTest,

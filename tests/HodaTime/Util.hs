@@ -9,13 +9,14 @@ module HodaTime.Util
   ,RandomCopticDate(..)
   ,RandomPersianDate(..)
   ,RandomIslamicDate(..)
+  ,RandomHebrewDate(..)
   ,get
   ,modify
   ,set
 )
 where
 
-import Test.Tasty.QuickCheck (Arbitrary(..), choose)
+import Test.Tasty.QuickCheck (Arbitrary(..), choose, elements)
 
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
@@ -25,6 +26,7 @@ import qualified Data.HodaTime.Calendar.Julian as J
 import qualified Data.HodaTime.Calendar.Coptic as C
 import qualified Data.HodaTime.Calendar.Persian as P
 import qualified Data.HodaTime.Calendar.Islamic as I
+import qualified Data.HodaTime.Calendar.Hebrew as H
 
 -- arbitrary data and instances
 
@@ -173,6 +175,39 @@ instance Arbitrary RandomIslamicDate where
     m <- choose (0,11)
     d <- if even m then choose (1,30) else choose (1,29)
     return $ RandomIslamicDate y (toEnum m) d
+
+instance Arbitrary (H.Month H.HebrewCivil) where
+  arbitrary = do
+    x <- choose (0,12)
+    return $ toEnum x
+
+instance Arbitrary (H.DayOfWeek H.HebrewCivil) where
+  arbitrary = do
+    x <- choose (0,6)
+    return $ toEnum x
+
+-- | The Hebrew months in calendar order, each paired with a day it is always safe to generate.  'Cheshvan' and
+--   'Kislev' are the two swing months (29 or 30 days depending on the year), so they are capped at their shorter length
+--   of 29; every other length is fixed.  'AdarI' (the leap month) is only ever included for leap years (see below).
+hebrewMonthCaps :: [(H.Month H.HebrewCivil, Int)]
+hebrewMonthCaps =
+  [ (H.Tishri, 30), (H.Cheshvan, 29), (H.Kislev, 29), (H.Tevet, 29), (H.Shevat, 30)
+  , (H.AdarI, 30), (H.Adar, 29), (H.Nisan, 30), (H.Iyar, 29), (H.Sivan, 30)
+  , (H.Tammuz, 29), (H.Av, 30), (H.Elul, 29) ]
+
+-- | A random valid Hebrew (civil) date.  A common year has no leap month, so 'AdarI' is offered only in leap years
+--   (Metonic years 3, 6, 8, 11, 14, 17, 19); the swing months 'Cheshvan' and 'Kislev' are capped at their shorter
+--   length so every generated (year, month, day) is a real date regardless of the year's exact length.
+data RandomHebrewDate = RandomHebrewDate Int (H.Month H.HebrewCivil) Int
+  deriving (Show)
+
+instance Arbitrary RandomHebrewDate where
+  arbitrary = do
+    y <- choose (1,6000)
+    let months = if (7 * y + 1) `mod` 19 < 7 then hebrewMonthCaps else filter ((/= H.AdarI) . fst) hebrewMonthCaps
+    (m, cap) <- elements months
+    d <- choose (1,cap)
+    return $ RandomHebrewDate y m d
 
 -- Lenses
 
