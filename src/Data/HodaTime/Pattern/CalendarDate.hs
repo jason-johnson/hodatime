@@ -6,6 +6,7 @@ module Data.HodaTime.Pattern.CalendarDate
   -- * Standard Patterns
    pd
   ,pD
+  ,pR
   -- * Custom Patterns
   --
   -- | Used to create specialized patterns.
@@ -107,6 +108,10 @@ pd = pdd <% char '/' <> pMM <% char '/' <> pyyyy
 -- | This is the long date pattern, currently defined as "dddd, dd MMMM yyyy".
 pD :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal), Show (DoW (c cal)), Enum (DoW (c cal)), Bounded (DoW (c cal))) => Pattern (c cal -> c cal) (c cal -> String) String
 pD = pdddd <% string ", " <> pdd <% char ' ' <> pMMMM <% char ' ' <> pyyyy
+
+-- | The ISO-8601 round-trippable date pattern, "yyyy-MM-dd".
+pR :: HasDate d => Pattern (d -> d) (d -> String) String
+pR = pyyyy <% char '-' <> pMM <% char '-' <> pdd
 
 -- | Case-insensitive literal string parser, used by the name-based patterns ('pMMMM', 'pddd', 'pdddd').
 caseInsensitiveString :: String -> Parsec String () String

@@ -3,6 +3,7 @@ module Data.HodaTime.Pattern.CalendarDateTime
 (
   -- * Standard Patterns
    ps
+  ,po
   ,pf
   ,pF
   ,pg
@@ -28,7 +29,9 @@ import Data.HodaTime.Pattern.CalendarDate
 -- | The sortable pattern, which is always "yyyy'-'MM'-'dd'T'HH':'mm':'ss". (Note: this is only truly sortable for years within the range [0-9999].)
 ps :: (HasLocalTime dt, HasDate dt) => Pattern (dt -> dt) (dt -> String) String
 ps = pyyyy <% char '-' <> pMM <% char '-' <> pdd <% char 'T' <> pHH <% char ':' <> pmm <% char ':' <> pss
-
+-- | The ISO-8601 round-trippable date\/time pattern, "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffffffff" (nanosecond precision).
+po :: (HasLocalTime dt, HasDate dt) => Pattern (dt -> dt) (dt -> String) String
+po = ps <% char '.' <> pfrac 9
 -- | The long date pattern followed by a space, followed by the short time pattern.
 pf :: (HasLocalTime (c cal), HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal), Show (DoW (c cal)), Enum (DoW (c cal)), Bounded (DoW (c cal))) => Pattern (c cal -> c cal) (c cal -> String) String
 pf = pD <% char ' ' <> pt

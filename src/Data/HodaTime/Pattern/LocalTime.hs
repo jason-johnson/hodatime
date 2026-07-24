@@ -3,6 +3,7 @@ module Data.HodaTime.Pattern.LocalTime
   -- * Standard Patterns
    pt
   ,pT
+  ,pr
   -- * Custom Patterns
   --
   -- | Used to create specialized patterns
@@ -131,3 +132,6 @@ pt = pHH <% char ':' <> pmm
 -- | Long format pattern. Currently defined as "HH:mm:ss" but should eventually follow locale
 pT ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
 pT = pHH <% char ':' <> pmm <% char ':' <> pss
+-- | The round-trippable time pattern, "HH:mm:ss.fffffffff" (nanosecond precision).
+pr ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
+pr = pT <% char '.' <> pfrac 9

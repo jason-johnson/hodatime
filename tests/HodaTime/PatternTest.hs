@@ -62,6 +62,7 @@ unitTests = testGroup "Unit tests"
     ,testCase "format pfrac 3 zero-pads"                    $ format (pfrac 3) (mkLtn 7000000) @?= "007"
     ,testCase "parse pfrac 3 scales up to nanoseconds"      $ parse (pfrac 3) "123" @?= Just (mkLtn 123000000)
     ,testCase "parse pfrac 9 reads full nanoseconds"        $ parse (pfrac 9) "123456789" @?= Just (mkLtn 123456789)
+    ,testCase "format pR is the ISO date"                   $ format pR tuesday @?= "2020-03-03"
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
@@ -80,6 +81,7 @@ calDateTimeProps = testGroup "CalendarDateTime conversion"
     ,QC.testProperty "format pF CalendarDateTime -> parse pF CalendarDateTime == id" $ testCdtFormatToParseIdentity pF True
     ,QC.testProperty "format pg CalendarDateTime -> parse pg CalendarDateTime == id" $ testCdtFormatToParseIdentity pg False
     ,QC.testProperty "format pG CalendarDateTime -> parse pG CalendarDateTime == id" $ testCdtFormatToParseIdentity pG True
+    ,QC.testProperty "format po CalendarDateTime -> parse po CalendarDateTime == id" $ testCdtFormatToParseIdentity po True
     ,QC.testProperty "format custom CalendarDateTime -> parse custom CalendarDateTime == id" $ testCdtFormatToParseIdentity (pyyyy <% char '/' <> pMMMM <% char '/' <> pdd <% char ' ' <> pHH <% char ':' <> pmm <% char ':' <> pss) True
   ]
   where
@@ -95,6 +97,7 @@ calDateProps = testGroup "CalendarDate conversion"
   [
      QC.testProperty "format pd CalendarDate -> parse pd CalendarDate == id" $ testCdFormatToParseIdentity pd
     ,QC.testProperty "format pD CalendarDate -> parse pD CalendarDate == id" $ testCdFormatToParseIdentity pD
+    ,QC.testProperty "format pR CalendarDate -> parse pR CalendarDate == id" $ testCdFormatToParseIdentity pR
     ,QC.testProperty "format custom CalendarDate -> parse custom CalendarDate == id" $ testCdFormatToParseIdentity (pyyyy <% char '/' <> pMMMM <% char '/' <> pdd)
   ]
   where
@@ -110,6 +113,7 @@ localTimeProps = testGroup "LocalTime conversion"
     ,QC.testProperty "format pT LocalTime -> parse pT LocalTime == id" $ testLtFormatToParseIdentity pT True
     ,QC.testProperty "format custom LocalTime -> parse custom LocalTime == id" $ testLtFormatToParseIdentity (pHH <% char ':' <> pmm <% char ':' <> pss) True
     ,QC.testProperty "format 12-hour+AM/PM LocalTime -> parse == id" $ testLtFormatToParseIdentity (phh <% char ':' <> pmm <% char ' ' <> ppp) False
+    ,QC.testProperty "format pr LocalTime -> parse pr LocalTime == id" $ testLtFormatToParseIdentity pr True
     ,QC.testProperty "format pfrac 9 LocalTime -> parse == id (nanoseconds)" testFracRoundTrip
   ]
   where
