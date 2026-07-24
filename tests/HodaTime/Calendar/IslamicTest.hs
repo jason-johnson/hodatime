@@ -14,7 +14,7 @@ import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 
 import HodaTime.Util
 import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
-import Data.HodaTime.Calendar.Islamic (calendarDate, calendarDate', fromNthDay, fromWeekDate, IslamicBcl, IslamicBase15, Month(..), DayOfWeek(..))
+import Data.HodaTime.Calendar.Islamic (calendarDate, calendarDate', fromNthDay, fromWeekDate, IslamicBcl, IslamicBase15, IslamicIndian, IslamicHabashAlHasib, Month(..), DayOfWeek(..))
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (utc)
 import Data.HodaTime.ZonedDateTime (fromInstant, ZonedDateTime)
@@ -84,8 +84,8 @@ structureUnits = testGroup "Structure"
   ]
 
 -- | The leap pattern is carried in the type, so the same year is a leap year under one pattern and not another, and the
---   two calendars are distinct types.  Base16 (the 'IslamicBcl' default) makes cycle-year 16 a leap year, while Base15
---   makes cycle-year 15 one instead.
+--   variants are distinct types.  Each of the four patterns is pinned by a cycle-year that is a leap year under it but
+--   not under Base16 (the 'IslamicBcl' default): Base15 -> 15, Indian -> 8, HabashAlHasib -> 30.
 leapPatternUnits :: TestTree
 leapPatternUnits = testGroup "Leap-pattern selection"
   [
@@ -93,6 +93,10 @@ leapPatternUnits = testGroup "Leap-pattern selection"
     ,testCase "cycle-year 16 is not leap in Base15: 30 DhulHijjah invalid"       $ (calendarDate' 30 DhulHijjah 16 :: Maybe (CalendarDate IslamicBase15)) @?= Nothing
     ,testCase "cycle-year 15 is leap in Base15: 30 DhulHijjah valid"             $ isJust (calendarDate' 30 DhulHijjah 15 :: Maybe (CalendarDate IslamicBase15)) @?= True
     ,testCase "cycle-year 15 is not leap in Base16 (default): 30 DhulHijjah invalid" $ calendarDate 30 DhulHijjah 15 @?= Nothing
+    ,testCase "cycle-year 8 is leap in Indian: 30 DhulHijjah valid"              $ isJust (calendarDate' 30 DhulHijjah 8 :: Maybe (CalendarDate IslamicIndian)) @?= True
+    ,testCase "cycle-year 8 is not leap in Base16 (default): 30 DhulHijjah invalid" $ calendarDate 30 DhulHijjah 8 @?= Nothing
+    ,testCase "cycle-year 30 is leap in HabashAlHasib: 30 DhulHijjah valid"      $ isJust (calendarDate' 30 DhulHijjah 30 :: Maybe (CalendarDate IslamicHabashAlHasib)) @?= True
+    ,testCase "cycle-year 30 is not leap in Base16 (default): 30 DhulHijjah invalid" $ calendarDate 30 DhulHijjah 30 @?= Nothing
   ]
 
 -- | The strongest checks: the same absolute day, anchored via Data.Time, must decode to the expected Islamic date.  The
