@@ -106,7 +106,9 @@ instance IsCalendar cal => HasLocalTime (CalendarDateTime cal) where
   nanosecond f (CalendarDateTime cd lt) = CalendarDateTime cd <$> nanosecond f lt
   {-# INLINE nanosecond #-}
 
--- TODO:  Add an AM/PM lens which shows the current AM/PM based on if the time is after 12, and will add 12 to any number less than 12
+-- NOTE: AM/PM is handled in the pattern layer (see Data.HodaTime.Pattern.LocalTime), not as a lens here: the
+--       designator and the 12-hour hour each rewrite only their half of the 'hour' via div/mod 12, which keeps
+--       them order independent when composed.
 
 -- | Private function for constructing a localtime at midnight
 midnight :: LocalTime

@@ -43,9 +43,23 @@ unitTests = testGroup "Unit tests"
      testCase "format pddd is the abbreviated weekday name" $ format pddd tuesday @?= "Tue"
     ,testCase "format pdddd is the full weekday name"       $ format pdddd tuesday @?= "Tuesday"
     ,testCase "format pD includes the weekday"              $ format pD tuesday @?= "Tuesday, 03 March 2020"
+    ,testCase "format phh folds 15:00 to 03"                $ format phh (mkLt 15) @?= "03"
+    ,testCase "format phh folds 00:00 to 12"                $ format phh (mkLt 0) @?= "12"
+    ,testCase "format phh folds 12:00 to 12"                $ format phh (mkLt 12) @?= "12"
+    ,testCase "format pp is P in the afternoon"             $ format pp (mkLt 15) @?= "P"
+    ,testCase "format pp is A in the morning"               $ format pp (mkLt 3) @?= "A"
+    ,testCase "format ppp is PM at noon"                    $ format ppp (mkLt 12) @?= "PM"
+    ,testCase "format ppp is AM at midnight"                $ format ppp (mkLt 0) @?= "AM"
+    ,testCase "format 12-hour+AM/PM at 15:04"               $ format hhmmp (mkLtm 15 4) @?= "03:04 PM"
+    ,testCase "parse 12-hour+AM/PM 03:04 PM is 15:04"       $ parse hhmmp "03:04 PM" @?= Just (mkLtm 15 4)
+    ,testCase "parse 12-hour+AM/PM 12:00 AM is midnight"    $ parse hhmmp "12:00 AM" @?= Just (mkLtm 0 0)
+    ,testCase "parse 12-hour+AM/PM 12:00 PM is noon"        $ parse hhmmp "12:00 PM" @?= Just (mkLtm 12 0)
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
+    hhmmp = phh <% char ':' <> pmm <% char ' ' <> ppp
+    mkLt h = mkLtm h 0
+    mkLtm h m = fromMaybe (error "impossible") (localTime h m 0 0)
 
 -- properties
 
@@ -86,6 +100,7 @@ localTimeProps = testGroup "LocalTime conversion"
      QC.testProperty "format pt LocalTime -> parse pt LocalTime == id" $ testLtFormatToParseIdentity pt False
     ,QC.testProperty "format pT LocalTime -> parse pT LocalTime == id" $ testLtFormatToParseIdentity pT True
     ,QC.testProperty "format custom LocalTime -> parse custom LocalTime == id" $ testLtFormatToParseIdentity (pHH <% char ':' <> pmm <% char ':' <> pss) True
+    ,QC.testProperty "format 12-hour+AM/PM LocalTime -> parse == id" $ testLtFormatToParseIdentity (phh <% char ':' <> pmm <% char ' ' <> ppp) False
   ]
   where
     seconds True s = s
