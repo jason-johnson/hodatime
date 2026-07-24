@@ -105,7 +105,9 @@ Here is the whole library in miniature.  A meeting is scheduled for 9 in the mor
 > import Data.HodaTime.LocalTime (localTime)
 > import Data.HodaTime.CalendarDateTime (at)
 > import Data.HodaTime.TimeZone (timeZone)
-> import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromCalendarDateTimeStrictly, toInstant, fromInstant, hour, zoneAbbreviation)
+> import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromCalendarDateTimeStrictly, toInstant, fromInstant, toCalendarDateTime, zoneAbbreviation)
+> import Data.HodaTime.Pattern (format)
+> import Data.HodaTime.Pattern.CalendarDateTime (pF)
 >
 > main :: IO ()
 > main = do
@@ -122,8 +124,9 @@ Here is the whole library in miniature.  A meeting is scheduled for 9 in the mor
 >   -- the very same instant, on a New York wall clock (any calendar would do, so we name Gregorian)
 >   let there = fromInstant instant newYork :: ZonedDateTime Gregorian
 >
->   print (hour here,  zoneAbbreviation here)    -- (9,"CEST")
->   print (hour there, zoneAbbreviation there)   -- (3,"EDT")
+>   -- format the civil view of each with a pattern; the zone abbreviation is printed alongside
+>   putStrLn $ format pF (toCalendarDateTime here)  ++ " " ++ zoneAbbreviation here    -- Tuesday, 23 April 2024 09:00:00 CEST
+>   putStrLn $ format pF (toCalendarDateTime there) ++ " " ++ zoneAbbreviation there   -- Tuesday, 23 April 2024 03:00:00 EDT
 
 Read top to bottom, the example crosses from civil time to physical time and back:
 
@@ -132,6 +135,8 @@ Read top to bottom, the example crosses from civil time to physical time and bac
 2. @fromCalendarDateTimeStrictly@ resolves that label inside a @TimeZone@, producing a @ZonedDateTime@ that /is/ anchored, and @toInstant@ extracts the pure @Instant@.  We used the /strict/ resolver, which refuses to guess when a local time is skipped or ambiguous — the awkward cases covered in the section on offsets and zones.
 
 3. Because an @Instant@ is just a point on the timeline, @fromInstant@ can re-express it on any zone's wall clock.  New York is six hours behind Zürich in April, so 09:00 CEST is 03:00 EDT.
+
+4. Finally @toCalendarDateTime@ pulls the civil view back out of each @ZonedDateTime@ and @format pF@ renders it as text with a /pattern/ — the subject of the section on patterns.  The zone abbreviation is printed next to it because a zone-aware pattern is still on the roadmap.
 
 Notice the type annotation on the New York view: @fromInstant@ can hand back a date in /any/ calendar, so we name the one we want.  That the calendar rides along in the type — and never has to be guessed — is the subject of the section on calendars.
 
@@ -239,6 +244,66 @@ __Converting between calendars.__  Because they all share the one timeline, a si
 > julianChristmas :: Maybe (CalendarDate Julian.Julian)
 > julianChristmas = withCalendar <$> calendarDate 25 December 2024
 > -- the same day, which the Julian calendar labels 12 December 2024 (it runs thirteen days behind today)
+
+=== Patterns
+
+Turning these types into text, and text back into these types, is the job of a @Pattern@ (see "Data.HodaTime.Pattern").  Where most libraries hand you two separate stringly-typed operations — a format string in one direction and a parse string in the other — Hoda Time uses a /single/ @Pattern@ value that goes both ways.  A pattern is assembled from typed pieces rather than from a mini-language buried in a string, so a field that makes no sense for the type you are formatting is a compile error rather than a run-time surprise, and the very value that printed a date will read one back.
+
+You drive a pattern with two functions.  @format@ turns a value into a @String@:
+
+> import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..), Gregorian)
+> import Data.HodaTime.CalendarDate (CalendarDate)
+> import Data.HodaTime.Pattern (parse, format)
+> import Data.HodaTime.Pattern.CalendarDate (pR)
+>
+> isoText   = format pR <$> calendarDate 23 April 2024              -- Just "2024-04-23"
+> roundTrip = parse pR "2024-04-23" :: Maybe (CalendarDate Gregorian)   -- Just <23 April 2024>
+
+and @parse@ reads one back in any @MonadThrow@ — so @Maybe@, @IO@, @Either SomeException@ and friends all work — failing with a @ParseFailedException@ on bad input.  @parse'@ is the same but lets you supply the value whose fields fill in for anything the pattern does not mention.
+
+__The standard patterns.__  For the common layouts there is a ready-made pattern per type, each named for its Noda Time counterpart.  For a @CalendarDate@ (see "Data.HodaTime.Pattern.CalendarDate"):
+
+[@pd@] short date, @dd\/MM\/yyyy@.
+
+[@pD@] long date, @dddd, dd MMMM yyyy@.
+
+[@pR@] the ISO-8601 round-trippable date, @yyyy-MM-dd@.
+
+For a @LocalTime@ (see "Data.HodaTime.Pattern.LocalTime"):
+
+[@pt@] short time, @HH:mm@.
+
+[@pT@] long time, @HH:mm:ss@.
+
+[@pr@] round-trippable time, @HH:mm:ss.fffffffff@, down to the nanosecond.
+
+For a @CalendarDateTime@ (see "Data.HodaTime.Pattern.CalendarDateTime"), which simply glues a date pattern to a time pattern:
+
+[@ps@] the sortable ISO form, @yyyy-MM-ddTHH:mm:ss@.
+
+[@pf@ and @pF@] full: the long date with the short (@pf@) or long (@pF@) time.
+
+[@pg@ and @pG@] general: the short date with the short (@pg@) or long (@pG@) time.
+
+[@po@] the round-trippable form — @ps@ carried down to the nanosecond.
+
+__Building your own.__  A standard pattern is nothing more than the field patterns from those same modules combined with two operators, and you assemble your own the same way: @\<\>@ merges two fields, and @\<%@ appends a fixed literal (built with @char@ or @string@).
+
+> import Data.HodaTime.Pattern (format, char, (<%))
+> import Data.HodaTime.Pattern.CalendarDate (pdd, pMMM, pyyyy)
+> import Data.Semigroup ((<>))
+>
+> -- a custom "23 Apr 2024" layout: day, abbreviated month, year
+> shown = format (pdd <% char ' ' <> pMMM <% char ' ' <> pyyyy) <$> calendarDate 23 April 2024   -- Just "23 Apr 2024"
+
+The field patterns cover the usual components: @pyyyy@, @pMM@ (numeric month), @pMMM@ and @pMMMM@ (abbreviated and full month name) and @pdd@ (day), plus @pddd@ and @pdddd@ (abbreviated and full weekday name) for dates; @pHH@ (24-hour) or @phh@ (12-hour) with @pp@ \/ @ppp@ for the AM\/PM designator, then @pmm@, @pss@ and @pfrac@ for times.  @pfrac@ is the one pattern that takes an argument — the number of fractional-second digits, from 1 (tenths) up to 9 (nanoseconds) — because a single width covers every case cleanly.
+
+__What patterns do not yet do.__  This is a deliberately honest list; each item is on the roadmap rather than a decision against it.
+
+* The standard patterns are /fixed format/ — @pd@ is always @dd\/MM\/yyyy@ — where Noda Time's follow the current culture.  Names are English, taken from each calendar's own @Month@ and @DayOfWeek@.  Full locale support is the largest missing piece.
+* There are no patterns yet for @Offset@, @OffsetDateTime@, @ZonedDateTime@, @Instant@ or @Duration@.  In particular a pattern cannot yet render a @ZonedDateTime@ directly: format its @CalendarDateTime@ (via @toCalendarDateTime@) and print the @zoneAbbreviation@ alongside, as the opening example does.
+* A weekday in a pattern (@pddd@ or @pdddd@) is /consumed but not validated/ on a parse: since the day, month and year already fix the date, the weekday is not checked against them.
+* The abbreviated month @pMMM@ is just the first three letters of the name, which is ambiguous where two months share a prefix (the Hebrew @AdarI@ and @Adar@); use @pMMMM@ or @pMM@ when you need a guaranteed round-trip.
 
 == Cookbook
 
