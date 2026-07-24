@@ -97,9 +97,7 @@ Each concept below has its own type and module.  You rarely need all of them at 
 
 [Patterns — "Data.HodaTime.Pattern"] Parsing text into these types, and formatting them back out again.
 
-== Cookbook
-
-=== Scheduling across time zones
+=== A first example
 
 Here is the whole library in miniature.  A meeting is scheduled for 9 in the morning on 23 April 2024 in Zürich, and we want the exact instant at which it happens — and what that same moment reads on a wall clock in New York.
 
@@ -136,6 +134,28 @@ Read top to bottom, the example crosses from civil time to physical time and bac
 3. Because an @Instant@ is just a point on the timeline, @fromInstant@ can re-express it on any zone's wall clock.  New York is six hours behind Zürich in April, so 09:00 CEST is 03:00 EDT.
 
 Notice the type annotation on the New York view: @fromInstant@ can hand back a date in /any/ calendar, so we name the one we want.  That the calendar rides along in the type — and never has to be guessed — is the subject of the section on calendars.
+
+=== Physical time
+
+The three physical-time types — @Instant@, @Duration@ and @Interval@ — have one thing in common: they know nothing of calendars or time zones.  They are pure points and lengths on the universal timeline, and every operation on them is exact.
+
+__Instant.__  An @Instant@ is a single moment, the same everywhere.  You will usually get one from the outside world with @now@ (an @IO Instant@), from a @ZonedDateTime@ with @toInstant@, or from a raw count of seconds with @fromSecondsSinceUnixEpoch@.  To read a moment /as/ a date and time you must first choose a zone: @inTimeZone@ turns an @Instant@ into a @ZonedDateTime@.  This is the same rule as everywhere else in the library — there is no calendar view of a moment until you say where you are standing.
+
+__Duration.__  A @Duration@ is the exact gap between two instants, tracked down to the nanosecond.  You build one from a unit — @fromHours@, @fromMinutes@, @fromSeconds@, @fromNanoseconds@ and friends — and shift an instant by it with @add@ and @minus@:
+
+> import Data.HodaTime.Instant (Instant, now, add)
+> import Data.HodaTime.Duration (fromMinutes)
+>
+> ninetyMinutesFromNow :: IO Instant
+> ninetyMinutesFromNow = do
+>   t <- now
+>   return (t `add` fromMinutes 90)
+
+The word /standard/ in @fromStandardDays@ and @fromStandardWeeks@ is a deliberate caution.  A standard day is /exactly/ 24 hours and a standard week /exactly/ seven of them, because a @Duration@ is machine time.  That is not the same thing as "a calendar day": across a daylight-saving change a civil day can run to 23 or 25 hours.  If you mean "the same wall-clock time tomorrow" you are asking a /calendar/ question and should add to a @ZonedDateTime@; if you mean "exactly 24 hours later" you add a @Duration@ to an @Instant@.  Keeping those two apart is, once more, the entire point.
+
+__Interval.__  An @Interval@ is a stretch of the timeline fixed by its two endpoints, built with @interval start end@.  It is /half-open/: @contains@ counts the start instant but not the end, so that adjacent intervals tile the timeline without overlapping.  @duration@ returns its length as a @Duration@, and its @start@ and @end@ are exposed as lenses.
+
+== Cookbook
 
 === USA Holidays
 
