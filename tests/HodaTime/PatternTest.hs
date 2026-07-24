@@ -63,6 +63,14 @@ unitTests = testGroup "Unit tests"
     ,testCase "parse pfrac 3 scales up to nanoseconds"      $ parse (pfrac 3) "123" @?= Just (mkLtn 123000000)
     ,testCase "parse pfrac 9 reads full nanoseconds"        $ parse (pfrac 9) "123456789" @?= Just (mkLtn 123456789)
     ,testCase "format pR is the ISO date"                   $ format pR tuesday @?= "2020-03-03"
+    -- setter-application order independence: <> applies the right operand's setter first, so verify that
+    -- reordering composed fields (independent lenses, and the hour-sharing phh/ppp) yields the same result.
+    ,testCase "date field order is independent"             $ parse (pyyyy <% char '-' <> pMM <% char '-' <> pdd) "2020-03-03" @?= Just tuesday
+    ,testCase "date field order is independent (reversed)"  $ parse (pdd <% char '-' <> pMM <% char '-' <> pyyyy) "03-03-2020" @?= Just tuesday
+    ,testCase "phh before ppp parses PM"                    $ parse (phh <% char ' ' <> ppp) "03 PM" @?= Just (mkLtm 15 0)
+    ,testCase "ppp before phh parses PM (reversed order)"   $ parse (ppp <% char ' ' <> phh) "PM 03" @?= Just (mkLtm 15 0)
+    ,testCase "phh before ppp parses AM at midnight"        $ parse (phh <% char ' ' <> ppp) "12 AM" @?= Just (mkLtm 0 0)
+    ,testCase "ppp before phh parses AM at midnight (rev)"  $ parse (ppp <% char ' ' <> phh) "AM 12" @?= Just (mkLtm 0 0)
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
