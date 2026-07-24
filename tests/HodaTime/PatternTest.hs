@@ -40,7 +40,12 @@ qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
   [
+     testCase "format pddd is the abbreviated weekday name" $ format pddd tuesday @?= "Tue"
+    ,testCase "format pdddd is the full weekday name"       $ format pdddd tuesday @?= "Tuesday"
+    ,testCase "format pD includes the weekday"              $ format pD tuesday @?= "Tuesday, 03 March 2020"
   ]
+  where
+    tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
 
 -- properties
 
