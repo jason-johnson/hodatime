@@ -1,5 +1,5 @@
 {-|
-Module      :  Data.HodaTime.Interval
+Module      :  Data.HodaTime
 Copyright   :  (C) 2017 Jason Johnson
 License     :  BSD-style (see the file LICENSE)
 Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
@@ -61,7 +61,41 @@ favorite lens library or define 3 simple functions (see tests/HodaTime/Util.hs) 
 
 == Core Concepts
 
-<snip - add stuff rest of documentation>
+Almost everything in Hoda Time follows from a single distinction: the difference between /physical time/ and /civil time/.
+
+/Physical time/ is what a stopwatch measures.  It flows at the same rate everywhere, it has no notion of days, months or time zones, and any two observers can agree on it.  A single point on this universal timeline is an @Instant@ (see "Data.HodaTime.Instant"), and the amount of time elapsed between two instants is a @Duration@ (see "Data.HodaTime.Duration").  These are the types to reach for when the question is /"how long did this take?"/ or /"which of these two events happened first?"/ — they cannot mislead you about time zones because they know nothing about them.
+
+/Civil time/ is the human labelling laid on top of that timeline: calendars, wall clocks, "the 23rd of April at nine in the morning".  A label like that is not, on its own, a point on the timeline.  Until you say /where/ it applies it is ambiguous — "9am on the 23rd" happens at different physical instants in Tokyo and in New York.  Hoda Time gives that unanchored label its own type, @CalendarDateTime@ (see "Data.HodaTime.CalendarDateTime"), and deliberately makes it /not/ interchangeable with an @Instant@.  You move between the two worlds on purpose — by supplying the missing information, either a fixed @Offset@ from UTC or a full @TimeZone@ — and never by accident.
+
+This split is the most important idea in the library.  A great many date and time bugs come from treating a wall-clock label as though it were an absolute instant; Hoda Time turns that mistake into a compile error instead of a lurking one.
+
+=== The pieces
+
+Each concept below has its own type and module.  You rarely need all of them at once — start with the one that matches the question you are asking, and follow the links for the detail.
+
+[@Instant@ — "Data.HodaTime.Instant"] A single point on the universal timeline, independent of any calendar or zone.
+
+[@Duration@ — "Data.HodaTime.Duration"] The exact time elapsed between two instants, measured in days, hours, seconds and nanoseconds.  This is /machine/ time — a precise count — as opposed to a calendar-aware amount such as "one month", whose length depends on which month you mean.
+
+[@LocalTime@ — "Data.HodaTime.LocalTime"] A time of day on its own, such as 09:00:00, with no date attached.
+
+[@CalendarDate@ — "Data.HodaTime.CalendarDate"] A date in some calendar, such as 23 April 2024, with no time of day attached.
+
+[@CalendarDateTime@ — "Data.HodaTime.CalendarDateTime"] A date together with a time of day, still /not/ tied to any particular place on the timeline.
+
+[@Offset@ — "Data.HodaTime.Offset"] A fixed displacement from UTC, such as +01:00.
+
+[@OffsetDateTime@ — "Data.HodaTime.OffsetDateTime"] A @CalendarDateTime@ pinned to the timeline by a fixed @Offset@: enough to be unambiguous, but with no knowledge of daylight saving.
+
+[@TimeZone@ — "Data.HodaTime.TimeZone"] The full set of rules for a place, including its history of daylight-saving and offset changes.
+
+[@ZonedDateTime@ — "Data.HodaTime.ZonedDateTime"] A date and time anchored in a real @TimeZone@ — the fully resolved civil time, which therefore also corresponds to a definite @Instant@.
+
+[@Interval@ — "Data.HodaTime.Interval"] The span of physical time between two instants, as a value you can hold and inspect.
+
+[The calendar — "Data.HodaTime.Calendar.Gregorian" and friends] The system of dates itself.  Gregorian is the default, but Julian, Coptic, Persian, Islamic, Hebrew and ISO are all provided; the calendar is carried in the type, so dates from different calendars cannot be silently mixed.
+
+[Patterns — "Data.HodaTime.Pattern"] Parsing text into these types, and formatting them back out again.
 
 == Cookbook
 
