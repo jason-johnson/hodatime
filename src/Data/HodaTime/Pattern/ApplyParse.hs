@@ -13,6 +13,7 @@ where
 
 import Data.HodaTime.LocalTime.Internal (LocalTime(..), localTime)
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), Date, CalendarDateTime(..), at)
+import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Pattern.ParseTypes
 import Control.Monad.Catch (MonadThrow)
 
@@ -32,6 +33,9 @@ instance IsCalendar cal => DefaultForParse (Date cal) where
 
 instance IsCalendar cal => DefaultForParse (CalendarDateTime cal) where
   getDefault = getDefault `at` getDefault
+
+instance DefaultForParse Instant where
+  getDefault = Instant 0 0 0   -- the Instant epoch (1 March 2000); parsing overwrites the fields
 
 
 class ApplyParse a b | b -> a where

@@ -21,6 +21,8 @@ import Data.HodaTime.Pattern
 import Data.HodaTime.Pattern.CalendarDate
 import Data.HodaTime.Pattern.CalendarDateTime
 import Data.HodaTime.Pattern.LocalTime
+import Data.HodaTime.Pattern.Instant
+import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
 
@@ -35,7 +37,7 @@ scProps :: TestTree
 scProps = testGroup "(checked by SmallCheck)" []
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps ]
+qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps, instantProps ]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
@@ -71,6 +73,9 @@ unitTests = testGroup "Unit tests"
     ,testCase "ppp before phh parses PM (reversed order)"   $ parse (ppp <% char ' ' <> phh) "PM 03" @?= Just (mkLtm 15 0)
     ,testCase "phh before ppp parses AM at midnight"        $ parse (phh <% char ' ' <> ppp) "12 AM" @?= Just (mkLtm 0 0)
     ,testCase "ppp before phh parses AM at midnight (rev)"  $ parse (ppp <% char ' ' <> phh) "AM 12" @?= Just (mkLtm 0 0)
+    ,testCase "format pInstant at the Unix epoch"          $ format pInstant (fromSecondsSinceUnixEpoch 0) @?= "1970-01-01T00:00:00Z"
+    ,testCase "parse pInstant at the Unix epoch"           $ parse pInstant "1970-01-01T00:00:00Z" @?= Just (fromSecondsSinceUnixEpoch 0)
+    ,testCase "format pInstantNano at the Unix epoch"      $ format pInstantNano (fromSecondsSinceUnixEpoch 0) @?= "1970-01-01T00:00:00.000000000Z"
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
@@ -113,7 +118,6 @@ calDateProps = testGroup "CalendarDate conversion"
       let cd = fromMaybe (error "impossible") $ G.calendarDate d mon y
       cd' <- run $ parse pat $ format pat cd
       QCM.assert $ cd == cd'
-
 localTimeProps :: TestTree
 localTimeProps = testGroup "LocalTime conversion"
   [
@@ -136,3 +140,16 @@ localTimeProps = testGroup "LocalTime conversion"
       let lt = fromMaybe (error "impossible") $ localTime 0 0 0 ns
       lt' <- run $ parse (pfrac 9) $ format (pfrac 9) lt
       QCM.assert $ lt == lt'
+
+instantProps :: TestTree
+instantProps = testGroup "Instant conversion"
+  [
+     QC.testProperty "format pInstant Instant -> parse pInstant Instant == id" $ testInstantRoundTrip pInstant
+    ,QC.testProperty "format pInstantNano Instant -> parse pInstantNano Instant == id" $ testInstantRoundTrip pInstantNano
+  ]
+  where
+    testInstantRoundTrip pat (NonNegative s0) = monadicIO $ do
+      let s = s0 `mod` 253402300800   -- keep within 4-digit Gregorian years (1970-9999)
+      let inst = fromSecondsSinceUnixEpoch s
+      inst' <- run $ parse pat $ format pat inst
+      QCM.assert $ inst == inst'

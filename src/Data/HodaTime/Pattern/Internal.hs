@@ -13,6 +13,7 @@ module Data.HodaTime.Pattern.Internal
   ,format
   ,(<>)         -- TODO: Remove
   ,(<%)
+  ,dimapP
   ,string
   ,char
   ,pat_lens
@@ -147,3 +148,13 @@ char c = Pattern p_char f_char
   where
     p_char = P.char c
     f_char = now (TLB.singleton c)
+
+-- | Adapt a pattern over @s@ into a pattern over @t@ given a conversion in each direction (an isomorphism as far as the
+--   pattern is concerned).  The parse setter is lifted through the conversion, and the formatter first projects the
+--   @t@ down to an @s@.  This lets a pattern written for one type drive another that is convertible to it — for
+--   example an 'Data.HodaTime.Instant.Instant' formatted through its UTC 'CalendarDateTime' projection.
+dimapP :: (t -> s) -> (s -> t) -> Pattern (s -> s) (s -> String) String -> Pattern (t -> t) (t -> String) String
+dimapP toS fromS (Pattern pS fmtS) = Pattern pT fmtT
+  where
+    pT = (\f -> fromS . f . toS) <$> pS
+    fmtT = later (TLB.fromText . T.pack . formatToString fmtS . toS)
