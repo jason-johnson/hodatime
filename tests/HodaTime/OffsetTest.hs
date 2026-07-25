@@ -7,7 +7,7 @@ where
 import Test.Tasty
 import qualified Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
-import Test.Tasty.HUnit ()
+import Test.Tasty.HUnit
 import HodaTime.Util
 import Data.HodaTime.Offset
 
@@ -20,12 +20,19 @@ scProps :: TestTree
 scProps = testGroup "(checked by SmallCheck)" [mathPropSC]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [secondProps, mathProps, lensProps]
+qcProps = testGroup "(checked by QuickCheck)" [secondProps, mathProps, componentProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
   [
+     testCase "-01:30 -> hours -1"                          $ hours (fromSeconds (-5400 :: Int)) @?= (-1)
+    ,testCase "-01:30 -> minutes -30"                       $ minutes (fromSeconds (-5400 :: Int)) @?= (-30)
+    ,testCase "-00:30 -> (hours,minutes,seconds) == (0,-30,0)" $ triple (fromSeconds (-1800 :: Int)) @?= (0, -30, 0)
+    ,testCase "-01:01:01 -> (-1,-1,-1)"                     $ triple (fromSeconds (-3661 :: Int)) @?= (-1, -1, -1)
+    ,testCase "+02:15 -> (2,15,0)"                          $ triple (fromSeconds (2*3600 + 15*60 :: Int)) @?= (2, 15, 0)
   ]
+  where
+    triple o = (hours o, minutes o, seconds o)
 
 -- properties
 
@@ -56,28 +63,17 @@ mathProps = testGroup "Math"
     ,QC.testProperty "fromMinutes x `minusClamped` fromMinutes y == fromMinutes (x-y)" $ test fromMinutes minusClamped (-)
   ]
 
-lensProps :: TestTree
-lensProps = testGroup "Lens"
+componentProps :: TestTree
+componentProps = testGroup "Components"
   [
-     QC.testProperty "get seconds offset" $ testGet seconds _1
-    ,QC.testProperty "get minutes offset" $ testGet minutes _2
-    ,QC.testProperty "get hours offset" $ testGet hours _3
-    ,QC.testProperty "modify seconds offset" $ testF (modify . (+)) seconds _1 (+) 5
-    ,QC.testProperty "modify minutes offset" $ testF (modify . (+)) minutes _2 (+) 5
-    ,QC.testProperty "modify hours offset" $ testF (modify . (+)) hours _3 (+) 5
-    ,QC.testProperty "set seconds offset" $ testF set seconds _1 const 5
-    ,QC.testProperty "set minutes offset" $ testF set minutes _2 const 5
-    ,QC.testProperty "set hours offset" $ testF set hours _3 const 5
+     QC.testProperty "components reconstruct the offset" $ \(RandomOffset h m s) ->
+        let t = h*3600 + m*60 + s; o = fromSeconds t in hours o * 3600 + minutes o * 60 + seconds o == t
+    ,QC.testProperty "each component carries the offset's sign (or is zero)" $ \(RandomOffset h m s) ->
+        let t = h*3600 + m*60 + s; o = fromSeconds t; ok x = x == 0 || signum x == signum t
+        in ok (hours o) && ok (minutes o) && ok (seconds o)
+    ,QC.testProperty "sub-hour components stay under 60" $ \(RandomOffset h m s) ->
+        let o = fromSeconds (h*3600 + m*60 + s) in abs (minutes o) < 60 && abs (seconds o) < 60
   ]
-  where
-    offset :: Int -> Int -> Int -> Offset   -- Only needed so the compiler can decide which concreate type to use
-    offset s m h = fromSeconds s `addClamped` fromMinutes m `addClamped` fromHours h
-    offsetEq (s, m, h) off = get seconds off == s && get minutes off == m && get hours off == h
-    _1 f (a,b,c) = (\a' -> (a',b,c)) <$> f a
-    _2 f (a,b,c) = (\b' -> (a,b',c)) <$> f b
-    _3 f (a,b,c) = (\c' -> (a,b,c')) <$> f c
-    testGet l l' (RandomOffset h m s) = get l (offset s m h) == get l' (s, m, h)
-    testF f l l' g n (RandomOffset h m s) = h < 18 - n && s < 60 - n && m < 60 - n QC.==> offsetEq (modify (g n) l' (s,m,h)) $ f n l (offset s m h)
 
 -- helper functions
 

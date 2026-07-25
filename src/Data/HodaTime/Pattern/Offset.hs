@@ -23,30 +23,20 @@ type Parser a = Parsec String () a
 
 -- DESIGN NOTE (why this module doesn't build offsets from composable per-field patterns like the others do):
 --
--- The date and time pattern modules build a value up field by field: each field is an independent lens 'set'
--- (year, month, day, hour, ...) and the '<>' combinator composes those setters.  That works because the fields
--- are independent, so any ordering produces the same result.
+-- The date and time pattern modules build a value field by field: each field is an independent lens 'set' and the
+-- '<>' combinator composes those setters.  That works because those fields are independent and are backed by
+-- read/write lenses.
 --
--- An 'Offset' does not decompose that cleanly.  It is a single *signed* count of seconds ('Offset Int'); there is
--- no separate "sign" field, and the sign belongs to the value as a whole rather than to any one component.  The
--- 'hours'/'minutes'/'seconds' component lenses split that total with Haskell's 'div'/'mod', which floor toward
--- negative infinity — so for a negative offset the parts are NOT the human "sign + magnitude" reading:
+-- An 'Offset' offers neither.  Its 'hours'/'minutes'/'seconds' are read-only accessors, not lenses — there is no
+-- coherent 'set' for a single component of a signed quantity (see the note in Data.HodaTime.Offset) — so there is
+-- nothing for the field-composition machinery to drive.  And the value is a single *signed* second count whose sign
+-- belongs to the whole, not to any one component, so the components could not be set independently in any case.
 --
---     -5400 seconds  is  -(1h 30m),  i.e. it should display as "-01:30"
---     but   (-5400) `div` 3600 == -2      (the 'hours'   lens)
---       and (-5400) `mod` 3600 ==  1800   (=> the 'minutes' lens sees 30)
---
---   Reading the components independently would therefore render "-02:30" (wrong), and composing independent
---   per-field setters on a negative offset would build the wrong value entirely — it would also break the
---   order-independence the other patterns rely on, since the sign has to be applied to every component at once.
---
--- So both directions treat the offset as a whole:
---   * format works from 'abs secs' and emits the sign as a separate leading character;
---   * parse reads sign + all components together and multiplies the combined magnitude by the sign, building the
---     'Offset' through 'fromSeconds' (which also clamps to the +/-18h range).
---
--- Consequently the parsed value is fully determined by the text (it does not build on a default), which is why the
--- parser's setter is 'const <$> ...' — and these are exposed only as complete patterns, not composable sub-fields.
+-- So both directions treat the offset as a whole: format works from 'abs secs' and emits the sign as a separate
+-- leading character; parse reads the sign and all components together and multiplies the combined magnitude by the
+-- sign, building the 'Offset' through 'fromSeconds' (which also clamps to the +/-18h range).  The parsed value is
+-- therefore fully determined by the text (it does not build on a default), which is why the parser's setter is
+-- 'const <$> ...' — and these are exposed only as complete patterns, not composable sub-fields.
 
 -- | The ISO-8601 offset pattern, sign followed by @HH:mm@ (e.g. @+02:00@, @-05:30@, @+00:00@ for UTC).
 pOffset :: Pattern (Offset -> Offset) (Offset -> String) String

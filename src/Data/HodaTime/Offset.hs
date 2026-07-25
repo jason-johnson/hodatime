@@ -22,7 +22,9 @@ module Data.HodaTime.Offset
   ,fromSeconds
   ,fromMinutes
   ,fromHours
-  -- * Lenses
+  -- * Accessors
+  --
+  -- | Read-only.  See the note by their definitions for why they are functions rather than lenses.
   ,seconds
   ,minutes
   ,hours
@@ -33,7 +35,8 @@ module Data.HodaTime.Offset
 where
 
 import Data.HodaTime.Offset.Internal
-import Data.HodaTime.Internal (secondsFromMinutes, secondsFromHours, clamp, hoursFromSecs, minutesFromSecs, secondsFromSecs)
+import Data.HodaTime.Internal (secondsFromMinutes, secondsFromHours, clamp)
+import Data.HodaTime.Constants (secondsPerHour, secondsPerMinute)
 
 -- Offset specific constants
 
@@ -54,17 +57,26 @@ fromMinutes = Offset . secondsFromMinutes . clamp minOffsetMinutes maxOffsetMinu
 fromHours :: Integral a => a -> Offset
 fromHours = Offset . secondsFromHours . clamp minOffsetHours maxOffsetHours
 
--- | Lens for the seconds component of the 'Offset'
-seconds :: Functor f => (Int -> f Int) -> Offset -> f Offset
-seconds f (Offset secs) = secondsFromSecs fromSeconds f secs
-{-# INLINE seconds #-}
+-- Accessors
+--
+-- NOTE: these are read-only functions, NOT lenses.  In this library a lens is for modification, and there is no
+-- coherent way to 'set' a single component of a signed quantity: a positive @minutes@ on a negative 'Offset' (or
+-- vice versa) has no sensible meaning, and any "set one component" would have to borrow from / flip the sign of the
+-- others.  An 'Offset' is therefore only ever built or adjusted as a whole, via 'fromSeconds' \/ 'fromMinutes' \/
+-- 'fromHours' \/ 'addClamped'.  Display, likewise, is the job of Data.HodaTime.Pattern, not of these accessors.
+--
+-- The components are sign-consistent: each one carries the offset's sign (using truncate-toward-zero 'quot'\/'rem',
+-- not the floor 'div'\/'mod'), so e.g. a -01:30 offset gives hours -1 and minutes -30, and in general
+-- hours o * 3600 + minutes o * 60 + seconds o == the offset's total seconds.
 
--- | Lens for the minutes component of the 'Offset'
-minutes :: Functor f => (Int -> f Int) -> Offset -> f Offset
-minutes f (Offset secs) = minutesFromSecs fromSeconds f secs
-{-# INLINE minutes #-}
+-- | The seconds component of the 'Offset' (carries the sign; e.g. @-1@ for a @-00:00:01@ offset).
+seconds :: Offset -> Int
+seconds (Offset secs) = secs `rem` secondsPerMinute
 
--- | Lens for the hours component of the 'Offset'
-hours :: Functor f => (Int -> f Int) -> Offset -> f Offset
-hours f (Offset secs) = hoursFromSecs fromSeconds f secs
-{-# INLINE hours #-}
+-- | The minutes component of the 'Offset' (carries the sign; e.g. @-30@ for a @-01:30@ offset).
+minutes :: Offset -> Int
+minutes (Offset secs) = secs `rem` secondsPerHour `quot` secondsPerMinute
+
+-- | The hours component of the 'Offset' (carries the sign; e.g. @-1@ for a @-01:30@ offset).
+hours :: Offset -> Int
+hours (Offset secs) = secs `quot` secondsPerHour
