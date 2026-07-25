@@ -25,10 +25,10 @@ import Data.HodaTime.Pattern.Instant
 import Data.HodaTime.Pattern.Offset
 import Data.HodaTime.Pattern.OffsetDateTime
 import Data.HodaTime.Pattern.Duration
-import Data.HodaTime.Pattern.ZonedDateTime (pZonedDateTime)
+import Data.HodaTime.Pattern.ZonedDateTime (pZonedDateTime, pZonedDateTimeInfo, parseZonedDateTime, ZonedDateTimeInfo(..))
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (utc)
-import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromInstant)
+import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromInstant, fromCalendarDateTimeStrictly)
 import Data.HodaTime.Offset (Offset, fromHours, fromMinutes, fromSeconds, empty)
 import Data.HodaTime.OffsetDateTime (fromCalendarDateTimeWithOffset)
 import qualified Data.HodaTime.Duration as Dur (fromStandardDays, fromSeconds, fromNanoseconds, add)
@@ -102,6 +102,16 @@ unitTests = testGroup "Unit tests"
         tz <- utc
         let zdt = fromInstant (fromSecondsSinceUnixEpoch 0) tz :: ZonedDateTime G.Gregorian
         format pZonedDateTime zdt @?= "1970-01-01T00:00:00 UTC"
+    ,testCase "parse pZonedDateTimeInfo pulls out the structure" $ do
+        let info = parse pZonedDateTimeInfo "2024-04-23T09:00:00 Europe/Zurich" :: Maybe (ZonedDateTimeInfo G.Gregorian)
+        fmap zdtZoneId info @?= Just "Europe/Zurich"
+        fmap (format ps . zdtLocal) info @?= Just "2024-04-23T09:00:00"
+    ,testCase "parseZonedDateTime resolves and round-trips" $ do
+        tz <- utc
+        let zdt0 = fromInstant (fromSecondsSinceUnixEpoch 0) tz :: ZonedDateTime G.Gregorian
+            txt = format pZonedDateTime zdt0
+        zdt1 <- parseZonedDateTime (const (pure tz)) fromCalendarDateTimeStrictly txt :: IO (ZonedDateTime G.Gregorian)
+        format pZonedDateTime zdt1 @?= txt
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
