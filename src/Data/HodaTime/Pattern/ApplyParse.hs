@@ -14,6 +14,7 @@ where
 import Data.HodaTime.LocalTime.Internal (LocalTime(..), localTime)
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), Date, CalendarDateTime(..), at)
 import Data.HodaTime.Instant.Internal (Instant(..))
+import Data.HodaTime.Offset.Internal (Offset, empty)
 import Data.HodaTime.Pattern.ParseTypes
 import Control.Monad.Catch (MonadThrow)
 
@@ -36,6 +37,9 @@ instance IsCalendar cal => DefaultForParse (CalendarDateTime cal) where
 
 instance DefaultForParse Instant where
   getDefault = Instant 0 0 0   -- the Instant epoch (1 March 2000); parsing overwrites the fields
+
+instance DefaultForParse Offset where
+  getDefault = empty           -- UTC; a full offset pattern replaces this outright
 
 
 class ApplyParse a b | b -> a where

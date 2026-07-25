@@ -22,7 +22,9 @@ import Data.HodaTime.Pattern.CalendarDate
 import Data.HodaTime.Pattern.CalendarDateTime
 import Data.HodaTime.Pattern.LocalTime
 import Data.HodaTime.Pattern.Instant
+import Data.HodaTime.Pattern.Offset
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
+import Data.HodaTime.Offset (Offset, fromHours, fromMinutes, fromSeconds, empty)
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
 
@@ -37,7 +39,7 @@ scProps :: TestTree
 scProps = testGroup "(checked by SmallCheck)" []
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps, instantProps ]
+qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps, instantProps, offsetProps ]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
@@ -76,6 +78,12 @@ unitTests = testGroup "Unit tests"
     ,testCase "format pInstant at the Unix epoch"          $ format pInstant (fromSecondsSinceUnixEpoch 0) @?= "1970-01-01T00:00:00Z"
     ,testCase "parse pInstant at the Unix epoch"           $ parse pInstant "1970-01-01T00:00:00Z" @?= Just (fromSecondsSinceUnixEpoch 0)
     ,testCase "format pInstantNano at the Unix epoch"      $ format pInstantNano (fromSecondsSinceUnixEpoch 0) @?= "1970-01-01T00:00:00.000000000Z"
+    ,testCase "format pOffset +02:00"                      $ format pOffset (fromHours 2) @?= "+02:00"
+    ,testCase "format pOffset -05:30"                      $ format pOffset (fromMinutes (-330)) @?= "-05:30"
+    ,testCase "format pOffset UTC is +00:00"               $ format pOffset empty @?= "+00:00"
+    ,testCase "format pOffsetFull -05:30:45"               $ format pOffsetFull (fromSeconds (-19845 :: Int)) @?= "-05:30:45"
+    ,testCase "parse pOffset +02:00"                       $ parse pOffset "+02:00" @?= Just (fromHours 2)
+    ,testCase "parse pOffset -05:30"                       $ parse pOffset "-05:30" @?= Just (fromMinutes (-330))
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
@@ -153,3 +161,15 @@ instantProps = testGroup "Instant conversion"
       let inst = fromSecondsSinceUnixEpoch s
       inst' <- run $ parse pat $ format pat inst
       QCM.assert $ inst == inst'
+
+offsetProps :: TestTree
+offsetProps = testGroup "Offset conversion"
+  [
+     QC.testProperty "format pOffset Offset -> parse pOffset == id (whole minutes)" $ testOffsetRoundTrip pOffset (fromMinutes :: Int -> Offset)
+    ,QC.testProperty "format pOffsetFull Offset -> parse pOffsetFull == id" $ testOffsetRoundTrip pOffsetFull (fromSeconds :: Int -> Offset)
+  ]
+  where
+    testOffsetRoundTrip pat mk n = monadicIO $ do
+      let o = mk n
+      o' <- run $ parse pat $ format pat o
+      QCM.assert $ o == o'
