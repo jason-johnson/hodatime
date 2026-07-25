@@ -9,30 +9,22 @@
 --
 -- Patterns for 'ZonedDateTime'.
 --
--- === Formatting, and the two-step parse
+-- === Formatting, and effectful parsing
 --
--- Formatting is direct: 'pZonedDateTime' renders a 'ZonedDateTime' as its local date\/time plus the zone id.
+-- Formatting is direct: @pZonedDateTime@ renders a 'ZonedDateTime' as its local date\/time plus the zone id.
 --
--- Parsing is split in two, because building a 'ZonedDateTime' is effectful — it has to load the time-zone rules for
--- the parsed zone id and then /resolve/ the local time (which may be skipped or ambiguous), neither of which fits the
--- pure 'Data.HodaTime.Pattern.parse'.  So 'pZonedDateTimeInfo' parses (purely) into a 'ZonedDateTimeInfo' — the local
--- 'CalendarDateTime' plus the zone id — and 'resolveZonedDateTime' takes that structure together with a zone
--- /provider/ and a /resolver/ and produces the 'ZonedDateTime'.  'parseZonedDateTime' bundles the two.  Note that
--- 'pZonedDateTime' itself (which formats a fully-built 'ZonedDateTime') cannot be parsed directly — use
--- 'pZonedDateTimeInfo'.
+-- Parsing cannot use the pure @parse@, because building a 'ZonedDateTime' is effectful: it has to load the time-zone
+-- rules for the parsed zone id and then /resolve/ the local time (which may be skipped or ambiguous).  Use
+-- @parseZonedDateTime@ instead — you supply a zone /provider/ (e.g. @timeZone@ in 'IO', or a pure lookup) and a
+-- /resolver/ (e.g. @fromCalendarDateTimeStrictly@).  Calling @parse@ on @pZonedDateTime@ is a type error by design;
+-- @parseZonedDateTime@ is the only way to parse one.
 ----------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE UndecidableInstances #-}
 module Data.HodaTime.Pattern.ZonedDateTime
 (
-  -- * Types
-   ZonedDateTimeInfo(..)
   -- * Standard Patterns
-  ,pZonedDateTime
-  ,pZonedDateTimeInfo
-  -- * Parsing (effectful resolution)
-  ,resolveZonedDateTime
+   pZonedDateTime
+  -- * Parsing
   ,parseZonedDateTime
   -- * Custom Patterns
   --
@@ -45,7 +37,7 @@ import Data.HodaTime.Pattern.Internal (Pattern(..), DefaultForParse(..), parse, 
 import Data.HodaTime.Pattern.CalendarDateTime (ps)
 import Data.HodaTime.ZonedDateTime (ZonedDateTime, toCalendarDateTime, zoneId)
 import Data.HodaTime.CalendarDateTime (CalendarDateTime)
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, Date)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar)
 import Data.HodaTime.TimeZone (TimeZone)
 import Control.Monad.Catch (MonadThrow)
 import Formatting (later)
@@ -65,7 +57,7 @@ zonedDateTimePattern
   -> Pattern (ZonedDateTime cal -> ZonedDateTime cal) (ZonedDateTime cal -> String) String
 zonedDateTimePattern cdtPat renderZone = Pattern par fmt
   where
-    par = parserFail "ZonedDateTime cannot be parsed directly; parse into a ZonedDateTimeInfo with pZonedDateTimeInfo, then use resolveZonedDateTime / parseZonedDateTime"
+    par = parserFail "ZonedDateTime cannot be parsed with parse; use parseZonedDateTime (it is effectful -- it loads the zone and resolves the local time)"
     fmt = later (\zdt -> TLB.fromText . T.pack $ format cdtPat (toCalendarDateTime zdt) ++ renderZone zdt)
 
 -- | The ISO-8601 local date\/time followed by a space and the (unambiguous) IANA zone id, e.g.
@@ -73,23 +65,18 @@ zonedDateTimePattern cdtPat renderZone = Pattern par fmt
 pZonedDateTime :: IsCalendar cal => Pattern (ZonedDateTime cal -> ZonedDateTime cal) (ZonedDateTime cal -> String) String
 pZonedDateTime = zonedDateTimePattern ps (\zdt -> " " ++ zoneId zdt)
 
--- | The pure result of parsing a zoned date\/time: the local (wall-clock) 'CalendarDateTime' together with the zone
---   identifier text.  Turning it into a 'ZonedDateTime' is effectful (loading the zone, resolving skipped\/ambiguous
---   local times), so that step is 'resolveZonedDateTime'.
+-- The pure result of parsing a zoned date/time: the local (wall-clock) CalendarDateTime together with the zone id.
+-- Internal: users never see this; parseZonedDateTime turns text straight into a ZonedDateTime.
 data ZonedDateTimeInfo cal = ZonedDateTimeInfo
-  { zdtLocal  :: CalendarDateTime cal   -- ^ the parsed local (wall-clock) date and time
-  , zdtZoneId :: String                 -- ^ the parsed zone identifier, e.g. @Europe\/Zurich@
+  { zdtLocal  :: CalendarDateTime cal
+  , zdtZoneId :: String
   }
-
-deriving instance Eq (Date cal) => Eq (ZonedDateTimeInfo cal)
-deriving instance Show (Date cal) => Show (ZonedDateTimeInfo cal)
 
 instance IsCalendar cal => DefaultForParse (ZonedDateTimeInfo cal) where
   getDefault = ZonedDateTimeInfo getDefault ""
 
--- | Parse a zoned date\/time /purely/ into a 'ZonedDateTimeInfo' (local date\/time + zone id).  Use
---   'resolveZonedDateTime' (or 'parseZonedDateTime') to turn it into a 'ZonedDateTime'.  Its formatting matches
---   'pZonedDateTime'.
+-- Parse (purely) into a ZonedDateTimeInfo.  Internal building block for parseZonedDateTime; its formatting matches
+-- pZonedDateTime.
 pZonedDateTimeInfo :: IsCalendar cal => Pattern (ZonedDateTimeInfo cal -> ZonedDateTimeInfo cal) (ZonedDateTimeInfo cal -> String) String
 pZonedDateTimeInfo = Pattern par fmt
   where
@@ -99,21 +86,21 @@ pZonedDateTimeInfo = Pattern par fmt
     par = build <$> _patParse localPat <*> zoneToken
     fmt = later (\info -> TLB.fromText . T.pack $ format localPat (zdtLocal info) ++ zdtZoneId info)
 
--- | Turn a parsed 'ZonedDateTimeInfo' into a 'ZonedDateTime'.  The /provider/ loads the time zone for the parsed id
---   (e.g. 'Data.HodaTime.TimeZone.timeZone' in 'IO', or a pure lookup in a preloaded map), and the /resolver/ decides
---   what to do with that local time in that zone (e.g. 'Data.HodaTime.ZonedDateTime.fromCalendarDateTimeStrictly' or
---   @...Leniently@, or a custom policy) — including the skipped\/ambiguous cases.
+-- Turn a parsed ZonedDateTimeInfo into a ZonedDateTime.  Internal building block for parseZonedDateTime.
 resolveZonedDateTime
   :: Monad m
-  => (String -> m TimeZone)                                        -- ^ zone provider
-  -> (CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal))   -- ^ resolver policy
+  => (String -> m TimeZone)
+  -> (CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal))
   -> ZonedDateTimeInfo cal
   -> m (ZonedDateTime cal)
 resolveZonedDateTime provider resolve info = do
   tz <- provider (zdtZoneId info)
   resolve (zdtLocal info) tz
 
--- | Parse and resolve in one step: @'parse' 'pZonedDateTimeInfo'@ followed by 'resolveZonedDateTime'.
+-- | Parse a zoned date\/time and resolve it to a 'ZonedDateTime'.  You supply a zone /provider/ (which loads the
+--   'TimeZone' for the parsed id — @timeZone@ in 'IO', or a pure lookup) and a /resolver/ (which turns the local time
+--   into a 'ZonedDateTime', deciding the skipped\/ambiguous cases — e.g. @fromCalendarDateTimeStrictly@).  This is the
+--   only way to parse a 'ZonedDateTime'; the pure @parse@ cannot (it is a type error on 'pZonedDateTime').
 parseZonedDateTime
   :: (MonadThrow m, IsCalendar cal)
   => (String -> m TimeZone)
