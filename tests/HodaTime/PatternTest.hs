@@ -23,8 +23,10 @@ import Data.HodaTime.Pattern.CalendarDateTime
 import Data.HodaTime.Pattern.LocalTime
 import Data.HodaTime.Pattern.Instant
 import Data.HodaTime.Pattern.Offset
+import Data.HodaTime.Pattern.OffsetDateTime
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.Offset (Offset, fromHours, fromMinutes, fromSeconds, empty)
+import Data.HodaTime.OffsetDateTime (fromCalendarDateTimeWithOffset)
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
 
@@ -39,7 +41,7 @@ scProps :: TestTree
 scProps = testGroup "(checked by SmallCheck)" []
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps, instantProps, offsetProps ]
+qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps, instantProps, offsetProps, offsetDateTimeProps ]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
@@ -84,6 +86,9 @@ unitTests = testGroup "Unit tests"
     ,testCase "format pOffsetFull -05:30:45"               $ format pOffsetFull (fromSeconds (-19845 :: Int)) @?= "-05:30:45"
     ,testCase "parse pOffset +02:00"                       $ parse pOffset "+02:00" @?= Just (fromHours 2)
     ,testCase "parse pOffset -05:30"                       $ parse pOffset "-05:30" @?= Just (fromMinutes (-330))
+    ,testCase "format pOffsetDateTime +02:00"              $ format pOffsetDateTime odtPos @?= "2024-04-23T09:00:00+02:00"
+    ,testCase "parse pOffsetDateTime +02:00"               $ parse pOffsetDateTime "2024-04-23T09:00:00+02:00" @?= Just odtPos
+    ,testCase "format pOffsetDateTime -05:30"              $ format pOffsetDateTime odtNeg @?= "2024-04-23T09:00:00-05:30"
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
@@ -91,6 +96,9 @@ unitTests = testGroup "Unit tests"
     mkLt h = mkLtm h 0
     mkLtm h m = fromMaybe (error "impossible") (localTime h m 0 0)
     mkLtn ns = fromMaybe (error "impossible") (localTime 0 0 0 ns)
+    apr23_0900 = fromMaybe (error "impossible") $ at <$> G.calendarDate 23 G.April 2024 <*> localTime 9 0 0 0
+    odtPos = fromCalendarDateTimeWithOffset apr23_0900 (fromHours 2)
+    odtNeg = fromCalendarDateTimeWithOffset apr23_0900 (fromMinutes (-330))
 
 -- properties
 
@@ -173,3 +181,16 @@ offsetProps = testGroup "Offset conversion"
       let o = mk n
       o' <- run $ parse pat $ format pat o
       QCM.assert $ o == o'
+
+offsetDateTimeProps :: TestTree
+offsetDateTimeProps = testGroup "OffsetDateTime conversion"
+  [
+     QC.testProperty "format pOffsetDateTime -> parse pOffsetDateTime == id" testOdtRoundTrip
+  ]
+  where
+    testOdtRoundTrip (RandomStandardDate y mon d) (RandomTime h m s) (RandomOffset oh om _) = monadicIO $ do
+      let cdt = fromMaybe (error "impossible") $ at <$> G.calendarDate d mon y <*> localTime h m s 0
+          off = fromMinutes (oh * 60 + om)
+          odt = fromCalendarDateTimeWithOffset cdt off
+      odt' <- run $ parse pOffsetDateTime $ format pOffsetDateTime odt
+      QCM.assert $ odt == odt'

@@ -14,6 +14,7 @@ module Data.HodaTime.Pattern.Internal
   ,(<>)         -- TODO: Remove
   ,(<%)
   ,dimapP
+  ,pairP
   ,string
   ,char
   ,pat_lens
@@ -158,3 +159,18 @@ dimapP toS fromS (Pattern pS fmtS) = Pattern pT fmtT
   where
     pT = (\f -> fromS . f . toS) <$> pS
     fmtT = later (TLB.fromText . T.pack . formatToString fmtS . toS)
+
+-- | Combine two patterns over independent parts (@a@ and @b@) of a whole @w@: the formatter concatenates their output
+--   (the @a@ part then the @b@ part) and the parser runs both in that order and rebuilds the whole with the supplied
+--   function.  Because @a@ and @b@ together fully determine @w@, the parsed setter is a 'const' (it does not build on
+--   a default), so this produces whole values — e.g. an 'Data.HodaTime.OffsetDateTime.OffsetDateTime' from a
+--   date\/time pattern and an offset pattern — rather than composable sub-fields.
+pairP :: (DefaultForParse a, DefaultForParse b)
+      => (w -> a) -> (w -> b) -> (a -> b -> w)
+      -> Pattern (a -> a) (a -> String) String
+      -> Pattern (b -> b) (b -> String) String
+      -> Pattern (w -> w) (w -> String) String
+pairP getA getB build (Pattern pa fa) (Pattern pb fb) = Pattern par fmt
+  where
+    par = (\sa sb -> const (build (sa getDefault) (sb getDefault))) <$> pa <*> pb
+    fmt = later (\w -> TLB.fromText . T.pack $ formatToString fa (getA w) ++ formatToString fb (getB w))
