@@ -8,6 +8,18 @@
 -- Portability :  TBD
 --
 -- A 'Duration' is fixed period of time between global times.
+--
+-- === Cookbook
+--
+-- ==== Ninety minutes from now
+--
+-- > import Data.HodaTime.Instant (Instant, now, add)
+-- > import Data.HodaTime.Duration (fromMinutes)
+-- >
+-- > ninetyMinutesFromNow :: IO Instant
+-- > ninetyMinutesFromNow = do
+-- >   t <- now
+-- >   return (t `add` fromMinutes 90)
 ----------------------------------------------------------------------------
 module Data.HodaTime.Duration
 (

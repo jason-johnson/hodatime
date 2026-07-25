@@ -12,6 +12,48 @@
 -- === Construction
 --
 -- To construct one of these types, see the Calendar module you wish to construct the date in (typically "Data.HodaTime.Calendar.Gregorian")
+--
+-- === Cookbook
+--
+-- ==== Building and inspecting a date
+--
+-- > import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
+-- > import Data.HodaTime.CalendarDate (dayOfWeek)
+-- >
+-- > valentines = calendarDate 14 February 2024     -- Just \<14 February 2024\>
+-- > notADate   = calendarDate 30 February 2024     -- Nothing
+-- >
+-- > -- read-only components are just functions
+-- > valentinesDoW = dayOfWeek \<$\> valentines        -- Just Wednesday
+--
+-- ==== Re-expressing a date in another calendar
+--
+-- > import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
+-- > import qualified Data.HodaTime.Calendar.Julian as Julian
+-- > import Data.HodaTime.CalendarDate (withCalendar, CalendarDate)
+-- >
+-- > -- the Gregorian Christmas, re-expressed as the Julian (\"Old Calendar\") date still used liturgically
+-- > julianChristmas :: Maybe (CalendarDate Julian.Julian)
+-- > julianChristmas = withCalendar \<$\> calendarDate 25 December 2024
+-- > -- the same day, which the Julian calendar labels 12 December 2024 (it runs thirteen days behind today)
+--
+-- ==== USA holidays for a given year
+--
+-- > import Data.Maybe (catMaybes)
+-- > import Data.HodaTime.CalendarDate (DayNth(..))
+-- > import Data.HodaTime.Calendar.Gregorian (calendarDate, fromNthDay, Month(..), DayOfWeek(..))
+-- >
+-- > usaHolidays y = catMaybes $ (\$ y) \<$\>
+-- >   [
+-- >      calendarDate 1 January               -- New Year
+-- >     ,calendarDate 4 July                  -- Independence Day
+-- >     ,calendarDate 25 December             -- Christmas
+-- >     ,fromNthDay First Monday September    -- Labor day
+-- >     ,fromNthDay Third Monday January      -- MLK day
+-- >     ,fromNthDay Second Tuesday February   -- Presidents day
+-- >     ,fromNthDay Fourth Thursday November  -- Thanksgiving
+-- >     ,calendarDate 29 February             -- Leap day (not a real holiday, but shows a date that may not exist)
+-- >   ]
 ----------------------------------------------------------------------------
 module Data.HodaTime.CalendarDate
 (
