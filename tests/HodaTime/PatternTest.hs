@@ -24,9 +24,11 @@ import Data.HodaTime.Pattern.LocalTime
 import Data.HodaTime.Pattern.Instant
 import Data.HodaTime.Pattern.Offset
 import Data.HodaTime.Pattern.OffsetDateTime
+import Data.HodaTime.Pattern.Duration
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.Offset (Offset, fromHours, fromMinutes, fromSeconds, empty)
 import Data.HodaTime.OffsetDateTime (fromCalendarDateTimeWithOffset)
+import qualified Data.HodaTime.Duration as Dur (fromStandardDays, fromSeconds, fromNanoseconds, add)
 import Control.Applicative (Const(..))
 import Data.Functor.Identity (Identity(..))
 
@@ -41,7 +43,7 @@ scProps :: TestTree
 scProps = testGroup "(checked by SmallCheck)" []
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps, instantProps, offsetProps, offsetDateTimeProps ]
+qcProps = testGroup "(checked by QuickCheck)" [ calDateTimeProps, calDateProps, localTimeProps, instantProps, offsetProps, offsetDateTimeProps, durationProps ]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
@@ -89,6 +91,10 @@ unitTests = testGroup "Unit tests"
     ,testCase "format pOffsetDateTime +02:00"              $ format pOffsetDateTime odtPos @?= "2024-04-23T09:00:00+02:00"
     ,testCase "parse pOffsetDateTime +02:00"               $ parse pOffsetDateTime "2024-04-23T09:00:00+02:00" @?= Just odtPos
     ,testCase "format pOffsetDateTime -05:30"              $ format pOffsetDateTime odtNeg @?= "2024-04-23T09:00:00-05:30"
+    ,testCase "format pDuration 1 day 30s"                 $ format pDuration dur1d30 @?= "1:00:00:30"
+    ,testCase "format pDuration -30s"                      $ format pDuration (Dur.fromSeconds (-30)) @?= "-0:00:00:30"
+    ,testCase "parse pDuration 1:00:00:30"                 $ parse pDuration "1:00:00:30" @?= Just dur1d30
+    ,testCase "format pDurationNano fraction"              $ format pDurationNano (Dur.fromNanoseconds 123456789) @?= "0:00:00:00.123456789"
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
@@ -99,6 +105,7 @@ unitTests = testGroup "Unit tests"
     apr23_0900 = fromMaybe (error "impossible") $ at <$> G.calendarDate 23 G.April 2024 <*> localTime 9 0 0 0
     odtPos = fromCalendarDateTimeWithOffset apr23_0900 (fromHours 2)
     odtNeg = fromCalendarDateTimeWithOffset apr23_0900 (fromMinutes (-330))
+    dur1d30 = Dur.fromStandardDays 1 `Dur.add` Dur.fromSeconds 30
 
 -- properties
 
@@ -194,3 +201,15 @@ offsetDateTimeProps = testGroup "OffsetDateTime conversion"
           odt = fromCalendarDateTimeWithOffset cdt off
       odt' <- run $ parse pOffsetDateTime $ format pOffsetDateTime odt
       QCM.assert $ odt == odt'
+
+durationProps :: TestTree
+durationProps = testGroup "Duration conversion"
+  [
+     QC.testProperty "format pDuration -> parse pDuration == id" $ testDurRoundTrip pDuration Dur.fromSeconds 100000000000
+    ,QC.testProperty "format pDurationNano -> parse pDurationNano == id" $ testDurRoundTrip pDurationNano Dur.fromNanoseconds 1000000000000000
+  ]
+  where
+    testDurRoundTrip pat mk bound n = monadicIO $ do
+      let dur = mk (n `rem` bound)   -- rem keeps the sign of n, so negative durations are exercised too
+      dur' <- run $ parse pat $ format pat dur
+      QCM.assert $ dur == dur'
