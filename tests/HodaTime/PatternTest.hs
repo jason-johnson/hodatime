@@ -25,7 +25,10 @@ import Data.HodaTime.Pattern.Instant
 import Data.HodaTime.Pattern.Offset
 import Data.HodaTime.Pattern.OffsetDateTime
 import Data.HodaTime.Pattern.Duration
+import Data.HodaTime.Pattern.ZonedDateTime (pZonedDateTime)
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
+import Data.HodaTime.TimeZone (utc)
+import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromInstant)
 import Data.HodaTime.Offset (Offset, fromHours, fromMinutes, fromSeconds, empty)
 import Data.HodaTime.OffsetDateTime (fromCalendarDateTimeWithOffset)
 import qualified Data.HodaTime.Duration as Dur (fromStandardDays, fromSeconds, fromNanoseconds, add)
@@ -95,6 +98,10 @@ unitTests = testGroup "Unit tests"
     ,testCase "format pDuration -30s"                      $ format pDuration (Dur.fromSeconds (-30)) @?= "-0:00:00:30"
     ,testCase "parse pDuration 1:00:00:30"                 $ parse pDuration "1:00:00:30" @?= Just dur1d30
     ,testCase "format pDurationNano fraction"              $ format pDurationNano (Dur.fromNanoseconds 123456789) @?= "0:00:00:00.123456789"
+    ,testCase "format pZonedDateTime at the UTC epoch"     $ do
+        tz <- utc
+        let zdt = fromInstant (fromSecondsSinceUnixEpoch 0) tz :: ZonedDateTime G.Gregorian
+        format pZonedDateTime zdt @?= "1970-01-01T00:00:00 UTC"
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020

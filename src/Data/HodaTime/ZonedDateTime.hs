@@ -28,6 +28,7 @@ module Data.HodaTime.ZonedDateTime
   -- * Accessors
   ,inDst
   ,zoneAbbreviation
+  ,zoneId
   ,year
   ,month
   ,day
@@ -49,7 +50,7 @@ import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDa
 import Data.HodaTime.Instant.Internal (Instant)
 import qualified Data.HodaTime.LocalTime.Internal as LT(second)
 import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
-import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
+import Data.HodaTime.TimeZone.Internal (TimeZone, TZIdentifier(..), zoneName, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Data.Typeable (Typeable)
@@ -156,3 +157,10 @@ inDst (ZonedDateTime _ _ (TransitionInfo _ isInDst _)) = isInDst
 -- | Return a 'String' representing the abbreviation for the TimeZone this 'ZonedDateTime' is currently in.
 zoneAbbreviation :: ZonedDateTime cal -> String
 zoneAbbreviation (ZonedDateTime _ _ (TransitionInfo _ _ abbr)) = abbr
+
+-- | Return the identifier of this 'ZonedDateTime's time zone, e.g. @Europe/Zurich@ (or @UTC@).  Unlike
+--   'zoneAbbreviation' this is unambiguous, so it is the form to use when a value needs to round-trip through text.
+zoneId :: ZonedDateTime cal -> String
+zoneId (ZonedDateTime _ tz _) = case zoneName tz of
+  UTC -> "UTC"
+  Zone n -> n
