@@ -12,6 +12,36 @@
 -- === Clamping
 --
 -- An offset must be between 18 hours and -18 hours (inclusive).  If you go outside this range the functions will clamp to the nearest value.
+--
+-- === Technical discussion: why the components are read-only functions, not lenses
+--
+-- 'hours', 'minutes' and 'seconds' are plain functions, not lenses.  In this library a lens exists to /modify/ a
+-- value, and there is no honest way to modify a single component of an 'Offset' in isolation, because an 'Offset' is
+-- a single /signed/ count of seconds: the sign belongs to the whole value, not to any one component.
+--
+-- The subtle part is that /additive/ modification would actually work.  Under an increment the component's current
+-- value cancels out, so @over minutes (+45)@ reduces to adding 45 minutes to the whole offset — it turns @-01:30@
+-- into @-00:45@, exactly as you would hope.  But that also makes it /identical/ to @'addClamped' o ('fromMinutes'
+-- 45)@: as a lens it would buy nothing over the arithmetic that is already here.
+--
+-- What a lens /would/ add over those functions is precisely the part that is not well defined for a signed value:
+--
+--   * Reading a component in isolation (@view minutes@ of @-01:30@): is the minutes part @30@ or @-30@?  We answer
+--     that for reads by making the accessors /sign-consistent/ — each component carries the offset's sign, so
+--     @-01:30@ gives @-1@ hours and @-30@ minutes and @hours*3600 + minutes*60 + seconds@ always reconstructs the
+--     total.  That is a getter, hence a function.
+--   * An /absolute/ set (@set minutes 45@) or a non-additive change (@over minutes (*2)@): here the old value does
+--     /not/ cancel, and the minutes slot of a negative offset has no canonical meaning, so there is no honest
+--     implementation to offer.
+--
+-- We also considered a single lens over the whole value (its total seconds).  It is coherent, but redundant: an
+-- 'Offset' is already just a signed scalar, so 'fromSeconds', 'fromMinutes' and 'fromHours' construct one and
+-- 'addClamped' \/ 'minusClamped' do the arithmetic; modifying an 'Offset' embedded in a larger structure is done by
+-- using those inside that structure's own modify, so a value lens would not compose any better.  It would only save
+-- constructing a throwaway 'Offset' for a bit of math — not enough to justify a second way to do the same thing.
+--
+-- So: read a component with the functions here; build or adjust an 'Offset' as a whole with the constructors and
+-- 'addClamped' \/ 'minusClamped'.  (Display is the job of "Data.HodaTime.Pattern", not of these accessors.)
 ----------------------------------------------------------------------------
 module Data.HodaTime.Offset
 (
@@ -24,7 +54,7 @@ module Data.HodaTime.Offset
   ,fromHours
   -- * Accessors
   --
-  -- | Read-only.  See the note by their definitions for why they are functions rather than lenses.
+  -- | Read-only functions (not lenses); see the /Technical discussion/ in the module header for why.
   ,seconds
   ,minutes
   ,hours
@@ -57,17 +87,11 @@ fromMinutes = Offset . secondsFromMinutes . clamp minOffsetMinutes maxOffsetMinu
 fromHours :: Integral a => a -> Offset
 fromHours = Offset . secondsFromHours . clamp minOffsetHours maxOffsetHours
 
--- Accessors
---
--- NOTE: these are read-only functions, NOT lenses.  In this library a lens is for modification, and there is no
--- coherent way to 'set' a single component of a signed quantity: a positive @minutes@ on a negative 'Offset' (or
--- vice versa) has no sensible meaning, and any "set one component" would have to borrow from / flip the sign of the
--- others.  An 'Offset' is therefore only ever built or adjusted as a whole, via 'fromSeconds' \/ 'fromMinutes' \/
--- 'fromHours' \/ 'addClamped'.  Display, likewise, is the job of Data.HodaTime.Pattern, not of these accessors.
---
--- The components are sign-consistent: each one carries the offset's sign (using truncate-toward-zero 'quot'\/'rem',
--- not the floor 'div'\/'mod'), so e.g. a -01:30 offset gives hours -1 and minutes -30, and in general
--- hours o * 3600 + minutes o * 60 + seconds o == the offset's total seconds.
+-- Accessors (read-only functions, not lenses; see the Technical discussion in the module header for the full
+-- rationale).  Implementation note: these are sign-consistent -- each component carries the offset's sign, computed
+-- with truncate-toward-zero `quot`/`rem`, NOT the floor `div`/`mod` used by the shared LocalTime helper (which is
+-- correct there because a LocalTime's seconds are never negative, but would give the wrong split for a negative
+-- offset, e.g. -01:30 -> hours -2, minutes +30).
 
 -- | The seconds component of the 'Offset' (carries the sign; e.g. @-1@ for a @-00:00:01@ offset).
 seconds :: Offset -> Int
