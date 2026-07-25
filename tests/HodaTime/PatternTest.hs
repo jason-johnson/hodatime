@@ -56,6 +56,8 @@ unitTests = testGroup "Unit tests"
     ,testCase "format pD includes the weekday"              $ format pD tuesday @?= "Tuesday, 03 March 2020"
     ,testCase "format pMMM is the abbreviated month name"   $ format pMMM tuesday @?= "Mar"
     ,testCase "parse pMMM round-trips a date"               $ parse (pdd <% char ' ' <> pMMM <% char ' ' <> pyyyy) "03 Mar 2020" @?= Just tuesday
+    ,testCase "format pmonthDay is MMMM dd"                 $ format pmonthDay tuesday @?= "March 03"
+    ,testCase "format pyearMonth is yyyy MMMM"              $ format pyearMonth tuesday @?= "2020 March"
     ,testCase "format phh folds 15:00 to 03"                $ format phh (mkLt 15) @?= "03"
     ,testCase "format phh folds 00:00 to 12"                $ format phh (mkLt 0) @?= "12"
     ,testCase "format phh folds 12:00 to 12"                $ format phh (mkLt 12) @?= "12"
@@ -72,8 +74,13 @@ unitTests = testGroup "Unit tests"
     ,testCase "format pfrac 9 shows full nanoseconds"       $ format (pfrac 9) (mkLtn 123456789) @?= "123456789"
     ,testCase "format pfrac 3 zero-pads"                    $ format (pfrac 3) (mkLtn 7000000) @?= "007"
     ,testCase "parse pfrac 3 scales up to nanoseconds"      $ parse (pfrac 3) "123" @?= Just (mkLtn 123000000)
-    ,testCase "parse pfrac 9 reads full nanoseconds"        $ parse (pfrac 9) "123456789" @?= Just (mkLtn 123456789)
-    ,testCase "format pR is the ISO date"                   $ format pR tuesday @?= "2020-03-03"
+    ,testCase "parse pfrac 9 reads full nanoseconds"        $ parse (pfrac 9) "123456789" @?= Just (mkLtn 123456789)    -- width parameter: width 1 is the no-padding case (unpadded format, variable-width parse); width >= 2 is fixed padded.
+    ,testCase "format pday 1 has no leading zero"           $ format (pday 1) tuesday @?= "3"
+    ,testCase "format pday 2 zero-pads (== pdd)"            $ format (pday 2) tuesday @?= format pdd tuesday
+    ,testCase "format phour 1 has no leading zero"          $ format (phour 1) (mkLt 3) @?= "3"
+    ,testCase "format no-padding date"                     $ format (pyear 1 <% char '-' <> pmonthNum 1 <% char '-' <> pday 1) tuesday @?= "2020-3-3"
+    ,testCase "parse no-padding date round-trips"          $ parse (pyear 1 <% char '-' <> pmonthNum 1 <% char '-' <> pday 1) "2020-3-3" @?= Just tuesday
+    ,testCase "no-padding parse also accepts padded input" $ parse (pyear 1 <% char '-' <> pmonthNum 1 <% char '-' <> pday 1) "2020-03-03" @?= Just tuesday    ,testCase "format pR is the ISO date"                   $ format pR tuesday @?= "2020-03-03"
     -- setter-application order independence: <> applies the right operand's setter first, so verify that
     -- reordering composed fields (independent lenses, and the hour-sharing phh/ppp) yields the same result.
     ,testCase "date field order is independent"             $ parse (pyyyy <% char '-' <> pMM <% char '-' <> pdd) "2020-03-03" @?= Just tuesday
@@ -91,6 +98,10 @@ unitTests = testGroup "Unit tests"
     ,testCase "format pOffsetFull -05:30:45"               $ format pOffsetFull (fromSeconds (-19845 :: Int)) @?= "-05:30:45"
     ,testCase "parse pOffset +02:00"                       $ parse pOffset "+02:00" @?= Just (fromHours 2)
     ,testCase "parse pOffset -05:30"                       $ parse pOffset "-05:30" @?= Just (fromMinutes (-330))
+    ,testCase "format pOffsetZ UTC is Z"                   $ format pOffsetZ empty @?= "Z"
+    ,testCase "format pOffsetZ +02:00"                     $ format pOffsetZ (fromHours 2) @?= "+02:00"
+    ,testCase "parse pOffsetZ Z is UTC"                    $ parse pOffsetZ "Z" @?= Just empty
+    ,testCase "parse pOffsetZ +02:00"                      $ parse pOffsetZ "+02:00" @?= Just (fromHours 2)
     ,testCase "format pOffsetDateTime +02:00"              $ format pOffsetDateTime odtPos @?= "2024-04-23T09:00:00+02:00"
     ,testCase "parse pOffsetDateTime +02:00"               $ parse pOffsetDateTime "2024-04-23T09:00:00+02:00" @?= Just odtPos
     ,testCase "format pOffsetDateTime -05:30"              $ format pOffsetDateTime odtNeg @?= "2024-04-23T09:00:00-05:30"

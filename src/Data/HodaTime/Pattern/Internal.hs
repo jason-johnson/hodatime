@@ -23,6 +23,8 @@ module Data.HodaTime.Pattern.Internal
   ,p_sixty
   ,f_shown
   ,f_shown_two
+  ,f_shown_pad
+  ,pDigits
   ,ParseFailedException(..)
 )
 where
@@ -137,6 +139,25 @@ f_shown x = later (TLB.fromText . T.pack . show . x)
 
 f_shown_two :: Show b => (a -> b) -> Format r (a -> r)
 f_shown_two x = left 2 '0' %. f_shown x
+
+-- | Format a numeric field @n@ characters wide, zero-padded.  Width @1@ means no padding (every number is at least
+--   one character, so @left 1 '0'@ never adds a zero).
+f_shown_pad :: Show b => Int -> (a -> b) -> Format r (a -> r)
+f_shown_pad n x = left n '0' %. f_shown x
+
+-- | Parse a numeric field.  Width @1@ is the /no-padding/ case: it reads 1 up to @maxW@ digits, so both @"3"@ and
+--   @"31"@ are accepted.  Width @n >= 2@ reads exactly @n@ digits.  Either way the value is validated to lie within
+--   @[lo, hi]@.
+pDigits :: Int -> Int -> Int -> Int -> Parser Int String
+pDigits w maxW lo hi = do
+  ds <- if w <= 1 then upTo maxW else count w digit
+  let x = read ds
+  if lo <= x && x <= hi then return x else parserFail ("expected " ++ show lo ++ "-" ++ show hi)
+  where
+    upTo :: Int -> Parser [Char] String
+    upTo k = (:) <$> digit <*> go (k - 1)
+    go :: Int -> Parser [Char] String
+    go j = if j <= 0 then return [] else option [] ((:) <$> digit <*> go (j - 1))
 
 string :: String -> Pattern String String String
 string s = Pattern p_str f_str

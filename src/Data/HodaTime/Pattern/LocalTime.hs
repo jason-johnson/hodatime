@@ -7,9 +7,12 @@ module Data.HodaTime.Pattern.LocalTime
   -- * Custom Patterns
   --
   -- | Used to create specialized patterns
+  ,phour
   ,pHH
   ,phh
+  ,pminute
   ,pmm
+  ,psecond
   ,pss
   ,pfrac
   ,pp
@@ -55,12 +58,13 @@ phh = Pattern par fmt
     fmt = f_shown_two (to12 . view LT.hour)
     to12 h = if h' == 0 then 12 else h' where h' = h `mod` 12
 
--- | The double digit hour of day in the 24-hour clock; a value 00-23.
+-- | The hour of day in the 24-hour clock as @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 00-23.
+phour :: HasLocalTime lt => Int -> Pattern (lt -> lt) (lt -> String) String
+phour w = pat_lens LT.hour (pDigits w 2 0 23) (f_shown_pad w) "hour: 00-23"
+
+-- | The double digit hour of day in the 24-hour clock (@'phour' 2@); a value 00-23.
 pHH :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
-pHH = pat_lens LT.hour (p_a <|> p_b) f_shown_two "hour: 00-23"
-  where
-    p_a = digitsToInt <$> oneOf ['0', '1'] <*> digit 
-    p_b = digitsToInt <$> P.char '2' <*> oneOf ['0'..'3']
+pHH = phour 2
 
 hour' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
 hour' = pat_lens' PT.hour LT.hour (p_a <|> p_b) f_shown_two "hour: 00-23"
@@ -68,16 +72,24 @@ hour' = pat_lens' PT.hour LT.hour (p_a <|> p_b) f_shown_two "hour: 00-23"
     p_a = digitsToInt <$> oneOf ['0', '1'] <*> digit 
     p_b = digitsToInt <$> P.char '2' <*> oneOf ['0'..'3']
 
--- | The double digit minute of day in the 24-hour clock; a value 00-59.
+-- | The minute of the hour as @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 00-59.
+pminute :: HasLocalTime lt => Int -> Pattern (lt -> lt) (lt -> String) String
+pminute w = pat_lens LT.minute (pDigits w 2 0 59) (f_shown_pad w) "minute: 00-59"
+
+-- | The double digit minute of the hour (@'pminute' 2@); a value 00-59.
 pmm :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
-pmm = pat_lens LT.minute p_sixty f_shown_two "minute: 00-59"
+pmm = pminute 2
 
 minute' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
 minute' = pat_lens' PT.minute LT.minute p_sixty f_shown_two "minute: 00-59"
 
--- | The double digit second of day in the 24-hour clock; a value 00-59.
+-- | The second of the minute as @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 00-59.
+psecond :: HasLocalTime lt => Int -> Pattern (lt -> lt) (lt -> String) String
+psecond w = pat_lens LT.second (pDigits w 2 0 59) (f_shown_pad w) "second: 00-59"
+
+-- | The double digit second of the minute (@'psecond' 2@); a value 00-59.
 pss :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
-pss = pat_lens LT.second p_sixty f_shown_two "second: 00-59"
+pss = psecond 2
 
 second' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
 second' = pat_lens' PT.second LT.second p_sixty f_shown_two "second: 00-59"

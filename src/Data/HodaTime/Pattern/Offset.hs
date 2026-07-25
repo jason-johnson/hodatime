@@ -2,6 +2,7 @@ module Data.HodaTime.Pattern.Offset
 (
   -- * Standard Patterns
    pOffset
+  ,pOffsetZ
   ,pOffsetFull
 )
 where
@@ -46,6 +47,13 @@ pOffset = Pattern (const <$> offsetParser False <?> "offset: (+/-)HH:mm") (offse
 pOffsetFull :: Pattern (Offset -> Offset) (Offset -> String) String
 pOffsetFull = Pattern (const <$> offsetParser True <?> "offset: (+/-)HH:mm:ss") (offsetFormat True)
 
+-- | Like 'pOffset' but renders UTC (a zero offset) as @Z@ rather than @+00:00@, per ISO-8601 (and parses @Z@ back).
+pOffsetZ :: Pattern (Offset -> Offset) (Offset -> String) String
+pOffsetZ = Pattern (const <$> parZ <?> "offset: Z or (+/-)HH:mm") fmtZ
+  where
+    parZ = (fromSeconds (0 :: Int) <$ P.char 'Z') <|> offsetParser False
+    fmtZ = later (\o -> TLB.fromText . T.pack $ if offsetSeconds o == 0 then "Z" else renderOffset False o)
+
 -- helpers
 
 offsetParser :: Bool -> Parser Offset
@@ -60,14 +68,15 @@ offsetParser withSecs = do
     twoDigit = read <$> count 2 digit :: Parser Int
 
 offsetFormat :: Bool -> Format String (Offset -> String)
-offsetFormat withSecs = later (TLB.fromText . T.pack . render)
+offsetFormat withSecs = later (TLB.fromText . T.pack . renderOffset withSecs)
+
+renderOffset :: Bool -> Offset -> String
+renderOffset withSecs (Offset secs) = sign : pad2 h ++ ":" ++ pad2 m ++ secPart
   where
-    render (Offset secs) = sign : pad2 h ++ ":" ++ pad2 m ++ secPart
-      where
-        sign = if secs < 0 then '-' else '+'
-        a = abs secs
-        h = a `div` secondsPerHour
-        m = (a `mod` secondsPerHour) `div` secondsPerMinute
-        s = a `mod` secondsPerMinute
-        secPart = if withSecs then ":" ++ pad2 s else ""
+    sign = if secs < 0 then '-' else '+'
+    a = abs secs
+    h = a `div` secondsPerHour
+    m = (a `mod` secondsPerHour) `div` secondsPerMinute
+    s = a `mod` secondsPerMinute
+    secPart = if withSecs then ":" ++ pad2 s else ""
     pad2 x = let str = show x in if length str < 2 then '0' : str else str
