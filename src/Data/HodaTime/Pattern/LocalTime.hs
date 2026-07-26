@@ -17,6 +17,8 @@ module Data.HodaTime.Pattern.LocalTime
   ,pfrac
   ,pp
   ,ppp
+  ,ppp'
+  ,pPeriod
   ,hour'
   ,minute'
   ,second'
@@ -33,8 +35,9 @@ import Control.Applicative ((<|>))
 import Formatting (Format, later, left, (%.))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as TLB
-import Text.Parsec (oneOf, digit, count, (<?>))
+import Text.Parsec (oneOf, digit, count, try, (<?>))
 import qualified Text.Parsec as P (char)
+import Data.HodaTime.Locale.Internal (Locale(..))
 
 -- x = maybe (error "duh") id $ localTime 1 2 3 0
 -- parse pT "01:01:01" :: IO LocalTime
@@ -127,6 +130,22 @@ ppp = Pattern par (amPmFormat render)
     par = (amPmSetter <$> desig) <?> "period: AM or PM"
     desig = (\c -> c `elem` "Pp") <$> oneOf "AaPp" <* oneOf "Mm"
     render isPM = if isPM then "PM" else "AM"
+
+-- | 12 hour clock time period designator using an explicit @(am, pm)@ pair, instead of the built-in @AM@\/@PM@ literals.
+--   This is the calendar-agnostic core behind the locale-aware 'ppp''.  Parsing matches either designator
+--   case-insensitively (PM tried first); as with 'ppp' it only sets morning\/afternoon, so combine it with 'phh'.
+pPeriod :: HasLocalTime lt => (String, String) -> Pattern (lt -> lt) (lt -> String) String
+pPeriod (am, pm) = Pattern par (amPmFormat render)
+  where
+    par = (amPmSetter <$> desig) <?> "period"
+    desig = (True <$ try (caseInsensitiveString pm)) <|> (False <$ try (caseInsensitiveString am))
+    render isPM = if isPM then pm else am
+
+-- | 12 hour clock time period designator in the given 'Locale' (e.g. the POSIX @AM_STR@\/@PM_STR@); the locale-aware
+--   counterpart to 'ppp'.  NOTE: some locales (e.g. German) leave these designators empty, in which case this pattern
+--   cannot round-trip; prefer a 24-hour pattern there.
+ppp' :: HasLocalTime lt => Locale -> Pattern (lt -> lt) (lt -> String) String
+ppp' loc = pPeriod (amName loc, pmName loc)
 
 -- | Rewrite only the AM\/PM half of the hour (morning \<-\> afternoon), preserving the 1-12 position set by 'phh'.
 amPmSetter :: HasLocalTime lt => Bool -> lt -> lt

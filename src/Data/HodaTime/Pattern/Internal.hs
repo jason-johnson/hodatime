@@ -25,6 +25,7 @@ module Data.HodaTime.Pattern.Internal
   ,f_shown_two
   ,f_shown_pad
   ,pDigits
+  ,caseInsensitiveString
   ,ParseFailedException(..)
 )
 where
@@ -34,6 +35,8 @@ import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Text.Parsec hiding (many, optional, (<|>), parse, string, char)
 import qualified Text.Parsec as P (string, char)
+import Control.Applicative ((<|>))
+import Data.Char (toLower, toUpper)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
 import Data.HodaTime.Internal.Lens (view, set, Lens)
@@ -158,6 +161,13 @@ pDigits w maxW lo hi = do
     upTo k = (:) <$> digit <*> go (k - 1)
     go :: Int -> Parser [Char] String
     go j = if j <= 0 then return [] else option [] ((:) <$> digit <*> go (j - 1))
+
+-- | Case-insensitive literal string parser, used by the name-based patterns (month\/weekday names, AM\/PM designators).
+caseInsensitiveString :: String -> Parsec String () String
+caseInsensitiveString = mapM caseInsensitiveChar
+  where
+    caseInsensitiveChar :: Char -> Parsec String () Char
+    caseInsensitiveChar c = (P.char (toLower c) <|> P.char (toUpper c)) >> return c
 
 string :: String -> Pattern String String String
 string s = Pattern p_str f_str

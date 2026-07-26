@@ -14,12 +14,13 @@ import HodaTime.CalendarDateTimeTest
 import HodaTime.ZonedDateTimeTest
 import HodaTime.PatternTest
 import HodaTime.WithCalendarTest
+import HodaTime.LocaleTest
 
 main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [instantTests, durationTests, offsetTests, localTimeTests, gregorianTests, julianTests, copticTests, persianTests, islamicTests, hebrewTests, calendarDateTimeTests, zonedDateTimeTests, patternTests, withCalendarTests]
+tests = testGroup "Tests" [instantTests, durationTests, offsetTests, localTimeTests, gregorianTests, julianTests, copticTests, persianTests, islamicTests, hebrewTests, calendarDateTimeTests, zonedDateTimeTests, patternTests, withCalendarTests, localeTests]
 
 {-
 unitTests :: TestTree

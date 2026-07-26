@@ -20,6 +20,9 @@ extra-source-files:
                    platform/linux/Data/HodaTime/Instant/Platform.hs
                    platform/windows/Data/HodaTime/TimeZone/Platform.hs
                    platform/windows/Data/HodaTime/Instant/Platform.hsc
+                   platform/osx/Data/HodaTime/Locale/Platform.hs
+                   platform/linux/Data/HodaTime/Locale/Platform.hs
+                   platform/windows/Data/HodaTime/Locale/Platform.hs
 
 source-repository head
     type:     git
@@ -76,6 +79,7 @@ library
                    Data.HodaTime.OffsetDateTime,
                    Data.HodaTime.TimeZone,
                    Data.HodaTime.ZonedDateTime,
+                   Data.HodaTime.Locale,
                    Data.HodaTime.Pattern,
                    Data.HodaTime.Pattern.LocalTime,
                    Data.HodaTime.Pattern.CalendarDate,
@@ -103,6 +107,8 @@ library
                    Data.HodaTime.TimeZone.Internal,
                    Data.HodaTime.TimeZone.Platform,
                    Data.HodaTime.ZonedDateTime.Internal,
+                   Data.HodaTime.Locale.Internal,
+                   Data.HodaTime.Locale.Platform,
                    Data.HodaTime.Pattern.Internal,
                    Data.HodaTime.Pattern.ApplyParse
                    Data.HodaTime.Pattern.ParseTypes
@@ -111,7 +117,8 @@ library
                    Data.HodaTime.TimeZone.Olson,
                    Data.HodaTime.TimeZone.ParseTZ,
                    Data.HodaTime.TimeZone.Unix,
-                   Data.HodaTime.Instant.Unix
+                   Data.HodaTime.Instant.Unix,
+                   Data.HodaTime.Locale.Posix
 
 test-suite test
   default-language:
@@ -137,7 +144,8 @@ test-suite test
                    HodaTime.CalendarDateTimeTest,
                    HodaTime.ZonedDateTimeTest,
                    HodaTime.PatternTest,
-                   HodaTime.WithCalendarTest
+                   HodaTime.WithCalendarTest,
+                   HodaTime.LocaleTest
   build-depends:
                    base >= 4 && < 5,
                    tasty >= 0.11,
