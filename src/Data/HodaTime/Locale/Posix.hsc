@@ -28,6 +28,11 @@ import qualified Data.Text.Encoding.Error as TEE
 #endif
 #include <locale.h>
 #include <langinfo.h>
+-- macOS declares the per-locale query functions (newlocale / freelocale / nl_langinfo_l) in <xlocale.h> rather than
+-- in <locale.h> / <langinfo.h>.
+#ifdef __APPLE__
+#include <xlocale.h>
+#endif
 
 -- | An opaque POSIX @locale_t@ handle.
 type CLocale = Ptr ()
