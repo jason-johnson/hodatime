@@ -14,6 +14,7 @@ module Data.HodaTime.Pattern.CalendarDate
   -- | Used to create specialized patterns.
   ,pyear
   ,pyyyy
+  ,pyy
   ,pmonthNum
   ,pMM
   ,pMMM
@@ -32,9 +33,10 @@ import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Data.Char(toLower, toUpper)
 import Control.Applicative ((<|>))
-import Text.Parsec (choice, try, Parsec)
+import Text.Parsec (choice, try, Parsec, (<?>))
 import qualified Text.Parsec as P (char)
 import Formatting (later)
+import Data.HodaTime.Internal.Lens (view, set)
 
 -- d1 = maybe (error "duh") id $ calendarDate 1 January 2000
 -- d2 = maybe (error "duh") id $ calendarDate 3 March 2020
@@ -42,15 +44,34 @@ import Formatting (later)
 -- format Data.HodaTime.Pattern.CalendarDate.date d2
 -- parse Data.HodaTime.Pattern.CalendarDate.date "2000/March/01" :: IO (CalendarDate Gregorian)
 
--- | Year of @w@ digits, zero-padded; a width of @1@ means /no padding/, so both @"3"@ and @"2020"@ parse and
---   formatting emits the minimal number of digits.  Values 0-9999 (note: not all dates will be valid in all calendars,
---   if the date is too early it will clamp to earliest valid date)
+-- | Absolute year of at least @w@ digits.  Width @1@ is the no-padding case (reads 1-4 digits, so both @"3"@ and
+--   @"2020"@ parse; formats with no leading zeros); width @n >= 2@ reads exactly @n@ digits.  The value is always the
+--   literal year and is never truncated, so this is the /strict/ counterpart to 'pyy' (which does two-digit century
+--   inference).  Values 0-9999 (note: not all dates will be valid in all calendars, if the date is too early it will
+--   clamp to earliest valid date)
 pyear :: HasDate d => Int -> Pattern (d -> d) (d -> String) String
 pyear w = pat_lens CDT.year (pDigits w 4 0 9999) (f_shown_pad w) "year: 0-9999"
 
 -- | Absolute year in exactly 4 digits (@'pyear' 4@); values 0000-9999.
 pyyyy :: HasDate d => Pattern (d -> d) (d -> String) String
 pyyyy = pyear 4
+
+-- | Two-digit year of the era with the century inferred, mirroring Noda Time's @yy@ specifier (contrast with the
+--   strict, absolute 'pyear').  Formatting emits @year `mod` 100@ zero-padded to two digits, so @2020@ becomes @"20"@
+--   and @2005@ becomes @"05"@.  Parsing reads exactly two digits and expands them to the year with those final two
+--   digits that is closest to the parse /template/ (the default passed to 'parse', whose year is 2000 for the Gregorian
+--   epoch), breaking ties toward the future.  With the default template this maps @"20"@ to @2020@ and @"99"@ to
+--   @1999@; supply a different template via 'parse'' to slide the 100-year window.
+pyy :: HasDate d => Pattern (d -> d) (d -> String) String
+pyy = Pattern par fmt
+  where
+    par = expand <$> pDigits 2 2 0 99 <?> "year: two digits (century inferred)"
+    expand v d = set CDT.year (fullYear (view CDT.year d) v) d
+    fmt = f_shown_pad 2 (\d -> view CDT.year d `mod` 100)
+    fullYear t v = base + k * 100
+      where
+        base = (t `div` 100) * 100 + v
+        k = (t - base + 50) `div` 100
 
 -- | Month of year as a number of @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 1-12.
 pmonthNum :: HasDate d => Int -> Pattern (d -> d) (d -> String) String

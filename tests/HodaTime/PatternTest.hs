@@ -80,7 +80,14 @@ unitTests = testGroup "Unit tests"
     ,testCase "format phour 1 has no leading zero"          $ format (phour 1) (mkLt 3) @?= "3"
     ,testCase "format no-padding date"                     $ format (pyear 1 <% char '-' <> pmonthNum 1 <% char '-' <> pday 1) tuesday @?= "2020-3-3"
     ,testCase "parse no-padding date round-trips"          $ parse (pyear 1 <% char '-' <> pmonthNum 1 <% char '-' <> pday 1) "2020-3-3" @?= Just tuesday
-    ,testCase "no-padding parse also accepts padded input" $ parse (pyear 1 <% char '-' <> pmonthNum 1 <% char '-' <> pday 1) "2020-03-03" @?= Just tuesday    ,testCase "format pR is the ISO date"                   $ format pR tuesday @?= "2020-03-03"
+    ,testCase "no-padding parse also accepts padded input" $ parse (pyear 1 <% char '-' <> pmonthNum 1 <% char '-' <> pday 1) "2020-03-03" @?= Just tuesday
+    -- pyy is the interpreting two-digit year (Noda's yy): format emits year mod 100; parse infers the century from the
+    -- parse template (default year 2000).  Contrast pyear, which is strict/absolute and never truncates.
+    ,testCase "format pyy emits the last two digits"       $ format pyy tuesday @?= "20"
+    ,testCase "format pyear 2 does not truncate (strict)"  $ format (pyear 2) tuesday @?= "2020"
+    ,testCase "parse pyy 20 infers 2020"                   $ parse (pyy <% char '-' <> pMM <% char '-' <> pdd) "20-03-03" @?= Just tuesday
+    ,testCase "parse pyy 99 infers 1999"                   $ parse (pyy <% char '-' <> pMM <% char '-' <> pdd) "99-03-03" @?= Just (mar3 1999)
+    ,testCase "parse pyy 00 infers 2000"                   $ parse (pyy <% char '-' <> pMM <% char '-' <> pdd) "00-03-03" @?= Just (mar3 2000)    ,testCase "format pR is the ISO date"                   $ format pR tuesday @?= "2020-03-03"
     -- setter-application order independence: <> applies the right operand's setter first, so verify that
     -- reordering composed fields (independent lenses, and the hour-sharing phh/ppp) yields the same result.
     ,testCase "date field order is independent"             $ parse (pyyyy <% char '-' <> pMM <% char '-' <> pdd) "2020-03-03" @?= Just tuesday
@@ -124,6 +131,7 @@ unitTests = testGroup "Unit tests"
   ]
   where
     tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
+    mar3 y = fromMaybe (error "impossible") $ G.calendarDate 3 G.March y
     hhmmp = phh <% char ':' <> pmm <% char ' ' <> ppp
     mkLt h = mkLtm h 0
     mkLtm h m = fromMaybe (error "impossible") (localTime h m 0 0)
