@@ -18,6 +18,7 @@ import qualified Data.HodaTime.Calendar.Gregorian as G
 import qualified Data.HodaTime.Calendar.Julian as J
 import qualified Data.HodaTime.Calendar.Coptic as C
 import qualified Data.HodaTime.Calendar.Persian as P
+import qualified Data.HodaTime.Calendar.Islamic as I
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (utc)
 
@@ -45,6 +46,11 @@ dateTests = testGroup "CalendarDate"
        ymd (withCalendar (mkJ 29 J.August 284) :: CalendarDate C.Coptic) @?= (1, 1, 1)
     ,testCase "Gregorian 21.Mar.2021 -> Persian 1 Farvardin 1400 (Nowruz)" $
        ymd (withCalendar (mkG 21 G.March 2021) :: CalendarDate P.Persian) @?= (1, 1, 1400)
+    ,testCase "Julian 15.Jul.622 -> Islamic 1 Muharram 1 (Hijri epoch)" $
+       ymd (withCalendar (mkJ 15 J.July 622) :: CalendarDate I.IslamicBcl) @?= (1, 1, 1)
+    ,testCase "Gregorian -> Islamic -> Gregorian round-trips" $
+       let g = mkG 17 G.June 2020
+       in (withCalendar (withCalendar g :: CalendarDate I.IslamicBcl) :: CalendarDate G.Gregorian) @?= g
     ,testCase "Gregorian -> Julian -> Gregorian round-trips" $
        let g = mkG 17 G.June 2020
        in (withCalendar (withCalendar g :: CalendarDate J.Julian) :: CalendarDate G.Gregorian) @?= g
