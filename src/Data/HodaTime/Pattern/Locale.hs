@@ -30,16 +30,24 @@
 -- >    p   <- localeDatePattern loc                        -- the current locale's short-date layout
 -- >    pure (format p march15) >>= parse p                 -- round-trips in whatever order the locale uses
 --
--- 'localeTimePattern' does the same for the time-of-day layout (@T_FMT@).
+-- 'localeTimePattern' does the same for the time-of-day layout (@T_FMT@), and 'localeDateTimePattern' for the combined
+-- date-and-time layout (@D_T_FMT@) as a 'CalendarDateTime'.
 --
--- Only the single-category formats are handled: 'localeDatePattern' (from 'rawDateFormat') and 'localeTimePattern'
--- (from 'rawTimeFormat').  The combined @D_T_FMT@ is not yet supported because it mixes date and time fields and carries
--- a time-zone specifier (@%Z@) that a plain date\/time value has no slot for.
+-- ==== __On time zones__
+--
+-- 'localeDateTimePattern' /deliberately ignores/ the time zone.  Most @D_T_FMT@ strings end with @%Z@ (a zone
+-- abbreviation such as @CEST@) or @%z@ (a numeric offset); a 'CalendarDateTime' is /civil/ time with no zone attached,
+-- so there is nothing to render there and nothing to interpret, and those specifiers are dropped from the compiled
+-- pattern.  In particular a zone-less datetime is /not/ assumed to be UTC — treating civil time as UTC is exactly the
+-- accidental coupling the library is built to avoid; turning a 'CalendarDateTime' into an absolute instant always
+-- requires you to attach an offset or time zone /on purpose/.  When you do need the zone round-tripped, reach for a
+-- @ZonedDateTime@ and its (effectful) parser instead.
 module Data.HodaTime.Pattern.Locale
 (
    StrftimeError(..)
   ,localeDatePattern
   ,localeTimePattern
+  ,localeDateTimePattern
 )
 where
 
@@ -47,7 +55,7 @@ import Data.HodaTime.Pattern.Internal (Pattern(..))
 import Data.HodaTime.Pattern.CalendarDate (pyyyy, pyy, pMM, pdd, pdaySpace, pMMMM', pMMM', pdddd', pddd')
 import Data.HodaTime.Pattern.LocalTime (pHH, phh, phhSpace, pmm, pss, ppp')
 import Data.HodaTime.Locale.Internal (Locale(..))
-import Data.HodaTime.CalendarDateTime.Internal (HasDate, DoW)
+import Data.HodaTime.CalendarDateTime.Internal (HasDate, DoW, CalendarDateTime, IsCalendar)
 import Data.HodaTime.LocalTime.Internal (HasLocalTime)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Exception (Exception)
@@ -101,20 +109,47 @@ toFrags = foldr step []
     step (Lit c)  fs              = LitRun [c] : fs
     step (Conv c) fs              = ConvF c : fs
 
--- | Compile a layout string into a pattern, given a mapping from conversion specifiers to field patterns.
+-- | Assemble a list of fragments into a pattern, given a mapping from conversion specifiers to field patterns.
+assemble
+  :: (Char -> Either StrftimeError (Pattern (a -> a) (a -> String) String))
+  -> [Frag]
+  -> Either StrftimeError (Pattern (a -> a) (a -> String) String)
+assemble mapConv frags = do
+  ps <- mapM toPat frags
+  case ps of
+    [] -> Right (litField "")
+    _  -> Right (foldr1 (<>) ps)
+  where
+    toPat (LitRun s) = Right (litField s)
+    toPat (ConvF c)  = mapConv c
+
+-- | Compile a layout string into a pattern, given a specifier mapping.
 compileWith
   :: (Char -> Either StrftimeError (Pattern (a -> a) (a -> String) String))
   -> String
   -> Either StrftimeError (Pattern (a -> a) (a -> String) String)
-compileWith mapConv fmtStr = do
-  toks  <- tokenize fmtStr
-  frags <- mapM toPat (toFrags toks)
-  case frags of
-    [] -> Right (litField "")
-    _  -> Right (foldr1 (<>) frags)
-  where
-    toPat (LitRun s) = Right (litField s)
-    toPat (ConvF c)  = mapConv c
+compileWith mapConv fmtStr = tokenize fmtStr >>= assemble mapConv . toFrags
+
+-- | As 'compileWith' but first drops the zone specifiers (@%Z@\/@%z@) and a single preceding space; used for the
+--   combined date-and-time layout, whose 'CalendarDateTime' target has no zone.
+compileDroppingZones
+  :: (Char -> Either StrftimeError (Pattern (a -> a) (a -> String) String))
+  -> String
+  -> Either StrftimeError (Pattern (a -> a) (a -> String) String)
+compileDroppingZones mapConv fmtStr = tokenize fmtStr >>= assemble mapConv . stripZones . toFrags
+
+-- | Drop the zone specifiers (@%Z@\/@%z@) and a single preceding space: a 'CalendarDateTime' has no zone to show.
+stripZones :: [Frag] -> [Frag]
+stripZones [] = []
+stripZones (LitRun s : ConvF c : rest)
+  | isZone c  = [LitRun s' | not (null s')] ++ stripZones rest
+  where s' = reverse (dropWhile (== ' ') (reverse s))
+stripZones (ConvF c : rest)
+  | isZone c  = stripZones rest
+stripZones (f : rest) = f : stripZones rest
+
+isZone :: Char -> Bool
+isZone c = c == 'Z' || c == 'z'
 
 dateConv :: (HasDate d, Enum (DoW d)) => Locale -> Char -> Either StrftimeError (Pattern (d -> d) (d -> String) String)
 dateConv loc c = case c of
@@ -157,3 +192,15 @@ localeDatePattern loc = compileDatePattern loc (rawDateFormat loc)
 -- | The locale's time pattern, compiled from its @T_FMT@ (POSIX @rawTimeFormat@).
 localeTimePattern :: (MonadThrow m, HasLocalTime lt) => Locale -> m (Pattern (lt -> lt) (lt -> String) String)
 localeTimePattern loc = compileTimePattern loc (rawTimeFormat loc)
+
+-- | Combined date-and-time mapping over 'CalendarDateTime': a date specifier resolves to its date field and a time
+--   specifier to its time field (both are valid on a 'CalendarDateTime', which is 'HasDate' and 'HasLocalTime').
+dateTimeConv :: (IsCalendar cal, Enum (DoW (CalendarDateTime cal))) => Locale -> Char -> Either StrftimeError (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String)
+dateTimeConv loc c = case dateConv loc c of
+  Right p -> Right p
+  Left _  -> timeConv loc c
+
+-- | The locale's combined date-and-time pattern, compiled from its @D_T_FMT@ (POSIX @rawDateTimeFormat@) as a
+--   'CalendarDateTime'.  The zone specifiers @%Z@\/@%z@ are dropped — see the note on time zones in the module header.
+localeDateTimePattern :: (MonadThrow m, IsCalendar cal, Enum (DoW (CalendarDateTime cal))) => Locale -> m (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String)
+localeDateTimePattern loc = either throwM return (compileDroppingZones (dateTimeConv loc) (rawDateTimeFormat loc))

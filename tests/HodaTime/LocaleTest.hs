@@ -12,9 +12,10 @@ import Data.HodaTime.Locale
 import Data.HodaTime.Pattern
 import Data.HodaTime.Pattern.CalendarDate (pdd, pMM, pyyyy, pMMMM', pMMM', pdddd', pMonthName, pdaySpace)
 import Data.HodaTime.Pattern.LocalTime (phh, phhSpace, pmm, ppp')
-import Data.HodaTime.Pattern.Locale (localeDatePattern, localeTimePattern)
+import Data.HodaTime.Pattern.Locale (localeDatePattern, localeTimePattern, localeDateTimePattern)
 import Data.HodaTime.LocalTime (localTime, LocalTime)
 import Data.HodaTime.CalendarDate (CalendarDate)
+import Data.HodaTime.CalendarDateTime (CalendarDateTime, at)
 import qualified Data.HodaTime.Calendar.Gregorian as G
 
 tuesday :: CalendarDate G.Gregorian
@@ -28,6 +29,10 @@ mkLtm h m = fromMaybe (error "impossible") (localTime h m 0 0)
 
 mkLts :: Int -> Int -> Int -> LocalTime
 mkLts h m s = fromMaybe (error "impossible") (localTime h m s 0)
+
+-- | 15 March 2020 (a Sunday), 13:24:35 — all date and time fields distinct, for the combined-layout tests.
+dt :: CalendarDateTime G.Gregorian
+dt = at mar15 (mkLts 13 24 35)
 
 localeTests :: TestTree
 localeTests = testGroup "Locale Tests" [patternTests, readerTests, strftimeTests]
@@ -86,4 +91,10 @@ strftimeTests = testGroup "strftime layout compiler"
     ,testCase "German time round-trips"                   $ (localeTimePattern deDE >>= \p -> parse p "13:24:35") @?= Just (mkLts 13 24 35)
     ,testCase "Japanese time has multibyte separators"    $ fmap (\p -> format p (mkLts 13 24 35)) (localeTimePattern jaJP) @?= Just "13時24分35秒"
     ,testCase "Japanese time round-trips"                 $ (localeTimePattern jaJP >>= \p -> parse p "13時24分35秒") @?= Just (mkLts 13 24 35)
+    ,testCase "German date+time drops the zone"           $ fmap (\p -> format p dt) (localeDateTimePattern deDE) @?= Just "So 15 Mär 2020 13:24:35"
+    ,testCase "German date+time round-trips"              $ (localeDateTimePattern deDE >>= \p -> parse p "So 15 Mär 2020 13:24:35") @?= Just dt
+    ,testCase "US date+time is 12-hour, zone dropped"     $ fmap (\p -> format p dt) (localeDateTimePattern enUS) @?= Just "Sun 15 Mar 2020 01:24:35 PM"
+    ,testCase "US date+time round-trips"                  $ (localeDateTimePattern enUS >>= \p -> parse p "Sun 15 Mar 2020 01:24:35 PM") @?= Just dt
+    ,testCase "Japanese date+time (no zone in layout)"    $ fmap (\p -> format p dt) (localeDateTimePattern jaJP) @?= Just "2020年03月15日 13時24分35秒"
+    ,testCase "Japanese date+time round-trips"           $ (localeDateTimePattern jaJP >>= \p -> parse p "2020年03月15日 13時24分35秒") @?= Just dt
   ]
