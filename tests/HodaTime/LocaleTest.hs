@@ -22,6 +22,7 @@ import Data.HodaTime.OffsetDateTime (OffsetDateTime, fromCalendarDateTimeWithOff
 import Data.HodaTime.Offset (fromHours, fromMinutes)
 import Data.HodaTime.TimeZone (utc)
 import qualified Data.HodaTime.Calendar.Gregorian as G
+import System.Info (os)
 
 tuesday :: CalendarDate G.Gregorian
 tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
@@ -79,6 +80,14 @@ readerTests = testGroup "reading the machine locale"
        length (monthNamesShort loc) @?= 12
        length (dayNames loc) @?= 7
        length (dayNamesShort loc) @?= 7
+    ,testCase "Windows: a read locale's layout compiles (de-DE)" $
+       -- Only meaningful on Windows, where raw*Format is translated from a Windows picture string; a no-op elsewhere.
+       if os == "mingw32"
+         then do
+           loc <- localeByName "de-DE"
+           p   <- localeDatePattern loc
+           format p mar15 @?= "15.03.2020"
+         else return ()
   ]
 
 strftimeTests :: TestTree

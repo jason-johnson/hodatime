@@ -3,11 +3,9 @@
 -- | Windows implementation of the locale reader, via @GetLocaleInfoEx@.
 --
 --   The name fields (month\/weekday names and AM\/PM designators, which power @pMMMM'@, @pddd'@, @ppp'@ and the reader)
---   are fully populated.  The @raw*Format@ fields, however, hold Windows /picture/ strings (e.g. @dd.MM.yyyy@), which
---   are __not__ POSIX @strftime@ — so the layout-compiling patterns in "Data.HodaTime.Pattern.Locale"
---   (@localeDatePattern@ and friends) do not yet work on a locale /read on Windows/.  The built-in locales
---   (@enUS@\/@deDE@\/@jaJP@) carry @strftime@ and work everywhere.  Translating the picture strings to @strftime@ is a
---   follow-up.
+--   come straight from the OS.  The @raw*Format@ fields are the Windows /picture/ strings (e.g. @dd.MM.yyyy@) translated
+--   to POSIX @strftime@ by 'windowsPictureToStrftime', so the layout-compiling patterns in
+--   "Data.HodaTime.Pattern.Locale" (@localeDatePattern@ and friends) work on a Windows-read locale just as on POSIX.
 module Data.HodaTime.Locale.Platform
 (
   loadCurrentLocale
@@ -15,7 +13,7 @@ module Data.HodaTime.Locale.Platform
 )
 where
 
-import Data.HodaTime.Locale.Internal (Locale(..))
+import Data.HodaTime.Locale.Internal (Locale(..), windowsPictureToStrftime)
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.C.Types (CInt(..), CWchar)
 import Foreign.Marshal.Array (allocaArray, peekArray, withArray0)
@@ -77,8 +75,8 @@ buildLocale lid loc = do
   daysAbbrMon <- mapM (getInfo loc) (take 7  [lOCALE_SABBREVDAYNAME1 ..])
   am    <- getInfo loc lOCALE_S1159
   pm    <- getInfo loc lOCALE_S2359
-  sdate <- getInfo loc lOCALE_SSHORTDATE
-  stime <- getInfo loc lOCALE_STIMEFORMAT
+  sdate <- windowsPictureToStrftime <$> getInfo loc lOCALE_SSHORTDATE
+  stime <- windowsPictureToStrftime <$> getInfo loc lOCALE_STIMEFORMAT
   return Locale
     { localeId          = lid
     , monthNames        = monsFull
