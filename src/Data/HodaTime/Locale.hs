@@ -4,7 +4,7 @@
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
 -- Stability   :  experimental
--- Portability :  POSIX (Linux, macOS); not yet implemented on Windows
+-- Portability :  portable (Linux, macOS, Windows)
 --
 -- Provides culture-specific names (month and weekday names, AM\/PM designators) and layout strings for dates and times.
 -- A 'Locale' can be read from the operating system's locale database \u2014 in the same spirit as the time-zone support,

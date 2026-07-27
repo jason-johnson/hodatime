@@ -6,11 +6,11 @@
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
 -- Stability   :  experimental
--- Portability :  POSIX (Linux, macOS)
+-- Portability :  portable (Linux, macOS, Windows)
 --
--- Compiles the operating system's @strftime@-style layout strings (the @D_FMT@ \/ @T_FMT@ captured in a 'Locale' by
--- "Data.HodaTime.Locale") into hodatime 'Pattern's, so a date or time can be formatted and parsed using the machine's
--- own conventions.
+-- Compiles the @strftime@ layout strings captured in a 'Locale' by "Data.HodaTime.Locale" (the operating system's
+-- @D_FMT@ \/ @T_FMT@ on POSIX, translated from the equivalent Windows /picture/ strings) into hodatime 'Pattern's, so a
+-- date or time can be formatted and parsed using the machine's own conventions.
 --
 -- ==== __Using the machine's own layout__
 --
@@ -204,11 +204,11 @@ compileDatePattern loc = either throwM return . compileWith (dateConv loc)
 compileTimePattern :: (MonadThrow m, HasLocalTime lt) => Locale -> String -> m (Pattern (lt -> lt) (lt -> String) String)
 compileTimePattern loc = either throwM return . compileWith (timeConv loc)
 
--- | The locale's short date pattern, compiled from its @D_FMT@ (POSIX @rawDateFormat@).
+-- | The locale's short date pattern, compiled from its short-date layout (@rawDateFormat@; @D_FMT@ on POSIX).
 localeDatePattern :: (MonadThrow m, HasDate d, Enum (DoW d)) => Locale -> m (Pattern (d -> d) (d -> String) String)
 localeDatePattern loc = compileDatePattern loc (rawDateFormat loc)
 
--- | The locale's time pattern, compiled from its @T_FMT@ (POSIX @rawTimeFormat@).
+-- | The locale's time pattern, compiled from its time layout (@rawTimeFormat@; @T_FMT@ on POSIX).
 localeTimePattern :: (MonadThrow m, HasLocalTime lt) => Locale -> m (Pattern (lt -> lt) (lt -> String) String)
 localeTimePattern loc = compileTimePattern loc (rawTimeFormat loc)
 
@@ -219,8 +219,9 @@ dateTimeConv loc c = case dateConv loc c of
   Right p -> Right p
   Left _  -> timeConv loc c
 
--- | The locale's combined date-and-time pattern, compiled from its @D_T_FMT@ (POSIX @rawDateTimeFormat@) as a
---   'CalendarDateTime'.  The zone specifiers @%Z@\/@%z@ are dropped — see the note on time zones in the module header.
+-- | The locale's combined date-and-time pattern, compiled from its combined layout (@rawDateTimeFormat@; @D_T_FMT@ on
+--   POSIX) as a 'CalendarDateTime'.  The zone specifiers @%Z@\/@%z@ are dropped — see the note on time zones in the
+--   module header.
 localeDateTimePattern :: (MonadThrow m, IsCalendar cal, Enum (DoW (CalendarDateTime cal))) => Locale -> m (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String)
 localeDateTimePattern loc = either throwM return (compileDroppingZones (dateTimeConv loc) (rawDateTimeFormat loc))
 
