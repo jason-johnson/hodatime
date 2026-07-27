@@ -22,7 +22,7 @@ extra-source-files:
                    platform/windows/Data/HodaTime/Instant/Platform.hsc
                    platform/osx/Data/HodaTime/Locale/Platform.hs
                    platform/linux/Data/HodaTime/Locale/Platform.hs
-                   platform/windows/Data/HodaTime/Locale/Platform.hs
+                   platform/windows/Data/HodaTime/Locale/Platform.hsc
 
 source-repository head
     type:     git
@@ -53,6 +53,7 @@ library
                    array
   if os(windows)
     build-depends: Win32
+    extra-libraries: kernel32
   if !os(windows)
     build-depends: unix,
                    filepath,

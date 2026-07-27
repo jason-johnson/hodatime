@@ -15,9 +15,10 @@ where
 --   January-first (indexed by @fromEnum@ of the month) and 'dayNames' is Sunday-first (indexed by @fromEnum@ of the
 --   'Data.HodaTime.CalendarDateTime.Internal.DayOfWeek', which also starts at Sunday).
 --
---   The @raw*Format@ fields hold the operating system's layout strings (POSIX @D_FMT@ \/ @T_FMT@ \/ @D_T_FMT@)
---   verbatim.  They are captured for completeness but are not yet interpreted into patterns; locale-driven layout is a
---   later phase.
+--   The @raw*Format@ fields hold the operating system's own layout strings, consumed by @localeDatePattern@ and friends
+--   in "Data.HodaTime.Pattern.Locale".  On POSIX these are @strftime@ strings (@D_FMT@ \/ @T_FMT@ \/ @D_T_FMT@); on
+--   Windows they are Windows /picture/ strings (e.g. @dd.MM.yyyy@), which those pattern functions do not yet understand
+--   (a @strftime@ translation is a follow-up).
 data Locale = Locale
   { localeId          :: String     -- ^ the identifier this locale was loaded from (e.g. @\"de_DE.UTF-8\"@)
   , monthNames        :: [String]   -- ^ full month names, January-first (12 entries for the Gregorian calendar)
