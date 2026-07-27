@@ -6,16 +6,18 @@ where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isNothing)
 
 import Data.HodaTime.Locale
 import Data.HodaTime.Pattern
 import Data.HodaTime.Pattern.CalendarDate (pdd, pMM, pyyyy, pMMMM', pMMM', pdddd', pMonthName, pdaySpace)
 import Data.HodaTime.Pattern.LocalTime (phh, phhSpace, pmm, ppp')
-import Data.HodaTime.Pattern.Locale (localeDatePattern, localeTimePattern, localeDateTimePattern)
+import Data.HodaTime.Pattern.Locale (localeDatePattern, localeTimePattern, localeDateTimePattern, parseZonedDateTime)
 import Data.HodaTime.LocalTime (localTime, LocalTime)
 import Data.HodaTime.CalendarDate (CalendarDate)
 import Data.HodaTime.CalendarDateTime (CalendarDateTime, at)
+import Data.HodaTime.ZonedDateTime (ZonedDateTime, toCalendarDateTime, fromCalendarDateTimeStrictly)
+import Data.HodaTime.TimeZone (utc)
 import qualified Data.HodaTime.Calendar.Gregorian as G
 
 tuesday :: CalendarDate G.Gregorian
@@ -35,7 +37,7 @@ dt :: CalendarDateTime G.Gregorian
 dt = at mar15 (mkLts 13 24 35)
 
 localeTests :: TestTree
-localeTests = testGroup "Locale Tests" [patternTests, readerTests, strftimeTests]
+localeTests = testGroup "Locale Tests" [patternTests, readerTests, strftimeTests, zonedTests]
 
 patternTests :: TestTree
 patternTests = testGroup "locale-aware patterns"
@@ -97,4 +99,14 @@ strftimeTests = testGroup "strftime layout compiler"
     ,testCase "US date+time round-trips"                  $ (localeDateTimePattern enUS >>= \p -> parse p "Sun 15 Mar 2020 01:24:35 PM") @?= Just dt
     ,testCase "Japanese date+time (no zone in layout)"    $ fmap (\p -> format p dt) (localeDateTimePattern jaJP) @?= Just "2020年03月15日 13時24分35秒"
     ,testCase "Japanese date+time round-trips"           $ (localeDateTimePattern jaJP >>= \p -> parse p "2020年03月15日 13時24分35秒") @?= Just dt
+  ]
+
+zonedTests :: TestTree
+zonedTests = testGroup "locale ZonedDateTime parsing"
+  [
+     testCase "reads the local time from a zoned layout" $ do
+       tz <- utc
+       zdt <- parseZonedDateTime (const (pure tz)) fromCalendarDateTimeStrictly deDE "So 15 Mär 2020 13:24:35 UTC" :: IO (ZonedDateTime G.Gregorian)
+       toCalendarDateTime zdt @?= dt
+    ,testCase "rejects a zoneless (Japanese) layout"     $ isNothing (parseZonedDateTime (const Nothing) fromCalendarDateTimeStrictly jaJP "irrelevant" :: Maybe (ZonedDateTime G.Gregorian)) @?= True
   ]

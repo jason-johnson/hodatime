@@ -111,6 +111,7 @@ library
                    Data.HodaTime.Locale.Internal,
                    Data.HodaTime.Locale.Platform,
                    Data.HodaTime.Pattern.Internal,
+                   Data.HodaTime.Pattern.ZonedDateTime.Internal,
                    Data.HodaTime.Pattern.ApplyParse
                    Data.HodaTime.Pattern.ParseTypes
   if !os(windows)

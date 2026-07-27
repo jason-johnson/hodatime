@@ -40,23 +40,32 @@
 -- so there is nothing to render there and nothing to interpret, and those specifiers are dropped from the compiled
 -- pattern.  In particular a zone-less datetime is /not/ assumed to be UTC — treating civil time as UTC is exactly the
 -- accidental coupling the library is built to avoid; turning a 'CalendarDateTime' into an absolute instant always
--- requires you to attach an offset or time zone /on purpose/.  When you do need the zone round-tripped, reach for a
--- @ZonedDateTime@ and its (effectful) parser instead.
+-- requires you to attach an offset or time zone /on purpose/.
+--
+-- When you /do/ want the zone, use 'parseZonedDateTime' (below): it parses the locale's zoned layout into a
+-- 'Data.HodaTime.ZonedDateTime.ZonedDateTime', capturing the @%Z@ abbreviation and resolving it through a /provider/
+-- you supply (abbreviations are ambiguous, so the caller owns that mapping).  It requires the layout to contain a zone,
+-- throwing 'ZonelessLayoutException' otherwise — a layout with no zone is not a zoned value.
 module Data.HodaTime.Pattern.Locale
 (
    StrftimeError(..)
+  ,ZonelessLayoutException(..)
   ,localeDatePattern
   ,localeTimePattern
   ,localeDateTimePattern
+  ,parseZonedDateTime
 )
 where
 
 import Data.HodaTime.Pattern.Internal (Pattern(..))
 import Data.HodaTime.Pattern.CalendarDate (pyyyy, pyy, pMM, pdd, pdaySpace, pMMMM', pMMM', pdddd', pddd')
 import Data.HodaTime.Pattern.LocalTime (pHH, phh, phhSpace, pmm, pss, ppp')
+import Data.HodaTime.Pattern.ZonedDateTime.Internal (parseZonedDateTimeWith)
 import Data.HodaTime.Locale.Internal (Locale(..))
 import Data.HodaTime.CalendarDateTime.Internal (HasDate, DoW, CalendarDateTime, IsCalendar)
 import Data.HodaTime.LocalTime.Internal (HasLocalTime)
+import Data.HodaTime.ZonedDateTime (ZonedDateTime)
+import Data.HodaTime.TimeZone (TimeZone)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Exception (Exception)
 import Data.Typeable (Typeable)
@@ -204,3 +213,34 @@ dateTimeConv loc c = case dateConv loc c of
 --   'CalendarDateTime'.  The zone specifiers @%Z@\/@%z@ are dropped — see the note on time zones in the module header.
 localeDateTimePattern :: (MonadThrow m, IsCalendar cal, Enum (DoW (CalendarDateTime cal))) => Locale -> m (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String)
 localeDateTimePattern loc = either throwM return (compileDroppingZones (dateTimeConv loc) (rawDateTimeFormat loc))
+
+-- | Thrown by 'parseZonedDateTime' when the locale's @D_T_FMT@ has no zone (@%Z@): such a layout describes civil time,
+--   not a zoned value, so use 'localeDateTimePattern' for it instead.
+newtype ZonelessLayoutException = ZonelessLayout String   -- ^ carries the offending locale's id
+  deriving (Eq, Show, Typeable)
+
+instance Exception ZonelessLayoutException
+
+-- | Parse a zoned date\/time written in the locale's @D_T_FMT@ into a 'ZonedDateTime'.  The local part is read from the
+--   layout and the trailing @%Z@ token is captured and handed to the /provider/ (abbreviations such as @CEST@ are
+--   ambiguous, so you supply the mapping to a real 'TimeZone'); the /resolver/ then decides skipped\/ambiguous local
+--   times (e.g. @fromCalendarDateTimeStrictly@).  Throws 'ZonelessLayoutException' if the locale's layout has no @%Z@
+--   (a layout with no zone is not a zoned value).
+parseZonedDateTime
+  :: (MonadThrow m, IsCalendar cal, Enum (DoW (CalendarDateTime cal)))
+  => (String -> m TimeZone)
+  -> (CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal))
+  -> Locale
+  -> String
+  -> m (ZonedDateTime cal)
+parseZonedDateTime provider resolve loc s
+  | hasZoneSpecifier (rawDateTimeFormat loc) = localeDateTimePattern loc >>= \localPat -> parseZonedDateTimeWith localPat provider resolve s
+  | otherwise                                = throwM (ZonelessLayout (localeId loc))
+
+-- | Does a @strftime@ layout contain the zone specifier @%Z@ (respecting @%%@)?
+hasZoneSpecifier :: String -> Bool
+hasZoneSpecifier ('%':'%':rest) = hasZoneSpecifier rest
+hasZoneSpecifier ('%':'Z':_)    = True
+hasZoneSpecifier ('%':_:rest)   = hasZoneSpecifier rest
+hasZoneSpecifier (_:rest)       = hasZoneSpecifier rest
+hasZoneSpecifier []             = False
