@@ -12,6 +12,7 @@ import Data.HodaTime.Locale
 import Data.HodaTime.Pattern
 import Data.HodaTime.Pattern.CalendarDate (pdd, pyyyy, pMMMM', pMMM', pdddd', pMonthName)
 import Data.HodaTime.Pattern.LocalTime (phh, pmm, ppp')
+import Data.HodaTime.Pattern.Locale (compileDatePattern, compileTimePattern, localeDatePattern, localeTimePattern)
 import Data.HodaTime.LocalTime (localTime, LocalTime)
 import Data.HodaTime.CalendarDate (CalendarDate)
 import qualified Data.HodaTime.Calendar.Gregorian as G
@@ -39,8 +40,11 @@ tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
 mkLtm :: Int -> Int -> LocalTime
 mkLtm h m = fromMaybe (error "impossible") (localTime h m 0 0)
 
+mkLts :: Int -> Int -> Int -> LocalTime
+mkLts h m s = fromMaybe (error "impossible") (localTime h m s 0)
+
 localeTests :: TestTree
-localeTests = testGroup "Locale Tests" [patternTests, readerTests]
+localeTests = testGroup "Locale Tests" [patternTests, readerTests, strftimeTests]
 
 patternTests :: TestTree
 patternTests = testGroup "locale-aware patterns"
@@ -72,4 +76,24 @@ readerTests = testGroup "reading the machine locale"
        length (monthNamesShort loc) @?= 12
        length (dayNames loc) @?= 7
        length (dayNamesShort loc) @?= 7
+  ]
+
+strftimeTests :: TestTree
+strftimeTests = testGroup "strftime layout compiler"
+  [
+     testCase "numeric date %d.%m.%Y formats"           $ fmap (\p -> format p tuesday) (compileDatePattern de "%d.%m.%Y") @?= Just "03.03.2020"
+    ,testCase "numeric date %d.%m.%Y round-trips"        $ (compileDatePattern de "%d.%m.%Y" >>= \p -> parse p "03.03.2020") @?= Just tuesday
+    ,testCase "named date %A, %d %B %Y formats"          $ fmap (\p -> format p tuesday) (compileDatePattern de "%A, %d %B %Y") @?= Just "Dienstag, 03 März 2020"
+    ,testCase "named date %A, %d %B %Y round-trips"      $ (compileDatePattern de "%A, %d %B %Y" >>= \p -> parse p "Dienstag, 03 März 2020") @?= Just tuesday
+    ,testCase "multibyte literals (Japanese layout)"     $ fmap (\p -> format p tuesday) (compileDatePattern de "%Y年%m月%d日") @?= Just "2020年03月03日"
+    ,testCase "multibyte literals round-trip"            $ (compileDatePattern de "%Y年%m月%d日" >>= \p -> parse p "2020年03月03日") @?= Just tuesday
+    ,testCase "composite %F expands to %Y-%m-%d"         $ fmap (\p -> format p tuesday) (compileDatePattern de "%F") @?= Just "2020-03-03"
+    ,testCase "localeDatePattern uses the locale D_FMT"  $ fmap (\p -> format p tuesday) (localeDatePattern de) @?= Just "03.03.2020"
+    ,testCase "time %H:%M:%S formats"                    $ fmap (\p -> format p (mkLts 15 4 9)) (compileTimePattern de "%H:%M:%S") @?= Just "15:04:09"
+    ,testCase "composite %T expands to %H:%M:%S"         $ (compileTimePattern de "%T" >>= \p -> parse p "15:04:09") @?= Just (mkLts 15 4 9)
+    ,testCase "12-hour %I:%M %p formats"                 $ fmap (\p -> format p (mkLtm 15 4)) (compileTimePattern de "%I:%M %p") @?= Just "03:04 PM"
+    ,testCase "12-hour %I:%M %p round-trips"             $ (compileTimePattern de "%I:%M %p" >>= \p -> parse p "03:04 PM") @?= Just (mkLtm 15 4)
+    ,testCase "localeTimePattern uses the locale T_FMT"  $ fmap (\p -> format p (mkLts 15 4 9)) (localeTimePattern de) @?= Just "15:04:09"
+    ,testCase "unsupported specifier is rejected"        $ (compileDatePattern de "%V" >>= \p -> parse p "x") @?= (Nothing :: Maybe (CalendarDate G.Gregorian))
+    ,testCase "a time field in a date layout is rejected" $ (compileDatePattern de "%H" >>= \p -> parse p "x") @?= (Nothing :: Maybe (CalendarDate G.Gregorian))
   ]

@@ -89,6 +89,7 @@ library
                    Data.HodaTime.Pattern.OffsetDateTime,
                    Data.HodaTime.Pattern.Duration,
                    Data.HodaTime.Pattern.ZonedDateTime,
+                   Data.HodaTime.Pattern.Locale,
                    Data.HodaTime.Exceptions
   other-modules:
                    Data.HodaTime.Constants,
