@@ -12,11 +12,14 @@ import Data.HodaTime.Locale
 import Data.HodaTime.Pattern
 import Data.HodaTime.Pattern.CalendarDate (pdd, pMM, pyyyy, pMMMM', pMMM', pdddd', pMonthName, pdaySpace)
 import Data.HodaTime.Pattern.LocalTime (phh, phhSpace, pmm, ppp')
-import Data.HodaTime.Pattern.Locale (localeDatePattern, localeTimePattern, localeDateTimePattern, parseZonedDateTime)
+import Data.HodaTime.Pattern.Locale (localeDatePattern, localeTimePattern, localeDateTimePattern, localeOffsetDateTimePattern, parseZonedDateTime)
+import Data.HodaTime.Pattern.Offset (pOffsetCompact)
 import Data.HodaTime.LocalTime (localTime, LocalTime)
 import Data.HodaTime.CalendarDate (CalendarDate)
 import Data.HodaTime.CalendarDateTime (CalendarDateTime, at)
 import Data.HodaTime.ZonedDateTime (ZonedDateTime, toCalendarDateTime, fromCalendarDateTimeStrictly)
+import Data.HodaTime.OffsetDateTime (OffsetDateTime, fromCalendarDateTimeWithOffset)
+import Data.HodaTime.Offset (fromHours, fromMinutes)
 import Data.HodaTime.TimeZone (utc)
 import qualified Data.HodaTime.Calendar.Gregorian as G
 
@@ -37,7 +40,7 @@ dt :: CalendarDateTime G.Gregorian
 dt = at mar15 (mkLts 13 24 35)
 
 localeTests :: TestTree
-localeTests = testGroup "Locale Tests" [patternTests, readerTests, strftimeTests, zonedTests]
+localeTests = testGroup "Locale Tests" [patternTests, readerTests, strftimeTests, zonedTests, offsetTests]
 
 patternTests :: TestTree
 patternTests = testGroup "locale-aware patterns"
@@ -109,4 +112,17 @@ zonedTests = testGroup "locale ZonedDateTime parsing"
        zdt <- parseZonedDateTime (const (pure tz)) fromCalendarDateTimeStrictly deDE "So 15 Mär 2020 13:24:35 UTC" :: IO (ZonedDateTime G.Gregorian)
        toCalendarDateTime zdt @?= dt
     ,testCase "rejects a zoneless (Japanese) layout"     $ isNothing (parseZonedDateTime (const Nothing) fromCalendarDateTimeStrictly jaJP "irrelevant" :: Maybe (ZonedDateTime G.Gregorian)) @?= True
+  ]
+
+odt :: OffsetDateTime G.Gregorian
+odt = fromCalendarDateTimeWithOffset dt (fromHours 2)
+
+offsetTests :: TestTree
+offsetTests = testGroup "locale OffsetDateTime parsing"
+  [
+     testCase "pOffsetCompact formats +HHmm"             $ format pOffsetCompact (fromHours 2) @?= "+0200"
+    ,testCase "pOffsetCompact formats a negative offset" $ format pOffsetCompact (fromMinutes (-330)) @?= "-0530"
+    ,testCase "pOffsetCompact parses +HHmm"              $ parse pOffsetCompact "+0200" @?= Just (fromHours (2 :: Int))
+    ,testCase "pOffsetCompact parses a negative offset"  $ parse pOffsetCompact "-0530" @?= Just (fromMinutes (-330 :: Int))
+    ,testCase "rejects a layout with no %z"              $ isNothing (fmap (\p -> format p odt) (localeOffsetDateTimePattern deDE)) @?= True
   ]

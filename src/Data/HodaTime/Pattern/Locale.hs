@@ -46,25 +46,35 @@
 -- 'Data.HodaTime.ZonedDateTime.ZonedDateTime', capturing the @%Z@ abbreviation and resolving it through a /provider/
 -- you supply (abbreviations are ambiguous, so the caller owns that mapping).  It requires the layout to contain a zone,
 -- throwing 'ZonelessLayoutException' otherwise — a layout with no zone is not a zoned value.
+--
+-- A layout that instead carries a /numeric/ offset (@%z@, e.g. @+0200@) is unambiguous, so
+-- 'localeOffsetDateTimePattern' compiles it into an ordinary, pure, bidirectional
+-- 'Data.HodaTime.OffsetDateTime.OffsetDateTime' pattern (used with 'parse' and 'format', no provider needed), throwing
+-- 'OffsetlessLayoutException' if the layout has no @%z@.
 module Data.HodaTime.Pattern.Locale
 (
    StrftimeError(..)
   ,ZonelessLayoutException(..)
+  ,OffsetlessLayoutException(..)
   ,localeDatePattern
   ,localeTimePattern
   ,localeDateTimePattern
+  ,localeOffsetDateTimePattern
   ,parseZonedDateTime
 )
 where
 
-import Data.HodaTime.Pattern.Internal (Pattern(..))
+import Data.HodaTime.Pattern.Internal (Pattern(..), (<%), string)
 import Data.HodaTime.Pattern.CalendarDate (pyyyy, pyy, pMM, pdd, pdaySpace, pMMMM', pMMM', pdddd', pddd')
+import Data.HodaTime.Pattern.OffsetDateTime (offsetDateTimePattern)
+import Data.HodaTime.Pattern.Offset (pOffsetCompact)
 import Data.HodaTime.Pattern.LocalTime (pHH, phh, phhSpace, pmm, pss, ppp')
 import Data.HodaTime.Pattern.ZonedDateTime.Internal (parseZonedDateTimeWith)
 import Data.HodaTime.Locale.Internal (Locale(..))
 import Data.HodaTime.CalendarDateTime.Internal (HasDate, DoW, CalendarDateTime, IsCalendar)
 import Data.HodaTime.LocalTime.Internal (HasLocalTime)
 import Data.HodaTime.ZonedDateTime (ZonedDateTime)
+import Data.HodaTime.OffsetDateTime (OffsetDateTime)
 import Data.HodaTime.TimeZone (TimeZone)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Exception (Exception)
@@ -244,3 +254,55 @@ hasZoneSpecifier ('%':'Z':_)    = True
 hasZoneSpecifier ('%':_:rest)   = hasZoneSpecifier rest
 hasZoneSpecifier (_:rest)       = hasZoneSpecifier rest
 hasZoneSpecifier []             = False
+
+-- | Thrown by 'localeOffsetDateTimePattern' when the locale's @D_T_FMT@ has no numeric offset (@%z@).
+newtype OffsetlessLayoutException = OffsetlessLayout String   -- ^ carries the offending locale's id
+  deriving (Eq, Show, Typeable)
+
+instance Exception OffsetlessLayoutException
+
+-- | Compile the locale's @D_T_FMT@ into an 'OffsetDateTime' pattern, using its numeric offset (@%z@, e.g. @+0200@).
+--   Unlike 'parseZonedDateTime' this is a plain, /pure/, bidirectional pattern (drive it with 'Data.HodaTime.Pattern.parse'
+--   and 'Data.HodaTime.Pattern.format') because a numeric offset is unambiguous — no zone provider or resolver is
+--   needed.  Throws 'OffsetlessLayoutException' if the layout has no @%z@ (the abbreviation form @%Z@ is not an offset;
+--   use 'parseZonedDateTime' for that).
+localeOffsetDateTimePattern
+  :: (MonadThrow m, IsCalendar cal, Enum (DoW (CalendarDateTime cal)))
+  => Locale
+  -> m (Pattern (OffsetDateTime cal -> OffsetDateTime cal) (OffsetDateTime cal -> String) String)
+localeOffsetDateTimePattern loc
+  | hasOffsetSpecifier fmt = either throwM return (compileOffsetDateTime (dateTimeConv loc) fmt)
+  | otherwise              = throwM (OffsetlessLayout (localeId loc))
+  where fmt = rawDateTimeFormat loc
+
+-- | Split a @%z@-bearing layout into its local part and the offset, compile the local part, and pair it with the
+--   compact-offset field.
+compileOffsetDateTime
+  :: IsCalendar cal
+  => (Char -> Either StrftimeError (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String))
+  -> String
+  -> Either StrftimeError (Pattern (OffsetDateTime cal -> OffsetDateTime cal) (OffsetDateTime cal -> String) String)
+compileOffsetDateTime dtConv fmtStr = do
+  toks <- tokenize fmtStr
+  let (before, rest) = break isOffsetFrag (toFrags toks)
+  localPat <- assemble dtConv before
+  trailing <- trailingLits (drop 1 rest)
+  return (offsetDateTimePattern localPat (pOffsetCompact <% string trailing))
+
+isOffsetFrag :: Frag -> Bool
+isOffsetFrag (ConvF 'z') = True
+isOffsetFrag _           = False
+
+-- | The literal text following @%z@ (normally none); a further field there is unsupported.
+trailingLits :: [Frag] -> Either StrftimeError String
+trailingLits []                = Right ""
+trailingLits (LitRun s : rest) = (s ++) <$> trailingLits rest
+trailingLits (ConvF c : _)     = Left (UnsupportedSpecifier c)
+
+-- | Does a @strftime@ layout contain the numeric-offset specifier @%z@ (respecting @%%@)?
+hasOffsetSpecifier :: String -> Bool
+hasOffsetSpecifier ('%':'%':rest) = hasOffsetSpecifier rest
+hasOffsetSpecifier ('%':'z':_)    = True
+hasOffsetSpecifier ('%':_:rest)   = hasOffsetSpecifier rest
+hasOffsetSpecifier (_:rest)       = hasOffsetSpecifier rest
+hasOffsetSpecifier []             = False

@@ -4,6 +4,7 @@ module Data.HodaTime.Pattern.Offset
    pOffset
   ,pOffsetZ
   ,pOffsetFull
+  ,pOffsetCompact
 )
 where
 
@@ -14,7 +15,7 @@ import Formatting (Format, later)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as TLB
 import Text.Parsec (Parsec, count, digit, (<|>), (<?>))
-import qualified Text.Parsec as P (char)
+import qualified Text.Parsec as P (char, string)
 
 -- o1 = fromHours 2
 -- format pOffset o1        -- "+02:00"
@@ -41,42 +42,46 @@ type Parser a = Parsec String () a
 
 -- | The ISO-8601 offset pattern, sign followed by @HH:mm@ (e.g. @+02:00@, @-05:30@, @+00:00@ for UTC).
 pOffset :: Pattern (Offset -> Offset) (Offset -> String) String
-pOffset = Pattern (const <$> offsetParser False <?> "offset: (+/-)HH:mm") (offsetFormat False)
+pOffset = Pattern (const <$> offsetParser ":" False <?> "offset: (+/-)HH:mm") (offsetFormat ":" False)
 
 -- | Like 'pOffset' but including seconds, sign followed by @HH:mm:ss@ (e.g. @-05:30:15@).
 pOffsetFull :: Pattern (Offset -> Offset) (Offset -> String) String
-pOffsetFull = Pattern (const <$> offsetParser True <?> "offset: (+/-)HH:mm:ss") (offsetFormat True)
+pOffsetFull = Pattern (const <$> offsetParser ":" True <?> "offset: (+/-)HH:mm:ss") (offsetFormat ":" True)
 
 -- | Like 'pOffset' but renders UTC (a zero offset) as @Z@ rather than @+00:00@, per ISO-8601 (and parses @Z@ back).
 pOffsetZ :: Pattern (Offset -> Offset) (Offset -> String) String
 pOffsetZ = Pattern (const <$> parZ <?> "offset: Z or (+/-)HH:mm") fmtZ
   where
-    parZ = (fromSeconds (0 :: Int) <$ P.char 'Z') <|> offsetParser False
-    fmtZ = later (\o -> TLB.fromText . T.pack $ if offsetSeconds o == 0 then "Z" else renderOffset False o)
+    parZ = (fromSeconds (0 :: Int) <$ P.char 'Z') <|> offsetParser ":" False
+    fmtZ = later (\o -> TLB.fromText . T.pack $ if offsetSeconds o == 0 then "Z" else renderOffset ":" False o)
+
+-- | The @strftime@ @%z@ offset: sign followed by @HHmm@ with no separator (e.g. @+0200@, @-0530@, @+0000@ for UTC).
+pOffsetCompact :: Pattern (Offset -> Offset) (Offset -> String) String
+pOffsetCompact = Pattern (const <$> offsetParser "" False <?> "offset: (+/-)HHmm") (offsetFormat "" False)
 
 -- helpers
 
-offsetParser :: Bool -> Parser Offset
-offsetParser withSecs = do
+offsetParser :: String -> Bool -> Parser Offset
+offsetParser sep withSecs = do
   sign <- ((-1) <$ P.char '-') <|> (1 <$ P.char '+')
   h <- twoDigit
-  _ <- P.char ':'
+  _ <- P.string sep
   m <- p_sixty
-  s <- if withSecs then P.char ':' *> p_sixty else pure 0
+  s <- if withSecs then P.string sep *> p_sixty else pure 0
   return . fromSeconds $ sign * (h * secondsPerHour + m * secondsPerMinute + s)
   where
     twoDigit = read <$> count 2 digit :: Parser Int
 
-offsetFormat :: Bool -> Format String (Offset -> String)
-offsetFormat withSecs = later (TLB.fromText . T.pack . renderOffset withSecs)
+offsetFormat :: String -> Bool -> Format String (Offset -> String)
+offsetFormat sep withSecs = later (TLB.fromText . T.pack . renderOffset sep withSecs)
 
-renderOffset :: Bool -> Offset -> String
-renderOffset withSecs (Offset secs) = sign : pad2 h ++ ":" ++ pad2 m ++ secPart
+renderOffset :: String -> Bool -> Offset -> String
+renderOffset sep withSecs (Offset secs) = sign : pad2 h ++ sep ++ pad2 m ++ secPart
   where
     sign = if secs < 0 then '-' else '+'
     a = abs secs
     h = a `div` secondsPerHour
     m = (a `mod` secondsPerHour) `div` secondsPerMinute
     s = a `mod` secondsPerMinute
-    secPart = if withSecs then ":" ++ pad2 s else ""
+    secPart = if withSecs then sep ++ pad2 s else ""
     pad2 x = let str = show x in if length str < 2 then '0' : str else str
