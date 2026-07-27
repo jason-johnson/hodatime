@@ -30,9 +30,7 @@
 -- >    p   <- localeDatePattern loc                        -- the current locale's short-date layout
 -- >    pure (format p march15) >>= parse p                 -- round-trips in whatever order the locale uses
 --
--- 'localeTimePattern' does the same for the time-of-day layout (@T_FMT@).  To compile an explicit format string rather
--- than the locale's own, use 'compileDatePattern' \/ 'compileTimePattern' (the locale is still needed to supply
--- month\/weekday names for @%B@\/@%A@ and the AM\/PM designators for @%p@).
+-- 'localeTimePattern' does the same for the time-of-day layout (@T_FMT@).
 --
 -- Only the single-category formats are handled: 'localeDatePattern' (from 'rawDateFormat') and 'localeTimePattern'
 -- (from 'rawTimeFormat').  The combined @D_T_FMT@ is not yet supported because it mixes date and time fields and carries
@@ -42,8 +40,6 @@ module Data.HodaTime.Pattern.Locale
    StrftimeError(..)
   ,localeDatePattern
   ,localeTimePattern
-  ,compileDatePattern
-  ,compileTimePattern
 )
 where
 
