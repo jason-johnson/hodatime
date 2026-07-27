@@ -36,12 +36,15 @@ lOCALE_SABBREVMONTHNAME1 = #{const LOCALE_SABBREVMONTHNAME1}
 lOCALE_SDAYNAME1         = #{const LOCALE_SDAYNAME1}
 lOCALE_SABBREVDAYNAME1   = #{const LOCALE_SABBREVDAYNAME1}
 
-lOCALE_S1159, lOCALE_S2359, lOCALE_SSHORTDATE, lOCALE_STIMEFORMAT, lOCALE_SNAME :: CInt
+lOCALE_S1159, lOCALE_S2359, lOCALE_SSHORTDATE, lOCALE_STIMEFORMAT :: CInt
 lOCALE_S1159       = #{const LOCALE_S1159}
 lOCALE_S2359       = #{const LOCALE_S2359}
 lOCALE_SSHORTDATE  = #{const LOCALE_SSHORTDATE}
 lOCALE_STIMEFORMAT = #{const LOCALE_STIMEFORMAT}
+#if defined(LOCALE_SNAME)
+lOCALE_SNAME :: CInt
 lOCALE_SNAME       = #{const LOCALE_SNAME}
+#endif
 
 -- | Query one @LCTYPE@ from the given locale (a pointer to a wide name, or 'nullPtr' for the current locale) and decode
 --   it as a 'String' (UTF-16, BMP — locale strings never use surrogate pairs).
@@ -100,5 +103,9 @@ loadLocaleByName name = withLocaleName (Just (normalizeName name)) $ \loc -> do
 -- | Read the current (user default) locale.
 loadCurrentLocale :: IO Locale
 loadCurrentLocale = do
+#if defined(LOCALE_SNAME)
   lid <- withLocaleName Nothing (`getInfo` lOCALE_SNAME)
   withLocaleName Nothing (buildLocale (if null lid then "C" else lid))
+#else
+  withLocaleName Nothing (buildLocale "C")
+#endif
