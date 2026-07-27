@@ -37,6 +37,9 @@ de = Locale
 tuesday :: CalendarDate G.Gregorian
 tuesday = fromMaybe (error "impossible") $ G.calendarDate 3 G.March 2020
 
+mar15 :: CalendarDate G.Gregorian
+mar15 = fromMaybe (error "impossible") $ G.calendarDate 15 G.March 2020
+
 mkLtm :: Int -> Int -> LocalTime
 mkLtm h m = fromMaybe (error "impossible") (localTime h m 0 0)
 
@@ -96,4 +99,10 @@ strftimeTests = testGroup "strftime layout compiler"
     ,testCase "localeTimePattern uses the locale T_FMT"  $ fmap (\p -> format p (mkLts 15 4 9)) (localeTimePattern de) @?= Just "15:04:09"
     ,testCase "unsupported specifier is rejected"        $ (compileDatePattern de "%V" >>= \p -> parse p "x") @?= (Nothing :: Maybe (CalendarDate G.Gregorian))
     ,testCase "a time field in a date layout is rejected" $ (compileDatePattern de "%H" >>= \p -> parse p "x") @?= (Nothing :: Maybe (CalendarDate G.Gregorian))
+    ,testCase "%e space-pads a single-digit day"         $ fmap (\p -> format p tuesday) (compileDatePattern de "%e.%m.%Y") @?= Just " 3.03.2020"
+    ,testCase "%e leaves a two-digit day unpadded"       $ fmap (\p -> format p mar15) (compileDatePattern de "%e.%m.%Y") @?= Just "15.03.2020"
+    ,testCase "%e round-trips the padded form"           $ (compileDatePattern de "%e.%m.%Y" >>= \p -> parse p " 3.03.2020") @?= Just tuesday
+    ,testCase "%e also accepts the bare form"            $ (compileDatePattern de "%e.%m.%Y" >>= \p -> parse p "3.03.2020") @?= Just tuesday
+    ,testCase "%l space-pads the 12-hour clock"          $ fmap (\p -> format p (mkLtm 13 24)) (compileTimePattern de "%l:%M %p") @?= Just " 1:24 PM"
+    ,testCase "%l round-trips"                           $ (compileTimePattern de "%l:%M %p" >>= \p -> parse p " 1:24 PM") @?= Just (mkLtm 13 24)
   ]

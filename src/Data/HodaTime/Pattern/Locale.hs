@@ -32,8 +32,8 @@ module Data.HodaTime.Pattern.Locale
 where
 
 import Data.HodaTime.Pattern.Internal (Pattern(..))
-import Data.HodaTime.Pattern.CalendarDate (pyyyy, pyy, pMM, pdd, pMMMM', pMMM', pdddd', pddd')
-import Data.HodaTime.Pattern.LocalTime (pHH, phh, pmm, pss, ppp')
+import Data.HodaTime.Pattern.CalendarDate (pyyyy, pyy, pMM, pdd, pdaySpace, pMMMM', pMMM', pdddd', pddd')
+import Data.HodaTime.Pattern.LocalTime (pHH, phh, phhSpace, pmm, pss, ppp')
 import Data.HodaTime.Locale.Internal (Locale(..))
 import Data.HodaTime.CalendarDateTime.Internal (HasDate, DoW)
 import Data.HodaTime.LocalTime.Internal (HasLocalTime)
@@ -110,6 +110,7 @@ dateConv loc c = case c of
   'y' -> Right pyy
   'm' -> Right pMM
   'd' -> Right pdd
+  'e' -> Right pdaySpace
   'B' -> Right (pMMMM' loc)
   'b' -> Right (pMMM' loc)
   'h' -> Right (pMMM' loc)
@@ -121,6 +122,7 @@ timeConv :: HasLocalTime lt => Locale -> Char -> Either StrftimeError (Pattern (
 timeConv loc c = case c of
   'H' -> Right pHH
   'I' -> Right phh
+  'l' -> Right phhSpace
   'M' -> Right pmm
   'S' -> Right pss
   'p' -> Right (ppp' loc)

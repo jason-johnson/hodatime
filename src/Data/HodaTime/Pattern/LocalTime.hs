@@ -10,6 +10,7 @@ module Data.HodaTime.Pattern.LocalTime
   ,phour
   ,pHH
   ,phh
+  ,phhSpace
   ,pminute
   ,pmm
   ,psecond
@@ -52,13 +53,23 @@ import Data.HodaTime.Locale.Internal (Locale(..))
 --   'phh' and the AM\/PM designators are /order independent/: each only rewrites its own portion of the hour, so
 --   @'phh' '<%' 'char' \' \' '<>' 'ppp'@ and @'ppp' '<%' 'char' \' \' '<>' 'phh'@ both round-trip correctly.
 phh :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
-phh = Pattern par fmt
+phh = twelveHour paddedNum f_shown_two
   where
-    par = (adjust <$> (p_a <|> p_b)) <?> "hour: 01-12"
-    p_a = digitsToInt <$> P.char '0' <*> oneOf ['1'..'9']
-    p_b = digitsToInt <$> P.char '1' <*> oneOf ['0'..'2']
+    paddedNum = (digitsToInt <$> P.char '0' <*> oneOf ['1'..'9']) <|> (digitsToInt <$> P.char '1' <*> oneOf ['0'..'2'])
+
+-- | The hour of day in the 12-hour clock, /space/-padded to two characters (the @strftime@ @%l@ convention), e.g.
+--   @\" 3\"@.  Like 'phh' it folds the 24-hour value into 1-12 and combines with an AM\/PM designator on parse.
+phhSpace :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
+phhSpace = twelveHour (pDigitsSpace 2 1 12) (f_shown_spad 2)
+
+-- | Shared builder for the 12-hour clock hour: @numP@ parses the 1-12 value and @mkFmt@ renders it (given a getter of
+--   the folded 1-12 hour).  Only the 1-12 position of the hour is rewritten on parse, preserving the AM\/PM half so it
+--   stays order-independent with 'pp'\/'ppp'.
+twelveHour :: HasLocalTime lt => Parser Int String -> ((lt -> Int) -> Format String (lt -> String)) -> Pattern (lt -> lt) (lt -> String) String
+twelveHour numP mkFmt = Pattern par (mkFmt (to12 . view LT.hour))
+  where
+    par = (adjust <$> numP) <?> "hour: 01-12"
     adjust n lt = set LT.hour (12 * (view LT.hour lt `div` 12) + (n `mod` 12)) lt   -- NOTE: replace only the 1-12 position, preserve the AM/PM half
-    fmt = f_shown_two (to12 . view LT.hour)
     to12 h = if h' == 0 then 12 else h' where h' = h `mod` 12
 
 -- | The hour of day in the 24-hour clock as @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 00-23.

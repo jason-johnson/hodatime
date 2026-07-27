@@ -24,6 +24,7 @@ module Data.HodaTime.Pattern.CalendarDate
   ,pMonthName
   ,pday
   ,pdd
+  ,pdaySpace
   ,pddd
   ,pdddd
   ,pddd'
@@ -116,6 +117,11 @@ pday w = pat_lens CDT.day (pDigits w 2 1 31) (f_shown_pad w) "day: 1-31"
 -- | Day of month, zero-padded (@'pday' 2@); values 01-31.
 pdd :: HasDate d => Pattern (d -> d) (d -> String) String
 pdd = pday 2
+
+-- | Day of month, /space/-padded to two characters (the @strftime@ @%e@ convention), e.g. @\" 3\"@ or @\"15\"@.  On
+--   parse it also accepts the bare and zero-padded forms.
+pdaySpace :: HasDate d => Pattern (d -> d) (d -> String) String
+pdaySpace = pat_lens CDT.day (pDigitsSpace 2 1 31) (f_shown_spad 2) "day: 1-31 (space padded)"
 
 -- | Abbreviated day of week name (e.g. @Mon@), parsed case-insensitively and formatted in title case.  Note: on parse
 --   this only /consumes/ the weekday, it is not validated against the day\/month\/year (which fully determine the date).
