@@ -12,11 +12,27 @@
 -- "Data.HodaTime.Locale") into hodatime 'Pattern's, so a date or time can be formatted and parsed using the machine's
 -- own conventions.
 --
--- ==== __Example__
+-- ==== __Using the machine's own layout__
+--
+-- 'localeDatePattern' turns a locale's @D_FMT@ into a pattern, so the /same/ date renders the way each culture writes
+-- it — month-first in the US, day-first in Germany (here @march15@ is 15 March 2020):
+--
+-- > do us  <- localeByName "en_US.UTF-8"
+-- >    de  <- localeByName "de_DE.UTF-8"
+-- >    usP <- localeDatePattern us
+-- >    deP <- localeDatePattern de
+-- >    pure (format usP march15, format deP march15)       -- ("03/15/2020", "15.03.2020")
+--
+-- Use 'currentLocale' instead of 'localeByName' to follow the machine's own @LC_TIME@ setting, and 'parse' with the
+-- same pattern to read that layout back:
 --
 -- > do loc <- currentLocale
--- >    p   <- localeDatePattern loc          -- e.g. "%d/%m/%Y" in fr_FR
--- >    pure (format p someDate)              -- "27/07/2026"
+-- >    p   <- localeDatePattern loc                        -- the current locale's short-date layout
+-- >    pure (format p march15) >>= parse p                 -- round-trips in whatever order the locale uses
+--
+-- 'localeTimePattern' does the same for the time-of-day layout (@T_FMT@).  To compile an explicit format string rather
+-- than the locale's own, use 'compileDatePattern' \/ 'compileTimePattern' (the locale is still needed to supply
+-- month\/weekday names for @%B@\/@%A@ and the AM\/PM designators for @%p@).
 --
 -- Only the single-category formats are handled: 'localeDatePattern' (from 'rawDateFormat') and 'localeTimePattern'
 -- (from 'rawTimeFormat').  The combined @D_T_FMT@ is not yet supported because it mixes date and time fields and carries
