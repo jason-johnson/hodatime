@@ -5,7 +5,7 @@
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
 -- Stability   :  experimental
--- Portability :  TBD
+-- Portability :  POSIX, Windows
 --
 -- An 'Offset' is a period of time offset from UTC time.  This module contains constructors and functions for working with 'Offsets'.
 --

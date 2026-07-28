@@ -1,3 +1,16 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.LocalTime
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for a 'Data.HodaTime.LocalTime.LocalTime': the standard time layouts (@pt@, @pT@, @pr@) together with the
+-- individual field patterns (@pHH@, @phh@, @pmm@, @pss@, @pfrac@, @ppp@ and friends) from which custom time patterns are
+-- built.  The primed variant @ppp'@ takes a 'Data.HodaTime.Locale.Locale' for its AM\/PM designators.
+----------------------------------------------------------------------------
 module Data.HodaTime.Pattern.LocalTime
 (
   -- * Standard Patterns
@@ -10,6 +23,7 @@ module Data.HodaTime.Pattern.LocalTime
   ,phour
   ,pHH
   ,phh
+  ,phhSpace
   ,pminute
   ,pmm
   ,psecond
@@ -17,6 +31,8 @@ module Data.HodaTime.Pattern.LocalTime
   ,pfrac
   ,pp
   ,ppp
+  ,ppp'
+  ,pPeriod
   ,hour'
   ,minute'
   ,second'
@@ -33,8 +49,9 @@ import Control.Applicative ((<|>))
 import Formatting (Format, later, left, (%.))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as TLB
-import Text.Parsec (oneOf, digit, count, (<?>))
+import Text.Parsec (oneOf, digit, count, try, (<?>))
 import qualified Text.Parsec as P (char)
+import Data.HodaTime.Locale.Internal (Locale(..))
 
 -- x = maybe (error "duh") id $ localTime 1 2 3 0
 -- parse pT "01:01:01" :: IO LocalTime
@@ -49,13 +66,23 @@ import qualified Text.Parsec as P (char)
 --   'phh' and the AM\/PM designators are /order independent/: each only rewrites its own portion of the hour, so
 --   @'phh' '<%' 'char' \' \' '<>' 'ppp'@ and @'ppp' '<%' 'char' \' \' '<>' 'phh'@ both round-trip correctly.
 phh :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
-phh = Pattern par fmt
+phh = twelveHour paddedNum f_shown_two
   where
-    par = (adjust <$> (p_a <|> p_b)) <?> "hour: 01-12"
-    p_a = digitsToInt <$> P.char '0' <*> oneOf ['1'..'9']
-    p_b = digitsToInt <$> P.char '1' <*> oneOf ['0'..'2']
+    paddedNum = (digitsToInt <$> P.char '0' <*> oneOf ['1'..'9']) <|> (digitsToInt <$> P.char '1' <*> oneOf ['0'..'2'])
+
+-- | The hour of day in the 12-hour clock, /space/-padded to two characters (the @strftime@ @%l@ convention), e.g.
+--   @\" 3\"@.  Like 'phh' it folds the 24-hour value into 1-12 and combines with an AM\/PM designator on parse.
+phhSpace :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
+phhSpace = twelveHour (pDigitsSpace 2 1 12) (f_shown_spad 2)
+
+-- | Shared builder for the 12-hour clock hour: @numP@ parses the 1-12 value and @mkFmt@ renders it (given a getter of
+--   the folded 1-12 hour).  Only the 1-12 position of the hour is rewritten on parse, preserving the AM\/PM half so it
+--   stays order-independent with 'pp'\/'ppp'.
+twelveHour :: HasLocalTime lt => Parser Int String -> ((lt -> Int) -> Format String (lt -> String)) -> Pattern (lt -> lt) (lt -> String) String
+twelveHour numP mkFmt = Pattern par (mkFmt (to12 . view LT.hour))
+  where
+    par = (adjust <$> numP) <?> "hour: 01-12"
     adjust n lt = set LT.hour (12 * (view LT.hour lt `div` 12) + (n `mod` 12)) lt   -- NOTE: replace only the 1-12 position, preserve the AM/PM half
-    fmt = f_shown_two (to12 . view LT.hour)
     to12 h = if h' == 0 then 12 else h' where h' = h `mod` 12
 
 -- | The hour of day in the 24-hour clock as @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 00-23.
@@ -127,6 +154,22 @@ ppp = Pattern par (amPmFormat render)
     par = (amPmSetter <$> desig) <?> "period: AM or PM"
     desig = (\c -> c `elem` "Pp") <$> oneOf "AaPp" <* oneOf "Mm"
     render isPM = if isPM then "PM" else "AM"
+
+-- | 12 hour clock time period designator using an explicit @(am, pm)@ pair, instead of the built-in @AM@\/@PM@ literals.
+--   This is the calendar-agnostic core behind the locale-aware 'ppp''.  Parsing matches either designator
+--   case-insensitively (PM tried first); as with 'ppp' it only sets morning\/afternoon, so combine it with 'phh'.
+pPeriod :: HasLocalTime lt => (String, String) -> Pattern (lt -> lt) (lt -> String) String
+pPeriod (am, pm) = Pattern par (amPmFormat render)
+  where
+    par = (amPmSetter <$> desig) <?> "period"
+    desig = (True <$ try (caseInsensitiveString pm)) <|> (False <$ try (caseInsensitiveString am))
+    render isPM = if isPM then pm else am
+
+-- | 12 hour clock time period designator in the given 'Locale' (e.g. the POSIX @AM_STR@\/@PM_STR@); the locale-aware
+--   counterpart to 'ppp'.  NOTE: some locales (e.g. German) leave these designators empty, in which case this pattern
+--   cannot round-trip; prefer a 24-hour pattern there.
+ppp' :: HasLocalTime lt => Locale -> Pattern (lt -> lt) (lt -> String) String
+ppp' loc = pPeriod (amName loc, pmName loc)
 
 -- | Rewrite only the AM\/PM half of the hour (morning \<-\> afternoon), preserving the 1-12 position set by 'phh'.
 amPmSetter :: HasLocalTime lt => Bool -> lt -> lt

@@ -5,7 +5,7 @@
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
 -- Stability   :  experimental
--- Portability :  TBD
+-- Portability :  POSIX, Windows
 --
 -- An 'LocalTime' represents a time of day, with no reference to a particular calendar, time zone or date.
 -- This module contains constructors and functions for working with 'LocalTime'.

@@ -5,7 +5,7 @@
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
 -- Stability   :  experimental
--- Portability :  TBD
+-- Portability :  POSIX, Windows
 --
 -- A 'Duration' is fixed period of time between global times.
 --

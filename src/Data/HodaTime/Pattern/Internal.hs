@@ -7,6 +7,7 @@ module Data.HodaTime.Pattern.Internal
 (
    Pattern(..)
   ,DefaultForParse(..)
+  ,Parser
   ,parse
   ,parse'
   ,parse''
@@ -24,7 +25,10 @@ module Data.HodaTime.Pattern.Internal
   ,f_shown
   ,f_shown_two
   ,f_shown_pad
+  ,f_shown_spad
   ,pDigits
+  ,pDigitsSpace
+  ,caseInsensitiveString
   ,ParseFailedException(..)
 )
 where
@@ -34,6 +38,8 @@ import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Text.Parsec hiding (many, optional, (<|>), parse, string, char)
 import qualified Text.Parsec as P (string, char)
+import Control.Applicative ((<|>))
+import Data.Char (toLower, toUpper)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
 import Data.HodaTime.Internal.Lens (view, set, Lens)
@@ -145,6 +151,10 @@ f_shown_two x = left 2 '0' %. f_shown x
 f_shown_pad :: Show b => Int -> (a -> b) -> Format r (a -> r)
 f_shown_pad n x = left n '0' %. f_shown x
 
+-- | Format a numeric field @n@ characters wide, /space/-padded (the @strftime@ @%e@\/@%l@ convention), e.g. @" 3"@.
+f_shown_spad :: Show b => Int -> (a -> b) -> Format r (a -> r)
+f_shown_spad n x = left n ' ' %. f_shown x
+
 -- | Parse a numeric field.  Width @1@ is the /no-padding/ case: it reads 1 up to @maxW@ digits, so both @"3"@ and
 --   @"31"@ are accepted.  Width @n >= 2@ reads exactly @n@ digits.  Either way the value is validated to lie within
 --   @[lo, hi]@.
@@ -158,6 +168,18 @@ pDigits w maxW lo hi = do
     upTo k = (:) <$> digit <*> go (k - 1)
     go :: Int -> Parser [Char] String
     go j = if j <= 0 then return [] else option [] ((:) <$> digit <*> go (j - 1))
+
+-- | Parse a /space/-padded numeric field (the @strftime@ @%e@\/@%l@ convention): skip any leading spaces, then read 1
+--   up to @maxW@ digits, validated to lie within @[lo, hi]@.  Accepts both the padded (@" 3"@) and bare (@"3"@) forms.
+pDigitsSpace :: Int -> Int -> Int -> Parser Int String
+pDigitsSpace maxW lo hi = skipMany (P.char ' ') *> pDigits 1 maxW lo hi
+
+-- | Case-insensitive literal string parser, used by the name-based patterns (month\/weekday names, AM\/PM designators).
+caseInsensitiveString :: String -> Parsec String () String
+caseInsensitiveString = mapM caseInsensitiveChar
+  where
+    caseInsensitiveChar :: Char -> Parsec String () Char
+    caseInsensitiveChar c = (P.char (toLower c) <|> P.char (toUpper c)) >> return c
 
 string :: String -> Pattern String String String
 string s = Pattern p_str f_str

@@ -1,3 +1,15 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.Duration
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for a 'Data.HodaTime.Duration.Duration', rendered as @[-]D:HH:mm:ss@; @pDurationNano@ additionally carries
+-- the fractional second down to the nanosecond.
+----------------------------------------------------------------------------
 module Data.HodaTime.Pattern.Duration
 (
   -- * Standard Patterns

@@ -1,3 +1,15 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.Instant
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for an 'Data.HodaTime.Instant.Instant', rendered as ISO-8601 UTC (@yyyy-MM-ddTHH:mm:ssZ@); @pInstantNano@
+-- additionally carries the fractional second down to the nanosecond.
+----------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 module Data.HodaTime.Pattern.Instant
 (

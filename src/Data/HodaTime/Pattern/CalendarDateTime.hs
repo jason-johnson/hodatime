@@ -1,3 +1,15 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.CalendarDateTime
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for a 'Data.HodaTime.CalendarDateTime.CalendarDateTime': the combined date-and-time layouts (@ps@, @po@,
+-- @pf@\/@pF@, @pg@\/@pG@), each of which glues a date pattern to a time pattern.
+----------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 module Data.HodaTime.Pattern.CalendarDateTime
 (

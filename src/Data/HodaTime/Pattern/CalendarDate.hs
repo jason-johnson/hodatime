@@ -1,3 +1,17 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.CalendarDate
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for a 'Data.HodaTime.CalendarDate.CalendarDate': the standard date layouts (@pd@, @pD@, @pR@) together with
+-- the individual field patterns (@pyyyy@, @pMM@, @pMMMM@, @pdd@, @pdddd@ and friends) from which custom date patterns
+-- are built.  The primed variants (@pMMMM'@, @pddd'@ …) take a 'Data.HodaTime.Locale.Locale' and use its
+-- month\/weekday names.
+----------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
@@ -19,10 +33,17 @@ module Data.HodaTime.Pattern.CalendarDate
   ,pMM
   ,pMMM
   ,pMMMM
+  ,pMMM'
+  ,pMMMM'
+  ,pMonthName
   ,pday
   ,pdd
+  ,pdaySpace
   ,pddd
   ,pdddd
+  ,pddd'
+  ,pdddd'
+  ,pDayName
 )
 where
 
@@ -31,12 +52,10 @@ import Data.HodaTime.CalendarDateTime.Internal (HasDate, Month, IsCalendar, mont
 import qualified Data.HodaTime.CalendarDateTime.Internal as CDT (day, year)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
-import Data.Char(toLower, toUpper)
-import Control.Applicative ((<|>))
-import Text.Parsec (choice, try, Parsec, (<?>))
-import qualified Text.Parsec as P (char)
+import Text.Parsec (choice, try, (<?>))
 import Formatting (later)
 import Data.HodaTime.Internal.Lens (view, set)
+import Data.HodaTime.Locale.Internal (Locale(..))
 
 -- d1 = maybe (error "duh") id $ calendarDate 1 January 2000
 -- d2 = maybe (error "duh") id $ calendarDate 3 March 2020
@@ -113,6 +132,11 @@ pday w = pat_lens CDT.day (pDigits w 2 1 31) (f_shown_pad w) "day: 1-31"
 pdd :: HasDate d => Pattern (d -> d) (d -> String) String
 pdd = pday 2
 
+-- | Day of month, /space/-padded to two characters (the @strftime@ @%e@ convention), e.g. @\" 3\"@ or @\"15\"@.  On
+--   parse it also accepts the bare and zero-padded forms.
+pdaySpace :: HasDate d => Pattern (d -> d) (d -> String) String
+pdaySpace = pat_lens CDT.day (pDigitsSpace 2 1 31) (f_shown_spad 2) "day: 1-31 (space padded)"
+
 -- | Abbreviated day of week name (e.g. @Mon@), parsed case-insensitively and formatted in title case.  Note: on parse
 --   this only /consumes/ the weekday, it is not validated against the day\/month\/year (which fully determine the date).
 pddd :: forall d. (HasDate d, Show (DoW d), Enum (DoW d), Bounded (DoW d)) => Pattern (d -> d) (d -> String) String
@@ -152,8 +176,37 @@ pmonthDay = pMMMM <% char ' ' <> pdd
 pyearMonth :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
 pyearMonth = pyyyy <% char ' ' <> pMMMM
 
--- | Case-insensitive literal string parser, used by the name-based patterns ('pMMMM', 'pddd', 'pdddd').
-caseInsensitiveString :: String -> Parsec String () String
-caseInsensitiveString = mapM caseInsensitiveChar
+-- | Format and parse the month using an explicit list of names (index 0 is the calendar's first month), instead of the
+--   calendar's built-in English constructor names.  This is the calendar-agnostic core behind the locale-aware 'pMMMM''
+--   and 'pMMM''; pass 'Data.HodaTime.Locale.monthNames' (or @monthNamesShort@) for OS locale names, or any list of the
+--   right length for a custom calendar.  Parsing is case-insensitive and, like 'pMMMM', tries the names in order.
+pMonthName :: HasDate d => [String] -> Pattern (d -> d) (d -> String) String
+pMonthName names = pat_lens monthl par fmt "month name"
   where
-    caseInsensitiveChar c = (P.char (toLower c) <|> P.char (toUpper c)) >> return c
+    par = choice . fmap (\(i, n) -> i <$ try (caseInsensitiveString n)) $ zip [0 :: Int ..] names
+    fmt x = later (TLB.fromText . T.pack . (names !!) . x)
+
+-- | Format and parse the day-of-week using an explicit list of names (index 0 = Sunday), instead of the calendar's
+--   built-in English constructor names.  This is the calendar-agnostic core behind 'pdddd'' \/ 'pddd''.  As with
+--   'pdddd', parsing only /consumes/ the weekday; it is not validated against the day\/month\/year.
+pDayName :: (HasDate d, Enum (DoW d)) => [String] -> Pattern (d -> d) (d -> String) String
+pDayName names = Pattern par fmt
+  where
+    par = id <$ (choice . fmap (try . caseInsensitiveString) $ names)
+    fmt = later (TLB.fromText . T.pack . (names !!) . fromEnum . dayOfWeek)
+
+-- | Full month name in the given 'Locale' (e.g. @März@); the locale-aware counterpart to 'pMMMM'.
+pMMMM' :: HasDate d => Locale -> Pattern (d -> d) (d -> String) String
+pMMMM' = pMonthName . monthNames
+
+-- | Abbreviated month name in the given 'Locale'; the locale-aware counterpart to 'pMMM'.
+pMMM' :: HasDate d => Locale -> Pattern (d -> d) (d -> String) String
+pMMM' = pMonthName . monthNamesShort
+
+-- | Full weekday name in the given 'Locale' (e.g. @Sonntag@); the locale-aware counterpart to 'pdddd'.
+pdddd' :: (HasDate d, Enum (DoW d)) => Locale -> Pattern (d -> d) (d -> String) String
+pdddd' = pDayName . dayNames
+
+-- | Abbreviated weekday name in the given 'Locale'; the locale-aware counterpart to 'pddd'.
+pddd' :: (HasDate d, Enum (DoW d)) => Locale -> Pattern (d -> d) (d -> String) String
+pddd' = pDayName . dayNamesShort

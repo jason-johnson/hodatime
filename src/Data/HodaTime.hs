@@ -106,9 +106,11 @@ Here is the whole library in miniature.  A meeting is scheduled for 9 in the mor
 > import Data.HodaTime.CalendarDateTime (at)
 > import Data.HodaTime.TimeZone (timeZone)
 > import Data.HodaTime.ZonedDateTime (ZonedDateTime, fromCalendarDateTimeStrictly, toInstant, fromInstant, zoneAbbreviation)
+> import Data.HodaTime.Locale (currentLocale)
 > import Data.HodaTime.Pattern (format)
 > import Data.HodaTime.Pattern.CalendarDateTime (pF)
 > import Data.HodaTime.Pattern.ZonedDateTime (zonedDateTimePattern)
+> import Data.HodaTime.Pattern.Locale (localeDatePattern)
 >
 > main :: IO ()
 > main = do
@@ -129,6 +131,11 @@ Here is the whole library in miniature.  A meeting is scheduled for 9 in the mor
 >   let zoned = zonedDateTimePattern pF (\z -> " " ++ zoneAbbreviation z)
 >   putStrLn $ format zoned here    -- Tuesday, 23 April 2024 09:00:00 CEST
 >   putStrLn $ format zoned there   -- Tuesday, 23 April 2024 03:00:00 EDT
+>
+>   -- the same civil date, written the way the machine's own locale writes it
+>   loc     <- currentLocale
+>   datePat <- localeDatePattern loc
+>   putStrLn $ format datePat meeting   -- 04/23/2024 on a US machine, 23.04.2024 on a German one
 
 Read top to bottom, the example crosses from civil time to physical time and back:
 
@@ -139,6 +146,8 @@ Read top to bottom, the example crosses from civil time to physical time and bac
 3. Because an @Instant@ is just a point on the timeline, @fromInstant@ can re-express it on any zone's wall clock.  New York is six hours behind Zürich in April, so 09:00 CEST is 03:00 EDT.
 
 4. Finally a /pattern/ renders each @ZonedDateTime@ as text: @zonedDateTimePattern@ pairs the long civil form (@pF@) with the zone abbreviation, so a single @format@ prints the whole line.  Patterns are the subject of their own section below.
+
+5. A closing flourish shows the /locale/ side of the library: @currentLocale@ reads the machine's own date conventions from the operating system, and @localeDatePattern@ compiles them into an ordinary pattern, so the very same @meeting@ date prints @04\/23\/2024@ on a US machine but @23.04.2024@ on a German one — again covered in the section on patterns.
 
 Notice the type annotation on the New York view: @fromInstant@ can hand back a date in /any/ calendar, so we name the one we want.  That the calendar rides along in the type — and never has to be guessed — is the subject of the section on calendars.
 
@@ -269,11 +278,13 @@ __Building your own.__  A standard pattern is nothing more than the field patter
 
 The field patterns cover the usual components: @pyyyy@, @pMM@ (numeric month), @pMMM@ and @pMMMM@ (abbreviated and full month name) and @pdd@ (day), plus @pddd@ and @pdddd@ (abbreviated and full weekday name) for dates; @pHH@ (24-hour) or @phh@ (12-hour) with @pp@ \/ @ppp@ for the AM\/PM designator, then @pmm@, @pss@ and @pfrac@ for times.  @pfrac@ is the one pattern that takes an argument — the number of fractional-second digits, from 1 (tenths) up to 9 (nanoseconds) — because a single width covers every case cleanly.
 
+__Locale-driven patterns.__  Beyond the fixed, English patterns, Hoda Time can read the /machine's own/ conventions from the operating system's locale database (see "Data.HodaTime.Locale").  @currentLocale@ (or @localeByName@) hands back a @Locale@, and "Data.HodaTime.Pattern.Locale" compiles that locale's layouts into ordinary patterns: @localeDatePattern@ for the short date — so the same date prints @03\/15\/2020@ under @en_US@ but @15.03.2020@ under @de_DE@ — @localeTimePattern@ for the time of day, and @localeDateTimePattern@ for the combined date-and-time layout (as a @CalendarDateTime@, with any zone field dropped).  When the layout carries a zone, @parseZonedDateTime@ resolves its abbreviation (@%Z@) through a provider you supply, and @localeOffsetDateTimePattern@ turns an unambiguous numeric offset (@%z@) into a pure, bidirectional @OffsetDateTime@ pattern.  The name patterns have locale-aware variants too: @pMMMM'@, @pMMM'@, @pdddd'@, @pddd'@ and @ppp'@ each take a @Locale@ and use its month\/weekday names and AM\/PM designators in place of the built-in English ones.  This reads from the machine rather than bundling data (the same philosophy as the time-zone support) and works on Linux, macOS and Windows alike, covering the Gregorian names the OS exposes; when you want a fixed locale with no @IO@, the built-ins @enUS@, @deDE@ and @jaJP@ are provided.
+
 __Parsing a @ZonedDateTime@.__  Building a @ZonedDateTime@ has to load the zone rules and resolve the local time (which may be skipped or ambiguous), so it cannot come from the pure @parse@.  Instead @parseZonedDateTime@ takes a zone /provider/ (@timeZone@ in @IO@, or a pure lookup) and a /resolver/ (one of the four from the section on offsets and zones) and does it effectfully; formatting with @pZonedDateTime@ stays pure.
 
 __What patterns do not yet do.__  This is a deliberately honest list; each item is on the roadmap rather than a decision against it.
 
-* The standard patterns are /fixed format/ — @pd@ is always @dd\/MM\/yyyy@ — where Noda Time's follow the current culture.  Names are English, taken from each calendar's own @Month@ and @DayOfWeek@.  Full locale support is the largest missing piece.
+* The /standard/ patterns are /fixed format/ — @pd@ is always @dd\/MM\/yyyy@, with English names taken from each calendar's own @Month@ and @DayOfWeek@.  The locale-driven patterns above follow the machine's own layout and names instead, but only for the Gregorian names the operating system exposes.
 * A weekday in a pattern (@pddd@ or @pdddd@) is /consumed but not validated/ on a parse: since the day, month and year already fix the date, the weekday is not checked against them.
 * The abbreviated month @pMMM@ is just the first three letters of the name, which is ambiguous where two months share a prefix (the Hebrew @AdarI@ and @Adar@); use @pMMMM@ or @pMM@ when you need a guaranteed round-trip.
 -}
