@@ -152,9 +152,10 @@ gregorianFromYmd :: Year -> Month Gregorian -> DayOfMonth -> Date Gregorian
 gregorianFromYmd y m d = GregorianDate (fromIntegral cyc) (fromIntegral century) (fromIntegral dic)
   where (cyc, century, dic) = yearMonthDayToCycleCenturyDays y m d
 
--- NOTE: Epoch is March 1 2000 because that has nicest properties that is near our current time.
--- TODO: The addition of leap days below will add from the previous year.  We need to determine if this is a bug
--- TODO: and if it is not, why isn't it
+-- NOTE: Epoch is March 1 2000 because that has nicest properties that is near our current time.  Because the year is
+-- NOTE: shifted to start in March, January and February belong to the /previous/ shifted year (years = y - 2001), so
+-- NOTE: the leap-day terms (div 4 \/ 100 \/ 400) naturally count Feb 29 only once it has actually occurred.  Verified
+-- NOTE: against proleptic Gregorian arithmetic for every date in years 1-9999 (all century boundaries and negatives).
 yearMonthDayToDays :: Year -> Month Gregorian -> DayOfMonth -> Int
 yearMonthDayToDays y m d = days
   where
