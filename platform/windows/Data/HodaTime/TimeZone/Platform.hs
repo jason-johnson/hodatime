@@ -18,7 +18,7 @@ import Data.Char (isDigit)
 import Data.List (sortOn, foldl')
 import Control.Monad (forM)
 import Control.Exception (bracket)
-import System.Win32.Types (LONG, HKEY)
+import System.Win32.Types (LONG, HKEY, peekTString)
 import System.Win32.Registry
 import System.Win32.Time (SYSTEMTIME(..))
 import Foreign.Marshal.Alloc (allocaBytes)
@@ -113,7 +113,7 @@ systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) offsetSecs = NthDay
 readLocalZoneName :: IO String
 readLocalZoneName =
   bracket op regCloseKey $ \key ->
-  regQueryValue key "TimeZoneKeyName"
+  regQueryValueString key "TimeZoneKeyName"
     where
       op = regOpenKeyEx hKEY_LOCAL_MACHINE hive kEY_QUERY_VALUE
       hive = "SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation"
@@ -129,8 +129,8 @@ readAllZoneNames =
 readTziForZone :: String -> IO (String, String, REG_TZI_FORMAT)
 readTziForZone zone =
   bracket op regCloseKey $ \key -> do
-    std <- regQueryValue key "Std"
-    dst <- regQueryValue key "Dlt"
+    std <- regQueryValueString key "Std"
+    dst <- regQueryValueString key "Dlt"
     tzi <- readTzi key "TZI"
     return (std, dst, tzi)
     where
@@ -169,3 +169,15 @@ readTzi key p =
     verifyAndPeak rvt ptr
         | rvt == rEG_BINARY = peek . castPtr $ ptr
         | otherwise         = error $ "registry corrupt: TZI variable was non-binary type: " ++ show rvt
+
+-- | Read a named REG_SZ (or REG_EXPAND_SZ) value as a 'String'.  Note: 'regQueryValue' reads the /default/ value of a
+--   subkey, not a named value, so named string values (Std, Dlt, TimeZoneKeyName) must go through 'regQueryValueEx'.
+regQueryValueString :: HKEY -> String -> IO String
+regQueryValueString key name =
+  allocaBytes sz $ \ptr -> do
+    rvt <- regQueryValueEx key name ptr sz
+    if rvt == rEG_SZ || rvt == rEG_EXPAND_SZ
+      then peekTString (castPtr ptr)
+      else error $ "registry corrupt: " ++ name ++ " was non-string type: " ++ show rvt
+  where
+    sz = 512
