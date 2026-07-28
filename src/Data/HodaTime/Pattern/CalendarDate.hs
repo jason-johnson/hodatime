@@ -1,3 +1,17 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.CalendarDate
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for a 'Data.HodaTime.CalendarDate.CalendarDate': the standard date layouts (@pd@, @pD@, @pR@) together with
+-- the individual field patterns (@pyyyy@, @pMM@, @pMMMM@, @pdd@, @pdddd@ and friends) from which custom date patterns
+-- are built.  The primed variants (@pMMMM'@, @pddd'@ …) take a 'Data.HodaTime.Locale.Locale' and use its
+-- month\/weekday names.
+----------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}

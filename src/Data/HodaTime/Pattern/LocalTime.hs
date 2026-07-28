@@ -1,3 +1,16 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.LocalTime
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for a 'Data.HodaTime.LocalTime.LocalTime': the standard time layouts (@pt@, @pT@, @pr@) together with the
+-- individual field patterns (@pHH@, @phh@, @pmm@, @pss@, @pfrac@, @ppp@ and friends) from which custom time patterns are
+-- built.  The primed variant @ppp'@ takes a 'Data.HodaTime.Locale.Locale' for its AM\/PM designators.
+----------------------------------------------------------------------------
 module Data.HodaTime.Pattern.LocalTime
 (
   -- * Standard Patterns

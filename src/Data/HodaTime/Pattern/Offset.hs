@@ -1,3 +1,15 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.Offset
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for an 'Data.HodaTime.Offset.Offset' from UTC, rendered as @(+\/-)HH:mm@; @pOffsetFull@ adds seconds,
+-- @pOffsetZ@ writes @Z@ for UTC, and @pOffsetCompact@ omits the colon (@+0200@).
+----------------------------------------------------------------------------
 module Data.HodaTime.Pattern.Offset
 (
   -- * Standard Patterns

@@ -1,3 +1,17 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.HodaTime.Pattern.OffsetDateTime
+-- Copyright   :  (C) 2017 Jason Johnson
+-- License     :  BSD-style (see the file LICENSE)
+-- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
+-- Stability   :  experimental
+-- Portability :  POSIX, Windows
+--
+-- Patterns for an 'Data.HodaTime.OffsetDateTime.OffsetDateTime' — a
+-- 'Data.HodaTime.CalendarDateTime.CalendarDateTime' pinned by a fixed UTC 'Data.HodaTime.Offset.Offset' — rendered as
+-- @yyyy-MM-ddTHH:mm:ss(+\/-)HH:mm@.  Build your own with @offsetDateTimePattern@ from a date-time pattern and an offset
+-- pattern.
+----------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 module Data.HodaTime.Pattern.OffsetDateTime
 (

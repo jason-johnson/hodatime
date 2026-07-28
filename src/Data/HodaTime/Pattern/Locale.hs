@@ -6,7 +6,7 @@
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
 -- Stability   :  experimental
--- Portability :  portable (Linux, macOS, Windows)
+-- Portability :  POSIX, Windows
 --
 -- Compiles the @strftime@ layout strings captured in a 'Locale' by "Data.HodaTime.Locale" (the operating system's
 -- @D_FMT@ \/ @T_FMT@ on POSIX, translated from the equivalent Windows /picture/ strings) into hodatime 'Pattern's, so a

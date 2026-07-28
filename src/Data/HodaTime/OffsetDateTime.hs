@@ -5,7 +5,7 @@
 -- License     :  BSD-style (see the file LICENSE)
 -- Maintainer  :  Jason Johnson <jason.johnson.081@gmail.com>
 -- Stability   :  experimental
--- Portability :  TBD
+-- Portability :  POSIX, Windows
 --
 -- An 'OffsetDateTime' is a date and time combined with an offset from UTC time.  'OffsetDateTime' is the form that HTTP uses to deal with dates and times.
 ----------------------------------------------------------------------------
