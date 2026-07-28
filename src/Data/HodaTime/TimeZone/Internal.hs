@@ -119,7 +119,12 @@ calDateTransitionsFor i (TimeZone _ _ cdtMap) = concatMap (fromTransInfo i f (:[
     search = IMap.search (Entry i)
     f = fmap snd . search . buildFixedTransIMap
 
--- TODO: this function need major cleanup, this implementation is really nasty and almost certainly unsafe
+-- NOTE: Only ever called (from 'resolve') when a local time falls in a spring-forward gap.  This looks partial but is
+-- total by construction: every zone's 'CalDateTransitionsMap' tiles [Smallest, Largest] (see the constructors), so the
+-- 'IMap.splitAfter' below always yields a non-empty 'front' and 'back' — the 'IMap.bounds'\/'leastView' Nothing cases
+-- cannot occur.  A top-level empty search ('go []') only happens in the fixed (historical) region: the expression
+-- region always returns a single interval and is handled by 'go [expr]', so the bracketing transitions are always
+-- fixed ('bomb' is unreachable).
 aroundCalDateTransition :: Instant -> TimeZone -> (TransitionInfo, TransitionInfo)
 aroundCalDateTransition i (TimeZone _ _ cdtMap) = go . fmap snd . IMap.search (Entry i) $ cdtMap
     where

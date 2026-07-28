@@ -7,14 +7,14 @@
 -- Portability :  POSIX, Windows
 --
 -- Provides culture-specific names (month and weekday names, AM\/PM designators) and layout strings for dates and times.
--- A 'Locale' can be read from the operating system's locale database \u2014 in the same spirit as the time-zone support,
--- the data lives on the machine and is read on demand rather than being bundled \u2014 or you can use one of the built-in
+-- A 'Locale' can be read from the operating system's locale database — in the same spirit as the time-zone support,
+-- the data lives on the machine and is read on demand rather than being bundled — or you can use one of the built-in
 -- locales ('enUS', 'deDE', 'jaJP') when you want a fixed, pure one with no @IO@.
 --
 -- 'Locale' is /abstract/: you never construct one yourself, you obtain it from 'currentLocale', 'localeByName' or a
 -- built-in, and then hand it to the culture-aware patterns.  Those live in "Data.HodaTime.Pattern.Locale" (whole-layout
--- patterns \u2014 @localeDatePattern@ \/ @localeTimePattern@) and in "Data.HodaTime.Pattern.CalendarDate" \/
--- "Data.HodaTime.Pattern.LocalTime" (individual name fields \u2014 @pMMMM'@, @pdddd'@, @ppp'@).
+-- patterns — @localeDatePattern@ \/ @localeTimePattern@) and in "Data.HodaTime.Pattern.CalendarDate" \/
+-- "Data.HodaTime.Pattern.LocalTime" (individual name fields — @pMMMM'@, @pdddd'@, @ppp'@).
 --
 -- ==== __Getting a locale__
 --
