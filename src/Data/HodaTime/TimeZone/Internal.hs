@@ -130,14 +130,14 @@ aroundCalDateTransition i (TimeZone _ _ cdtMap) = go . fmap snd . IMap.search (E
     where
       go [] = (before, after)
       go [(TransitionInfoExpression (TransitionExpressionInfo _ _ stdTI dstTI))] = (stdTI, dstTI) -- NOTE: Should be the only way this happens
-      go x = error $ "aroundCalDateTransition: unexpected search result" ++ show x
-      before = fromTransInfo i bomb id . snd . go' . flip IMap.search cdtMap . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
-      after = fromTransInfo i bomb id . snd . fst . fromMaybe (error "around.after: fixme") . IMap.leastView $ back
+      go x = error $ "aroundCalDateTransition: unreachable - a gap search should return [] or a single expression, got: " ++ show x
+      before = fromTransInfo i bomb id . snd . go' . flip IMap.search cdtMap . IMap.high . fromMaybe (error "aroundCalDateTransition: unreachable - empty 'front' (the map always tiles from Smallest)") . IMap.bounds $ front
+      after = fromTransInfo i bomb id . snd . fst . fromMaybe (error "aroundCalDateTransition: unreachable - empty 'back' (the map always tiles to Largest)") . IMap.leastView $ back
       (front, back) = IMap.splitAfter (Entry i) cdtMap
-      go' [] = error "aroundCalDateTransition: no before transitions"
+      go' [] = error "aroundCalDateTransition: unreachable - no interval before the gap (the map always tiles from Smallest)"
       go' [tei] = tei
-      go' _ = error "aroundCalDateTransition: too many before transitions"
-      bomb = error "aroundCalDateTransition: got expression when fixed expected"
+      go' _ = error "aroundCalDateTransition: unreachable - more than one interval at the boundary before the gap"
+      bomb = error "aroundCalDateTransition: unreachable - bracketing transition was an expression, not fixed ('go []' only fires in the fixed region)"
 
 -- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
