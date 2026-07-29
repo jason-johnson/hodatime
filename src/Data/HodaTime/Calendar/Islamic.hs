@@ -196,6 +196,18 @@ instance NFData (Date (Islamic l)) where
 instance Hashable (Date (Islamic l)) where
   hashWithSalt s (IslamicDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
 
+instance NFData (Month (Islamic l)) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month (Islamic l)) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek (Islamic l)) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek (Islamic l)) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
 instance KnownLeap l => IsCalendarDateTime (Islamic l) where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (islamicFromDays (leapPatternBits @l) days) (LocalTime secs nsecs)
   toUnadjustedInstant (CalendarDateTime isd (LocalTime secs nsecs)) = Instant (islamicToDays isd) secs nsecs

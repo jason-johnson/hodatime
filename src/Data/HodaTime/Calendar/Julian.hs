@@ -122,6 +122,18 @@ instance NFData (Date Julian) where
 instance Hashable (Date Julian) where
   hashWithSalt s (JulianDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
 
+instance NFData (Month Julian) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month Julian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek Julian) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek Julian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
 instance IsCalendarDateTime Julian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (julianFromDays (days - julianEpochOffset)) (LocalTime secs nsecs)
   toUnadjustedInstant (CalendarDateTime jd (LocalTime secs nsecs)) = Instant (julianToDays jd + julianEpochOffset) secs nsecs

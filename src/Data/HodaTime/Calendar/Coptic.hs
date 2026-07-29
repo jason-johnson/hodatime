@@ -107,6 +107,18 @@ instance NFData (Date Coptic) where
 instance Hashable (Date Coptic) where
   hashWithSalt s (CopticDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
 
+instance NFData (Month Coptic) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month Coptic) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek Coptic) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek Coptic) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
 instance IsCalendarDateTime Coptic where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (copticFromDays (days - copticEpoch)) (LocalTime secs nsecs)
   toUnadjustedInstant (CalendarDateTime cd (LocalTime secs nsecs)) = Instant (copticToDays cd + copticEpoch) secs nsecs

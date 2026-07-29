@@ -146,6 +146,18 @@ instance NFData (Date (Hebrew n)) where
 instance Hashable (Date (Hebrew n)) where
   hashWithSalt s (HebrewDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
 
+instance NFData (Month (Hebrew n)) where
+  rnf m = m `seq` ()
+
+instance KnownNumbering n => Hashable (Month (Hebrew n)) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek (Hebrew n)) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek (Hebrew n)) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
 instance IsCalendarDateTime (Hebrew n) where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (hebrewFromDays days) (LocalTime secs nsecs)
   toUnadjustedInstant (CalendarDateTime hd (LocalTime secs nsecs)) = Instant (hebrewToDays hd) secs nsecs

@@ -37,6 +37,7 @@ import Data.HodaTime.TimeZone.Internal (TimeZone(..), TZIdentifier(..), Transiti
 newtype OffsetDateTime cal = OffsetDateTime (ZonedDateTime cal)
 
 deriving instance Eq (Date cal) => Eq (OffsetDateTime cal)
+deriving instance (IsCalendarDateTime cal, Eq (Date cal)) => Ord (OffsetDateTime cal)
 deriving instance Show (Date cal) => Show (OffsetDateTime cal)    -- TODO: Remove Show
 
 -- | Create an 'OffsetDateTime' from an 'Instant' and an 'Offset'.

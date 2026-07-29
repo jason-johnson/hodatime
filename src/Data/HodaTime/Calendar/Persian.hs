@@ -125,6 +125,18 @@ instance NFData (Date Persian) where
 instance Hashable (Date Persian) where
   hashWithSalt s (PersianDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
 
+instance NFData (Month Persian) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month Persian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek Persian) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek Persian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
 instance IsCalendarDateTime Persian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (persianFromDays days) (LocalTime secs nsecs)
   toUnadjustedInstant (CalendarDateTime pd (LocalTime secs nsecs)) = Instant (persianToDays pd) secs nsecs

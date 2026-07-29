@@ -17,11 +17,11 @@ import qualified Data.HodaTime.Offset as Off
 import Data.HodaTime.Interval (interval)
 import Data.HodaTime.CalendarDate (CalendarDate)
 import Data.HodaTime.CalendarDateTime (at)
-import Data.HodaTime.Calendar.Gregorian (Month(..))
+import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 
 classInstanceTests :: TestTree
-classInstanceTests = testGroup "NFData / Hashable instances" [hashDiscriminates, hashConsistent, nfdataForces]
+classInstanceTests = testGroup "NFData / Hashable / Ord instances" [hashDiscriminates, hashConsistent, nfdataForces, ordChecks]
 
 -- | Confirms every field of a value participates in its hash (i.e. the 'Hashable' instances actually fold each
 --   field rather than collapsing to a constant).  Distinct values are compared and expected to hash differently.
@@ -37,6 +37,8 @@ hashDiscriminates = testGroup "hash distinguishes distinct values"
     ,testCase "Interval"                $ assertBool "" (hash (interval i0 iDay) /= hash (interval i0 iSec))
     ,testCase "CalendarDate"            $ assertBool "" (hash cd1 /= hash cd2)
     ,testCase "CalendarDateTime"        $ assertBool "" (hash (at cd1 lt1) /= hash (at cd2 lt1))
+    ,testCase "Month"                   $ assertBool "" (hash January /= hash February)
+    ,testCase "DayOfWeek"               $ assertBool "" (hash Monday /= hash Tuesday)
   ]
 
 -- | Confirms 'hash' agrees with '(==)': equal values reached by different construction paths must hash equally.
@@ -61,6 +63,16 @@ nfdataForces = testGroup "NFData forces values"
     ,testCase "Interval"         $ assertBool "" (interval i0 iDay `deepseq` True)
     ,testCase "CalendarDate"     $ assertBool "" (cd1 `deepseq` True)
     ,testCase "CalendarDateTime" $ assertBool "" (at cd1 lt1 `deepseq` True)
+    ,testCase "Month"            $ assertBool "" (January `deepseq` True)
+    ,testCase "DayOfWeek"        $ assertBool "" (Monday `deepseq` True)
+  ]
+
+-- | Confirms the 'Ord' instances added to 'Duration' order by length, including across zero into negatives.
+ordChecks :: TestTree
+ordChecks = testGroup "Ord"
+  [
+     testCase "Duration: shorter < longer"     $ assertBool "" (Dur.fromSeconds (1 :: Int) < Dur.fromSeconds (2 :: Int))
+    ,testCase "Duration: negative < zero"      $ assertBool "" (Dur.fromSeconds (-1 :: Int) < Dur.fromSeconds (0 :: Int))
   ]
 
 -- shared values

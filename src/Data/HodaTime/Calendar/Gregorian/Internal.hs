@@ -103,6 +103,18 @@ instance NFData (Date Gregorian) where
 instance Hashable (Date Gregorian) where
   hashWithSalt s (GregorianDate cyc century dic) = s `hashWithSalt` cyc `hashWithSalt` century `hashWithSalt` dic
 
+instance NFData (Month Gregorian) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month Gregorian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek Gregorian) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek Gregorian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
 instance IsCalendarDateTime Gregorian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (daysToGregorian days) (LocalTime secs nsecs)
   toUnadjustedInstant (CalendarDateTime gd (LocalTime secs nsecs)) = Instant (gregorianToDays gd) secs nsecs
