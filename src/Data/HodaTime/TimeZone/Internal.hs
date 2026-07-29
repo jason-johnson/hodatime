@@ -49,14 +49,8 @@ instance Hashable TransitionInfo where
   hashWithSalt s (TransitionInfo off isDst abbr) = s `hashWithSalt` off `hashWithSalt` isDst `hashWithSalt` abbr
 
 data TransitionExpression =
-  NthDayExpression
-  {
-     teMonth :: Int
-    ,teNthDay :: Int
-    ,teDay :: Int
-    ,teSeconds :: Int
-  }
-  | JulianExpression { jeCountLeaps :: Bool, jeDay :: Int, jeSeconds :: Int }
+    NthDayExpression Int Int Int Int  -- ^ month, nthDay, day, seconds
+  | JulianExpression Bool Int Int     -- ^ countLeaps, day, seconds
   deriving (Eq, Show)
 
 data TransitionExpressionInfo = TransitionExpressionInfo
