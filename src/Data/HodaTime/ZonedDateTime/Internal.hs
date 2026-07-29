@@ -44,6 +44,8 @@ instance (IsCalendarDateTime cal, Eq (CDT.Date cal)) => Ord (ZonedDateTime cal) 
 
 -- | Hashes a 'ZonedDateTime' by its identity: the local 'CalendarDateTime', the zone (by identifier) and the active
 --   transition.  Consistent with '(==)', which compares those same components.
+-- NOTE: no 'NFData' instance is provided because 'ZonedDateTime' embeds a 'TimeZone', whose fingertree-based
+-- transition maps cannot be forced (see 'Data.HodaTime.TimeZone.Internal').
 instance Hashable (CDT.Date cal) => Hashable (ZonedDateTime cal) where
   hashWithSalt s (ZonedDateTime cdt tz ti) = s `hashWithSalt` cdt `hashWithSalt` tz `hashWithSalt` ti
 

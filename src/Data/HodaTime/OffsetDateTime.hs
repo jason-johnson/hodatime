@@ -41,6 +41,8 @@ deriving instance Eq (Date cal) => Eq (OffsetDateTime cal)
 deriving instance (IsCalendarDateTime cal, Eq (Date cal)) => Ord (OffsetDateTime cal)
 deriving instance Show (Date cal) => Show (OffsetDateTime cal)    -- TODO: Remove Show
 
+-- NOTE: no 'NFData' instance is provided because 'OffsetDateTime' embeds a 'TimeZone', whose fingertree-based
+-- transition maps cannot be forced (see 'Data.HodaTime.TimeZone.Internal').
 instance Hashable (Date cal) => Hashable (OffsetDateTime cal) where
   hashWithSalt s (OffsetDateTime z) = hashWithSalt s z
 

@@ -165,6 +165,12 @@ instance Eq TimeZone where
 instance Hashable TimeZone where
   hashWithSalt s = hashWithSalt s . zoneName
 
+-- NOTE: 'TimeZone' deliberately has no 'NFData' instance.  'calDateTransitionsMap' is an 'IntervalMap' from the
+-- 'fingertree' package, which depends only on 'base' and therefore provides no 'NFData' instance to force it.  A
+-- partial 'rnf' that forced only the identifier would silently leave the bulk of the value (the transition maps)
+-- unevaluated, which would be a misleading 'NFData', so we omit it entirely.  The same reasoning applies to
+-- 'ZonedDateTime' and 'OffsetDateTime', which embed a 'TimeZone'.
+
 -- constructors
 
 fixedOffsetZone :: String -> Offset -> (UtcTransitionsMap, CalDateTransitionsMap, TransitionInfo)
