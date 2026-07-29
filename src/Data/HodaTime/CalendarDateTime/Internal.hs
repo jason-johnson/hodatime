@@ -139,17 +139,22 @@ instance (IsCalendar cal) => HasDate (Date cal) where
   next = next'
   previous = previous'
 
+-- | Renders the (partial) smart-constructor call that produces a date, e.g. @Gregorian.calendarDate 31 March 2000@,
+--   without the surrounding 'fromJust'.  Shared by the 'Show' instances for 'Date' and 'CalendarDateTime'.
+showsDateCon :: (IsCalendar cal, Show (Month cal)) => Date cal -> ShowS
+showsDateCon date =
+    showString (calendarName date) . showString ".calendarDate "
+  . showsPrec 11 (fromIntegral dom :: Int) . showChar ' '
+  . showsPrec 11 (month' date) . showChar ' '
+  . showsPrec 11 (fromIntegral yr :: Int)
+  where (yr, _m, dom) = toYmd date
+
 -- | Renders a date as the (honest) smart-constructor call that produces it, e.g.
 --   @fromJust (Gregorian.calendarDate 31 March 2000)@.  This is a debug rendering, not code to paste back
 --   verbatim (the calendar qualifier depends on how you imported it, and 'calendarDate' returns 'Maybe') \- it
 --   is meant to tell you exactly what the value is.
 instance (IsCalendar cal, Show (Month cal)) => Show (Date cal) where
-  showsPrec p date = showParen (p > 10) $
-      showString "fromJust (" . showString (calendarName date) . showString ".calendarDate "
-    . showsPrec 11 (fromIntegral dom :: Int) . showChar ' '
-    . showsPrec 11 (month' date) . showChar ' '
-    . showsPrec 11 (fromIntegral yr :: Int) . showChar ')'
-    where (yr, _m, dom) = toYmd date
+  showsPrec p date = showParen (p > 10) $ showString "fromJust (" . showsDateCon date . showChar ')'
 
 -- LocalTime
 
@@ -157,14 +162,19 @@ instance (IsCalendar cal, Show (Month cal)) => Show (Date cal) where
 data LocalTime = LocalTime { ltSecs :: Word32, ltNsecs :: Word32 }
   deriving (Eq, Ord)
 
+-- | Renders the (partial) smart-constructor call that produces a 'LocalTime', e.g. @localTime 4 30 0 0@, without
+--   the surrounding 'fromJust'.  Shared by the 'Show' instances for 'LocalTime' and 'CalendarDateTime'.
+showsLocalTimeCon :: LocalTime -> ShowS
+showsLocalTimeCon (LocalTime secs nsecs) =
+    showString "localTime "
+  . showsPrec 11 h . showChar ' ' . showsPrec 11 m . showChar ' '
+  . showsPrec 11 s . showChar ' ' . showsPrec 11 (fromIntegral nsecs :: Int)
+  where
+    (h, r) = (fromIntegral secs :: Int) `divMod` 3600
+    (m, s) = r `divMod` 60
+
 instance Show LocalTime where
-  showsPrec p (LocalTime secs nsecs) = showParen (p > 10) $
-      showString "fromJust (localTime "
-    . showsPrec 11 h . showChar ' ' . showsPrec 11 m . showChar ' '
-    . showsPrec 11 s . showChar ' ' . showsPrec 11 (fromIntegral nsecs :: Int) . showChar ')'
-    where
-      (h, r) = (fromIntegral secs :: Int) `divMod` 3600
-      (m, s) = r `divMod` 60
+  showsPrec p lt = showParen (p > 10) $ showString "fromJust (" . showsLocalTimeCon lt . showChar ')'
 
 instance NFData LocalTime where
   rnf (LocalTime secs nsecs) = rnf secs `seq` rnf nsecs
@@ -183,9 +193,12 @@ data CalendarDateTime calendar = CalendarDateTime (Date calendar) LocalTime
 deriving instance Eq (Date cal) => Eq (CalendarDateTime cal)
 deriving instance Ord (Date cal) => Ord (CalendarDateTime cal)
 
-instance Show (Date cal) => Show (CalendarDateTime cal) where
+-- | Renders a 'CalendarDateTime' as the applicative construction that produces it, e.g.
+--   @fromJust (at \<$\> Gregorian.calendarDate 31 March 2000 \<*\> localTime 4 30 0 0)@.  A single 'fromJust'
+--   wraps the whole thing because that is how one actually builds the value from the (partial) smart constructors.
+instance (IsCalendar cal, Show (Month cal)) => Show (CalendarDateTime cal) where
   showsPrec p (CalendarDateTime d lt) = showParen (p > 10) $
-    showString "at " . showsPrec 11 d . showChar ' ' . showsPrec 11 lt
+      showString "fromJust (at <$> " . showsDateCon d . showString " <*> " . showsLocalTimeCon lt . showChar ')'
 
 instance NFData (Date cal) => NFData (CalendarDateTime cal) where
   rnf (CalendarDateTime d lt) = rnf d `seq` rnf lt
