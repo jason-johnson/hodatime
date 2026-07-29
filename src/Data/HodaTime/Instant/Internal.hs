@@ -36,7 +36,7 @@ instance Hashable Instant where
 --   but anything longer is not representable by a duration because e.g. Months are calendar
 --   specific concepts.
 newtype Duration = Duration { getInstant :: Instant } {- NOTE: Defined here to avoid circular dependancy with Duration.Internal -}
-  deriving (Eq, Show)             -- TODO: Remove Show
+  deriving (Eq, Ord, Show)             -- TODO: Remove Show
 
 instance NFData Duration where
   rnf (Duration i) = rnf i
