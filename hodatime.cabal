@@ -172,7 +172,8 @@ benchmark bench
                    bench.hs
   other-modules:
                    HodaTime.OffsetBench,
-                   HodaTime.CalendarBench
+                   HodaTime.CalendarBench,
+                   HodaTime.InstantBench
   build-depends:
                    base > 4,
                    criterion,
