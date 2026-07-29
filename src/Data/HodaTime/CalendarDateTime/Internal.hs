@@ -24,6 +24,8 @@ import Data.HodaTime.Instant.Internal (Instant)
 import Data.Functor.Const (Const(..))
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 
 -- CalendarDate
 
@@ -134,6 +136,12 @@ instance (IsCalendar cal) => HasDate (Date cal) where
 data LocalTime = LocalTime { ltSecs :: Word32, ltNsecs :: Word32 }
   deriving (Eq, Ord, Show)    -- TODO: Remove Show
 
+instance NFData LocalTime where
+  rnf (LocalTime secs nsecs) = rnf secs `seq` rnf nsecs
+
+instance Hashable LocalTime where
+  hashWithSalt s (LocalTime secs nsecs) = s `hashWithSalt` secs `hashWithSalt` nsecs
+
 -- CalendarDateTime
 
 -- | Represents a specific date and time within its calendar system.  NOTE: a CalendarDateTime does
@@ -145,6 +153,12 @@ data CalendarDateTime calendar = CalendarDateTime (Date calendar) LocalTime
 deriving instance Eq (Date cal) => Eq (CalendarDateTime cal)
 deriving instance Ord (Date cal) => Ord (CalendarDateTime cal)
 deriving instance Show (Date cal) => Show (CalendarDateTime cal)
+
+instance NFData (Date cal) => NFData (CalendarDateTime cal) where
+  rnf (CalendarDateTime d lt) = rnf d `seq` rnf lt
+
+instance Hashable (Date cal) => Hashable (CalendarDateTime cal) where
+  hashWithSalt s (CalendarDateTime d lt) = s `hashWithSalt` d `hashWithSalt` lt
 
 instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   type DoW (CalendarDateTime cal) = DayOfWeek cal

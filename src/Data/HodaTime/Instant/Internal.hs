@@ -14,6 +14,8 @@ where
 import Data.Word (Word32)
 import Data.Int (Int32)
 import Data.List (intercalate)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond, nsecsPerMicrosecond, unixDaysOffset)
 import Control.Arrow ((>>>), first)
 
@@ -24,11 +26,23 @@ import Control.Arrow ((>>>), first)
 data Instant = Instant { iDays :: {-# UNPACK #-} !Int32, iSecs :: {-# UNPACK #-} !Word32, iNsecs :: {-# UNPACK #-} !Word32 }
   deriving (Eq, Ord)
 
+instance NFData Instant where
+  rnf (Instant days secs nsecs) = rnf days `seq` rnf secs `seq` rnf nsecs
+
+instance Hashable Instant where
+  hashWithSalt s (Instant days secs nsecs) = s `hashWithSalt` days `hashWithSalt` secs `hashWithSalt` nsecs
+
 -- | Represents a duration of time between instants.  It can be from days to nanoseconds,
 --   but anything longer is not representable by a duration because e.g. Months are calendar
 --   specific concepts.
 newtype Duration = Duration { getInstant :: Instant } {- NOTE: Defined here to avoid circular dependancy with Duration.Internal -}
   deriving (Eq, Show)             -- TODO: Remove Show
+
+instance NFData Duration where
+  rnf (Duration i) = rnf i
+
+instance Hashable Duration where
+  hashWithSalt s (Duration i) = hashWithSalt s i
 
 instance Show Instant where
   show (Instant days secs nsecs) = intercalate "." [show (abs days), show secs, show nsecs, sign]

@@ -15,11 +15,11 @@ module Data.HodaTime.ZonedDateTime.Internal
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, IsCalendarDateTime, IsCalendar, fromAdjustedInstant)
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, IsCalendarDateTime, IsCalendar, fromAdjustedInstant, toUnadjustedInstant)
 import qualified Data.HodaTime.CalendarDateTime.Internal as CDT
 import qualified Data.HodaTime.LocalTime.Internal as LT
-import Data.HodaTime.TimeZone.Internal (TimeZone, TransitionInfo, activeTransitionFor, tiUtcOffset)
-import Data.HodaTime.Offset.Internal (adjustInstant)
+import Data.HodaTime.TimeZone.Internal (TimeZone, TZIdentifier(..), TransitionInfo, activeTransitionFor, tiUtcOffset, zoneName)
+import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
 import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.Internal.Lens (view)
 
@@ -28,8 +28,18 @@ data ZonedDateTime cal = ZonedDateTime { zdtCalendarDateTime :: CalendarDateTime
 
 deriving instance Eq (CDT.Date cal) => Eq (ZonedDateTime cal)
 deriving instance Show (CDT.Date cal) => Show (ZonedDateTime cal)
--- TODO: We should have an Ord instance, we can just ignore the timezone field.  It would be especially good so that when CalendarDateTime is equal we can
--- TODO: compare the TransitionInfo to see which one comes first
+
+-- | Orders 'ZonedDateTime's by the 'Instant' they represent (their global\/UTC position on the time line), falling
+--   back to the zone identifier as a tie-break so that two zones observing the same instant still have a total order.
+--   NOTE: this compares by physical time, not by the local wall-clock 'CalendarDateTime'.
+instance (IsCalendarDateTime cal, Eq (CDT.Date cal)) => Ord (ZonedDateTime cal) where
+  compare a b = compare (instantOf a) (instantOf b) <> compare (zid a) (zid b)
+    where
+      instantOf (ZonedDateTime cdt _ ti) = adjustInstant (negateOffset (tiUtcOffset ti)) (toUnadjustedInstant cdt)
+      negateOffset (Offset s) = Offset (negate s)
+      zid (ZonedDateTime _ tz _) = case zoneName tz of
+        UTC    -> "UTC"
+        Zone n -> n
 
 
 -- | Returns the 'ZonedDateTime' represented by the passed 'Instant' within the given 'TimeZone'.  This is always an unambiguous conversion.

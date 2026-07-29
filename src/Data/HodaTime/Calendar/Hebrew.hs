@@ -62,6 +62,8 @@ module Data.HodaTime.Calendar.Hebrew
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayNth, DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkFromNthDay, moveByDow, dayOfWeekFromDays)
 import Data.Int (Int32)
@@ -137,6 +139,12 @@ instance KnownNumbering n => Enum (Month (Hebrew n)) where
   toEnum i
     | i >= 0 && i < monthCount = monthAt ((i + numberingStart @n) `mod` monthCount)
     | otherwise               = error "Data.HodaTime.Calendar.Hebrew: toEnum: month out of range 0..12"
+
+instance NFData (Date (Hebrew n)) where
+  rnf (HebrewDate days d m y) = rnf days `seq` rnf d `seq` rnf m `seq` rnf y
+
+instance Hashable (Date (Hebrew n)) where
+  hashWithSalt s (HebrewDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
 
 instance IsCalendarDateTime (Hebrew n) where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (hebrewFromDays days) (LocalTime secs nsecs)

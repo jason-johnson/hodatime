@@ -30,6 +30,8 @@ import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
 import Data.Array.Unboxed ((!))
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 
 -- Constants
 
@@ -94,6 +96,12 @@ instance IsCalendar Gregorian where
       currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
       targetDow = fromEnum dow
       n' = if targetDow < currentDoW then n - 1 else n
+
+instance NFData (Date Gregorian) where
+  rnf (GregorianDate cyc century dic) = rnf cyc `seq` rnf century `seq` rnf dic
+
+instance Hashable (Date Gregorian) where
+  hashWithSalt s (GregorianDate cyc century dic) = s `hashWithSalt` cyc `hashWithSalt` century `hashWithSalt` dic
 
 instance IsCalendarDateTime Gregorian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (daysToGregorian days) (LocalTime secs nsecs)

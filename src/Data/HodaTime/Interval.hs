@@ -27,9 +27,17 @@ where
 import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.Duration.Internal (Duration)
 import Data.HodaTime.Instant (difference)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 
 data Interval = Interval Instant Instant
     deriving (Eq, Ord, Show)    -- TODO: Remove Show
+
+instance NFData Interval where
+  rnf (Interval s e) = rnf s `seq` rnf e
+
+instance Hashable Interval where
+  hashWithSalt salt (Interval s e) = salt `hashWithSalt` s `hashWithSalt` e
 
 interval :: Instant -> Instant -> Interval
 interval = Interval             -- TODO: We probably need some checks here

@@ -14,8 +14,9 @@ import qualified System.Info as SysInfo
 import Data.Maybe (catMaybes)
 
 import HodaTime.Util
-import Data.HodaTime.ZonedDateTime (fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, fromCalendarDateTimeAll, toCalendarDateTime, zoneAbbreviation, ZonedDateTime) -- remove ZonedDateTime
-import Data.HodaTime.TimeZone (timeZone)
+import Data.HodaTime.ZonedDateTime (fromInstant, fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, fromCalendarDateTimeAll, toCalendarDateTime, toInstant, zoneAbbreviation, zoneId, ZonedDateTime) -- remove ZonedDateTime
+import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
+import Data.HodaTime.TimeZone (utc, timeZone)
 import Data.HodaTime.Calendar.Gregorian (Month(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import Data.HodaTime.LocalTime (localTime)
@@ -32,7 +33,7 @@ qcProps = testGroup "(checked by QuickCheck)" [calDateProps]
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
   [
-    lenientZoneTransitionUnits, allZoneTransitionUnits
+    lenientZoneTransitionUnits, allZoneTransitionUnits, ordUnits
   ]
 
 -- properties
@@ -113,3 +114,25 @@ allZoneTransitionUnits = testGroup "fromCalendarDateTimeAll"
       let cdtExpecteds = catMaybes $ (\x -> at <$> G.calendarDate d m y <*> toLocalTime x) <$> hs
       assertEqual "Zone abbreviation" expectedAbbrs abbrs
       assertEqual "" cdtExpecteds cdts
+
+ordUnits :: TestTree
+ordUnits = testGroup "Ord ZonedDateTime"
+  [
+     testCase "orders by physical instant" $ do
+       tz <- utc
+       let z1 = fromInstant (fromSecondsSinceUnixEpoch 1000000000) tz :: ZonedDateTime G.Gregorian
+           z2 = fromInstant (fromSecondsSinceUnixEpoch 1000000001) tz :: ZonedDateTime G.Gregorian
+       assertEqual "earlier instant compares LT" LT (compare z1 z2)
+       assertBool "earlier instant is less than later" (z1 < z2)
+    ,testCase "same instant tie-breaks on zone id" $ do
+       utcTz <- utc
+       zurich <- timeZone euZone
+       let inst = fromSecondsSinceUnixEpoch 1000000000
+           zUtc = fromInstant inst utcTz :: ZonedDateTime G.Gregorian
+           zZur = fromInstant inst zurich :: ZonedDateTime G.Gregorian
+       assertEqual "same physical instant" (toInstant zZur) (toInstant zUtc)
+       assertEqual "tie-break falls through to zone id" (compare (zoneId zZur) (zoneId zUtc)) (compare zZur zUtc)
+       assertBool "distinct zones do not compare EQ" (compare zZur zUtc /= EQ)
+  ]
+  where
+    euZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"

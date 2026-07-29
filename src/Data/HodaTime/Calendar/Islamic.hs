@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
@@ -78,6 +79,8 @@ module Data.HodaTime.Calendar.Islamic
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayNth, DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays)
 import Data.Bits ((.&.), shiftL, testBit, popCount)
@@ -186,6 +189,12 @@ instance KnownLeap l => IsCalendar (Islamic l) where
   next' n dow (IslamicDate days _ _ _) = moveByDow (islamicFromDays (leapPatternBits @l)) epochDayOfWeek n dow (-) (+) (>) (fromIntegral days)
 
   previous' n dow (IslamicDate days _ _ _) = moveByDow (islamicFromDays (leapPatternBits @l)) epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+
+instance NFData (Date (Islamic l)) where
+  rnf (IslamicDate days d m y) = rnf days `seq` rnf d `seq` rnf m `seq` rnf y
+
+instance Hashable (Date (Islamic l)) where
+  hashWithSalt s (IslamicDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
 
 instance KnownLeap l => IsCalendarDateTime (Islamic l) where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (islamicFromDays (leapPatternBits @l) days) (LocalTime secs nsecs)
