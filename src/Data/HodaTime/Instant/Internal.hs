@@ -45,7 +45,7 @@ bigBang = Instant minBound minBound minBound
 fromSecondsSinceUnixEpoch :: Int -> Instant
 fromSecondsSinceUnixEpoch s = fromUnixGetTimeOfDay s 0
 
--- | Add a 'Duration' to an 'Instant' to get a future 'Instant'. /NOTE: does not handle all negative durations, use 'minus'/
+-- | Add a 'Duration' to an 'Instant' to get a future 'Instant'.
 add :: Instant -> Duration -> Instant
 add (Instant ldays lsecs lnsecs) (Duration (Instant rdays rsecs rnsecs)) = Instant days' secs'' nsecs'
     where
@@ -71,7 +71,7 @@ difference (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration 
             | x < 0 = (pred bigger, x + size)
             | otherwise = (bigger, x)
 
--- | Subtract a 'Duration' from an 'Instant' to get an 'Instant' in the past.  /NOTE: does not handle negative durations, use 'add'/
+-- | Subtract a 'Duration' from an 'Instant' to get an 'Instant' in the past.
 minus :: Instant -> Duration -> Instant
 minus linstant (Duration rinstant) = getInstant $ difference linstant rinstant
 

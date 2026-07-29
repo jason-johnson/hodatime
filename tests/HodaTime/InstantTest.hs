@@ -6,8 +6,10 @@ where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck as QC
 
-import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
+import Data.HodaTime.Instant (Instant, fromSecondsSinceUnixEpoch, add, difference, minus)
+import qualified Data.HodaTime.Duration as D
 import Data.HodaTime.TimeZone (utc, timeZone)
 import Data.HodaTime.ZonedDateTime (fromInstant, toLocalTime, toInstant, ZonedDateTime, year, month, day)
 import Data.HodaTime.Calendar.Gregorian (Gregorian)
@@ -21,7 +23,14 @@ import qualified System.Info as SysInfo
 import HodaTime.Util (get)
 
 instantTests :: TestTree
-instantTests = testGroup "Instant Tests" [unitTests]
+instantTests = testGroup "Instant Tests" [unitTests, qcProps]
+
+qcProps :: TestTree
+qcProps = testGroup "(checked by QuickCheck)"
+  [
+     QC.testProperty "difference (add i d) i == d (add handles negative durations)" prop_addDifferenceRoundTrip
+    ,QC.testProperty "add (minus i d) d == i (minus is the inverse of add)" prop_minusAddRoundTrip
+  ]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
@@ -105,3 +114,26 @@ test_instantCrossCalendar = do
   assertEqual "Julian date (13 days behind Gregorian in 2020)" (fromIntegral jy, jm, jd) actualJ
   assertEqual "Gregorian round-trips to the same Instant" inst (toInstant zdtG)
   assertEqual "Julian round-trips to the same Instant" inst (toInstant zdtJ)
+
+-- | Adding a 'Duration' and then taking the 'difference' back out must return the original 'Duration', for any
+--   duration including negative ones.  This locks in that 'add' handles negative durations (i.e. it is not limited
+--   to future instants).
+prop_addDifferenceRoundTrip :: Int -> Int -> Int -> Bool
+prop_addDifferenceRoundTrip base s ns = difference (add i d) i == d
+  where (i, d) = instantAndDuration base s ns
+
+-- | 'minus' is the exact inverse of 'add': shifting an 'Instant' back by a 'Duration' and then forward again by the
+--   same 'Duration' returns the original 'Instant', for any duration including negative ones.
+prop_minusAddRoundTrip :: Int -> Int -> Int -> Bool
+prop_minusAddRoundTrip base s ns = add (minus i d) d == i
+  where (i, d) = instantAndDuration base s ns
+
+-- | Build an 'Instant' / 'Duration' pair from raw generated 'Int's, bounding the magnitudes so the (Int32) day
+--   field cannot overflow while still exercising the full sign range (negative seconds and nanoseconds included).
+instantAndDuration :: Int -> Int -> Int -> (Instant, D.Duration)
+instantAndDuration base s ns = (i, d)
+  where
+    i = fromSecondsSinceUnixEpoch (base `rem` secBound)
+    d = D.fromSeconds (s `rem` secBound) `D.add` D.fromNanoseconds (ns `rem` nsBound)
+    secBound = 100000000000
+    nsBound  = 1000000000000
