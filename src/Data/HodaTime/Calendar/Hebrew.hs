@@ -99,7 +99,7 @@ instance KnownNumbering 'Scriptural where numberingStart = 7   -- 'Nisan' is cal
 instance KnownNumbering n => IsCalendar (Hebrew n) where
   -- | Denormalized: the flat, epoch-relative day count plus the decoded day, calendar-order month index and year.
   data Date (Hebrew n) = HebrewDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   -- | The Hebrew months, listed in calendar order from 'Tishri'.  'AdarI' (the leap month) sits between 'Shevat' and
   --   'Adar'; it exists only in leap years.  The constructors are shared by both numbering conventions — only their
@@ -114,6 +114,7 @@ instance KnownNumbering n => IsCalendar (Hebrew n) where
   fromDays = hebrewFromDays
   toDays = hebrewToDays
   toYmd = hebrewToYmd
+  calendarName _ = "Hebrew"
 
   day' = hebrewDayLens
   {-# INLINE day' #-}

@@ -13,7 +13,6 @@ where
 
 import Data.Word (Word32)
 import Data.Int (Int32)
-import Data.List (intercalate)
 import Control.DeepSeq (NFData(..))
 import Data.Hashable (Hashable(..))
 import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond, nsecsPerMicrosecond, unixDaysOffset)
@@ -36,7 +35,7 @@ instance Hashable Instant where
 --   but anything longer is not representable by a duration because e.g. Months are calendar
 --   specific concepts.
 newtype Duration = Duration { getInstant :: Instant } {- NOTE: Defined here to avoid circular dependancy with Duration.Internal -}
-  deriving (Eq, Ord, Show)             -- TODO: Remove Show
+  deriving (Eq, Ord)
 
 instance NFData Duration where
   rnf (Duration i) = rnf i
@@ -44,10 +43,17 @@ instance NFData Duration where
 instance Hashable Duration where
   hashWithSalt s (Duration i) = hashWithSalt s i
 
+-- | A debug rendering exposing the internal epoch-relative fields (epoch is 1.March.2000).  There is no clean
+--   total constructor to reproduce an arbitrary 'Instant', so this is deliberately a labelled view, not a call.
 instance Show Instant where
-  show (Instant days secs nsecs) = intercalate "." [show (abs days), show secs, show nsecs, sign]
-    where
-      sign = if signum days == -1 then "BE" else "E"
+  showsPrec p (Instant days secs nsecs) = showParen (p > 10) $
+      showString "Instant " . shows days . showString "d "
+    . shows secs . showString "s " . shows nsecs . showString "ns"
+
+instance Show Duration where
+  showsPrec p (Duration (Instant days secs nsecs)) = showParen (p > 10) $
+      showString "Duration " . shows days . showString "d "
+    . shows secs . showString "s " . shows nsecs . showString "ns"
 
 -- interface
 

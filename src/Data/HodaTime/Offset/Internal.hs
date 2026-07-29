@@ -22,7 +22,10 @@ import Data.Hashable (Hashable(..))
 
 -- | An 'Offset' from UTC in seconds.
 newtype Offset = Offset { offsetSeconds :: Int }  -- TODO: Any reason to make this 32 bit?  We don't need more space than 32 bit
-  deriving (Eq, Ord, Show)     -- TODO: Remove Show
+  deriving (Eq, Ord)
+
+instance Show Offset where
+  showsPrec p (Offset s) = showParen (p > 10) $ showString "fromSeconds " . showsPrec 11 s
 
 instance NFData Offset where
   rnf (Offset s) = rnf s

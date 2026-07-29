@@ -39,7 +39,15 @@ newtype OffsetDateTime cal = OffsetDateTime (ZonedDateTime cal)
 
 deriving instance Eq (Date cal) => Eq (OffsetDateTime cal)
 deriving instance (IsCalendarDateTime cal, Eq (Date cal)) => Ord (OffsetDateTime cal)
-deriving instance Show (Date cal) => Show (OffsetDateTime cal)    -- TODO: Remove Show
+
+-- | Renders an 'OffsetDateTime' as the 'fromInstantWithOffset' call that reconstructs it.
+instance IsCalendarDateTime cal => Show (OffsetDateTime cal) where
+  showsPrec p (OffsetDateTime (ZonedDateTime cdt _ ti)) = showParen (p > 10) $
+      showString "fromInstantWithOffset " . showsPrec 11 inst . showChar ' ' . showsPrec 11 off
+    where
+      off = tiUtcOffset ti
+      inst = adjustInstant (negateOffset off) (toUnadjustedInstant cdt)
+      negateOffset (Offset s) = Offset (negate s)
 
 -- NOTE: no 'NFData' instance is provided because 'OffsetDateTime' embeds a 'TimeZone', whose fingertree-based
 -- transition maps cannot be forced (see 'Data.HodaTime.TimeZone.Internal').

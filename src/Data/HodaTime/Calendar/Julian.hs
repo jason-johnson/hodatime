@@ -87,7 +87,7 @@ data Julian
     
 instance IsCalendar Julian where
   data Date Julian = JulianDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek Julian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -98,6 +98,7 @@ instance IsCalendar Julian where
   fromDays = julianFromDays
   toDays = julianToDays
   toYmd = julianToYmd
+  calendarName _ = "Julian"
 
   day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays julianFromDays julianToYmd
   {-# INLINE day' #-}

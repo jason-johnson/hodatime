@@ -161,7 +161,7 @@ type IslamicBcl           = Islamic 'Base16
 
 instance KnownLeap l => IsCalendar (Islamic l) where
   data Date (Islamic l) = IslamicDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek (Islamic l) = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -172,6 +172,7 @@ instance KnownLeap l => IsCalendar (Islamic l) where
   fromDays = islamicFromDays (leapPatternBits @l)
   toDays = islamicToDays
   toYmd = islamicToYmd
+  calendarName _ = "Islamic"
 
   day' = let b = leapPatternBits @l in mkCommonDayLens invalidDayThresh (yearMonthDayToDays b) (islamicFromDays b) islamicToYmd
   {-# INLINE day' #-}

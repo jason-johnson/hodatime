@@ -90,7 +90,7 @@ data Persian
 
 instance IsCalendar Persian where
   data Date Persian = PersianDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek Persian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -101,6 +101,7 @@ instance IsCalendar Persian where
   fromDays = persianFromDays
   toDays = persianToDays
   toYmd = persianToYmd
+  calendarName _ = "Persian"
 
   day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays persianFromDays persianToYmd
   {-# INLINE day' #-}

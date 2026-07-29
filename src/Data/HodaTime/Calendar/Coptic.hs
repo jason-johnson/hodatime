@@ -72,7 +72,7 @@ data Coptic
 
 instance IsCalendar Coptic where
   data Date Coptic = CopticDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek Coptic = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -83,6 +83,7 @@ instance IsCalendar Coptic where
   fromDays = copticFromDays
   toDays = copticToDays
   toYmd = copticToYmd
+  calendarName _ = "Coptic"
 
   day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays copticFromDays copticToYmd
   {-# INLINE day' #-}

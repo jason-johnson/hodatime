@@ -149,7 +149,12 @@ data TimeZone =
       ,utcTransitionsMap :: UtcTransitionsMap
       ,calDateTransitionsMap :: CalDateTransitionsMap
     }
-  deriving (Show)
+
+-- | Shows a 'TimeZone' by its identity only (the transition maps are a derived cache, not part of identity).
+instance Show TimeZone where
+  show tz = case zoneName tz of
+    UTC    -> "<TimeZone UTC>"
+    Zone n -> "<TimeZone " ++ show n ++ ">"
 
 -- | Two 'TimeZone's are equal when they denote the same zone (compared by identifier).  The transition maps are a
 --   derived lookup cache fully determined by the identifier, so they are not part of the zone's identity.

@@ -56,7 +56,7 @@ data Gregorian
     
 instance IsCalendar Gregorian where
   data Date Gregorian = GregorianDate {-# UNPACK #-} !Int8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -67,6 +67,7 @@ instance IsCalendar Gregorian where
   fromDays = daysToGregorian
   toDays = gregorianToDays
   toYmd = gregorianToYearMonthDay
+  calendarName _ = "Gregorian"
 
   -- Fast path: shift only the day-in-century, leaving cycle\/century untouched when we stay in-century.
   day' f gd = mkgd <$> f (fromIntegral d)

@@ -28,7 +28,14 @@ import Data.Hashable (Hashable(..))
 data ZonedDateTime cal = ZonedDateTime { zdtCalendarDateTime :: CalendarDateTime cal, zdtTimeZone :: TimeZone, zdtActiveTransition :: TransitionInfo }
 
 deriving instance Eq (CDT.Date cal) => Eq (ZonedDateTime cal)
-deriving instance Show (CDT.Date cal) => Show (ZonedDateTime cal)
+
+-- | Renders a 'ZonedDateTime' as the 'fromInstant' call that reconstructs it from its physical 'Instant' and zone.
+instance IsCalendarDateTime cal => Show (ZonedDateTime cal) where
+  showsPrec p (ZonedDateTime cdt tz ti) = showParen (p > 10) $
+      showString "fromInstant " . showsPrec 11 inst . showChar ' ' . showsPrec 11 tz
+    where
+      inst = adjustInstant (negateOffset (tiUtcOffset ti)) (toUnadjustedInstant cdt)
+      negateOffset (Offset s) = Offset (negate s)
 
 -- | Orders 'ZonedDateTime's by the 'Instant' they represent (their global\/UTC position on the time line), falling
 --   back to the zone identifier as a tie-break so that two zones observing the same instant still have a total order.

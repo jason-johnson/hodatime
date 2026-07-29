@@ -190,6 +190,37 @@ test-suite test
                    hashable,
                    hodatime
 
+test-suite doctests
+  default-language:
+                   Haskell2010
+  type:
+                   exitcode-stdio-1.0
+  hs-source-dirs:
+                   doctest
+  main-is:
+                   doctests.hs
+  build-depends:
+                   base >= 4.16 && < 4.21,
+                   doctest >= 0.16 && < 0.24,
+                   mtl < 2.4,
+                   binary < 0.9,
+                   bytestring < 0.13,
+                   containers < 0.8,
+                   deepseq >= 1.4 && < 1.6,
+                   exceptions < 0.11,
+                   fingertree >= 0.1.3 && < 0.2,
+                   hashable >= 1.3 && < 1.6,
+                   text >= 0.11.0.8 && < 2.2,
+                   parsec < 3.2,
+                   formatting < 7.3,
+                   array < 0.6
+  if os(windows)
+    build-depends: Win32 < 2.15
+  if !os(windows)
+    build-depends: unix < 2.9,
+                   filepath < 1.6,
+                   directory < 1.4
+
 benchmark bench
   default-language:
                    Haskell2010
