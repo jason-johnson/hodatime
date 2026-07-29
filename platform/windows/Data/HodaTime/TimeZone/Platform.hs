@@ -100,6 +100,9 @@ mkZoneMaps stdAbbr dstAbbr defaultTzi dynTzis = (utcMap, calDateMap')
         stdOffSecs = 60 * (negate . fromIntegral $ bias + stdBias)
         dstOffSecs = stdOffSecs + 60 * (negate . fromIntegral $ dstBias)
 
+-- TODO: When wYear (the first, discarded field) is non-zero the SYSTEMTIME is an absolute one-time transition, not a
+--       recurring yearly pattern.  We currently always treat it as the recurring (NthDay) form, which mis-reads those
+--       explicit transitions.  Handle the wYear /= 0 case as an explicit transition instead.
 systemTimeToNthDayExpression :: SYSTEMTIME -> Int -> TransitionExpression
 systemTimeToNthDayExpression (SYSTEMTIME _ m d nth h mm s _) offsetSecs = NthDayExpression (fromIntegral m - 1) (adjust . fromIntegral $ nth) (fromIntegral d) s''
   where
