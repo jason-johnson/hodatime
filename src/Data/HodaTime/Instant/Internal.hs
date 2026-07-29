@@ -21,7 +21,7 @@ import Control.Arrow ((>>>), first)
 
 -- | Represents a point on a global time line.  An Instant has no concept of time zone or
 --   calendar.  It is nothing more than the number of nanoseconds since epoch (1.March.2000)
-data Instant = Instant { iDays :: Int32, iSecs :: Word32, iNsecs :: Word32 }
+data Instant = Instant { iDays :: {-# UNPACK #-} !Int32, iSecs :: {-# UNPACK #-} !Word32, iNsecs :: {-# UNPACK #-} !Word32 }
   deriving (Eq, Ord)
 
 -- | Represents a duration of time between instants.  It can be from days to nanoseconds,
