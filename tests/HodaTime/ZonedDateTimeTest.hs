@@ -17,6 +17,7 @@ import HodaTime.Util
 import Data.HodaTime.ZonedDateTime (fromInstant, fromCalendarDateTimeStrictly, fromCalendarDateTimeLeniently, fromCalendarDateTimeAll, toCalendarDateTime, toInstant, zoneAbbreviation, zoneId, ZonedDateTime) -- remove ZonedDateTime
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (utc, timeZone)
+import Data.Hashable (hash)
 import Data.HodaTime.Calendar.Gregorian (Month(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 import Data.HodaTime.LocalTime (localTime)
@@ -33,7 +34,7 @@ qcProps = testGroup "(checked by QuickCheck)" [calDateProps]
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
   [
-    lenientZoneTransitionUnits, allZoneTransitionUnits, ordUnits
+    lenientZoneTransitionUnits, allZoneTransitionUnits, ordUnits, hashUnits
   ]
 
 -- properties
@@ -136,3 +137,19 @@ ordUnits = testGroup "Ord ZonedDateTime"
   ]
   where
     euZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
+
+hashUnits :: TestTree
+hashUnits = testGroup "Hashable ZonedDateTime"
+  [
+     testCase "equal values hash equally" $ do
+       tz <- utc
+       let z1 = fromInstant (fromSecondsSinceUnixEpoch 1000000000) tz :: ZonedDateTime G.Gregorian
+           z2 = fromInstant (fromSecondsSinceUnixEpoch 1000000000) tz :: ZonedDateTime G.Gregorian
+       assertEqual "equal values" z1 z2
+       assertEqual "equal hashes" (hash z1) (hash z2)
+    ,testCase "different instants hash differently" $ do
+       tz <- utc
+       let z1 = fromInstant (fromSecondsSinceUnixEpoch 1000000000) tz :: ZonedDateTime G.Gregorian
+           z2 = fromInstant (fromSecondsSinceUnixEpoch 1000000001) tz :: ZonedDateTime G.Gregorian
+       assertBool "distinct hashes" (hash z1 /= hash z2)
+  ]

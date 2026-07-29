@@ -31,6 +31,7 @@ import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime, IsCalendarDateTime(..), Date)
 import Data.HodaTime.ZonedDateTime.Internal (ZonedDateTime(..))
 import Data.HodaTime.TimeZone.Internal (TimeZone(..), TZIdentifier(..), TransitionInfo, tiUtcOffset, fixedOffsetZone)
+import Data.Hashable (Hashable(..))
 
 -- | A 'CalendarDateTime' with a UTC offset.  This is the format used by e.g. HTTP.  This type has a fixed 'TimeZone' with the name "UTC(+/-)offset".  If the offset is
 -- empty, the name of the 'TimeZone' will be UTC
@@ -39,6 +40,9 @@ newtype OffsetDateTime cal = OffsetDateTime (ZonedDateTime cal)
 deriving instance Eq (Date cal) => Eq (OffsetDateTime cal)
 deriving instance (IsCalendarDateTime cal, Eq (Date cal)) => Ord (OffsetDateTime cal)
 deriving instance Show (Date cal) => Show (OffsetDateTime cal)    -- TODO: Remove Show
+
+instance Hashable (Date cal) => Hashable (OffsetDateTime cal) where
+  hashWithSalt s (OffsetDateTime z) = hashWithSalt s z
 
 -- | Create an 'OffsetDateTime' from an 'Instant' and an 'Offset'.
 fromInstantWithOffset :: IsCalendarDateTime cal => Instant -> Offset -> OffsetDateTime cal

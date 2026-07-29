@@ -22,6 +22,7 @@ import Data.HodaTime.TimeZone.Internal (TimeZone, TZIdentifier(..), TransitionIn
 import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
 import Data.HodaTime.Instant.Internal (Instant)
 import Data.HodaTime.Internal.Lens (view)
+import Data.Hashable (Hashable(..))
 
 -- | A CalendarDateTime in a specific time zone. A 'ZonedDateTime' is global and maps directly to a single 'Instant'.
 data ZonedDateTime cal = ZonedDateTime { zdtCalendarDateTime :: CalendarDateTime cal, zdtTimeZone :: TimeZone, zdtActiveTransition :: TransitionInfo }
@@ -40,6 +41,11 @@ instance (IsCalendarDateTime cal, Eq (CDT.Date cal)) => Ord (ZonedDateTime cal) 
       zid (ZonedDateTime _ tz _) = case zoneName tz of
         UTC    -> "UTC"
         Zone n -> n
+
+-- | Hashes a 'ZonedDateTime' by its identity: the local 'CalendarDateTime', the zone (by identifier) and the active
+--   transition.  Consistent with '(==)', which compares those same components.
+instance Hashable (CDT.Date cal) => Hashable (ZonedDateTime cal) where
+  hashWithSalt s (ZonedDateTime cdt tz ti) = s `hashWithSalt` cdt `hashWithSalt` tz `hashWithSalt` ti
 
 
 -- | Returns the 'ZonedDateTime' represented by the passed 'Instant' within the given 'TimeZone'.  This is always an unambiguous conversion.

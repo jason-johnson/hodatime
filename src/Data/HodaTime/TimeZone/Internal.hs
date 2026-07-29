@@ -33,12 +33,20 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
 import qualified Data.IntervalMap.FingerTree as IMap
+import Data.Hashable (Hashable(..))
 
-data TZIdentifier = UTC | Zone String
+data TZIdentifier = UTC | Zone String
   deriving (Eq, Show)
+
+instance Hashable TZIdentifier where
+  hashWithSalt s UTC      = hashWithSalt s (0 :: Int)
+  hashWithSalt s (Zone n) = s `hashWithSalt` (1 :: Int) `hashWithSalt` n
 
 data TransitionInfo = TransitionInfo { tiUtcOffset :: Offset, tiIsDst :: Bool, tiAbbreviation :: String }
   deriving (Eq, Show)
+
+instance Hashable TransitionInfo where
+  hashWithSalt s (TransitionInfo off isDst abbr) = s `hashWithSalt` off `hashWithSalt` isDst `hashWithSalt` abbr
 
 data TransitionExpression =
   NthDayExpression
@@ -147,7 +155,15 @@ data TimeZone =
       ,utcTransitionsMap :: UtcTransitionsMap
       ,calDateTransitionsMap :: CalDateTransitionsMap
     }
-  deriving (Eq, Show)
+  deriving (Show)
+
+-- | Two 'TimeZone's are equal when they denote the same zone (compared by identifier).  The transition maps are a
+--   derived lookup cache fully determined by the identifier, so they are not part of the zone's identity.
+instance Eq TimeZone where
+  a == b = zoneName a == zoneName b
+
+instance Hashable TimeZone where
+  hashWithSalt s = hashWithSalt s . zoneName
 
 -- constructors
 

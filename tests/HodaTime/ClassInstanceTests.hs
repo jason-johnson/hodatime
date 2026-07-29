@@ -17,6 +17,7 @@ import qualified Data.HodaTime.Offset as Off
 import Data.HodaTime.Interval (interval)
 import Data.HodaTime.CalendarDate (CalendarDate)
 import Data.HodaTime.CalendarDateTime (at)
+import Data.HodaTime.OffsetDateTime (fromInstantWithOffset, OffsetDateTime)
 import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..))
 import qualified Data.HodaTime.Calendar.Gregorian as G
 
@@ -39,6 +40,7 @@ hashDiscriminates = testGroup "hash distinguishes distinct values"
     ,testCase "CalendarDateTime"        $ assertBool "" (hash (at cd1 lt1) /= hash (at cd2 lt1))
     ,testCase "Month"                   $ assertBool "" (hash January /= hash February)
     ,testCase "DayOfWeek"               $ assertBool "" (hash Monday /= hash Tuesday)
+    ,testCase "OffsetDateTime"          $ assertBool "" (hash odt1 /= hash odt2)
   ]
 
 -- | Confirms 'hash' agrees with '(==)': equal values reached by different construction paths must hash equally.
@@ -73,6 +75,7 @@ ordChecks = testGroup "Ord"
   [
      testCase "Duration: shorter < longer"     $ assertBool "" (Dur.fromSeconds (1 :: Int) < Dur.fromSeconds (2 :: Int))
     ,testCase "Duration: negative < zero"      $ assertBool "" (Dur.fromSeconds (-1 :: Int) < Dur.fromSeconds (0 :: Int))
+    ,testCase "OffsetDateTime: earlier < later" $ assertBool "" (odt1 < odt2)
   ]
 
 -- shared values
@@ -89,3 +92,7 @@ lt2 = fromJust $ localTime 11 30 0 0
 cd1, cd2 :: CalendarDate G.Gregorian
 cd1 = fromJust $ G.calendarDate 10 March 2020
 cd2 = fromJust $ G.calendarDate 11 March 2020
+
+odt1, odt2 :: OffsetDateTime G.Gregorian
+odt1 = fromInstantWithOffset i0   (Off.fromSeconds (0 :: Int))
+odt2 = fromInstantWithOffset iSec (Off.fromSeconds (0 :: Int))
