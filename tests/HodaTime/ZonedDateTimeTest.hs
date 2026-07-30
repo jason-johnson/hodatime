@@ -61,7 +61,7 @@ lenientZoneTransitionUnits = testGroup "fromCalendarDateTimeLeniently"
     ,testCase "October 30 2039 2:10:15.30 -> October 30 2039 2:10:15.30 CEST" $ ensureHour startZone resultZone 30 October 2039 2
   ]
   where
-    startZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
+    startZone = "Europe/Zurich"
     resultZone = if SysInfo.os == "mingw32" then "W. Europe Daylight Time" else "CEST"
     toLocalTime h = localTime h 10 15 30
     mkDate zone d m y = do
@@ -96,8 +96,8 @@ allZoneTransitionUnits = testGroup "fromCalendarDateTimeAll"
     ,testCase "November 6 2039 1:10:15.30 -> [November 6 2039: 1:10:15.30 CDT, 1:10:15.30 CST]" $ ensureHours' 1 startUsZone [summerUsZone, normUsZone] 6 November 2039 [1,1]
   ]
   where
-    startEuZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
-    startUsZone = if SysInfo.os == "mingw32" then "Central Standard Time" else "US/Central"
+    startEuZone = "Europe/Zurich"
+    startUsZone = "America/Chicago"
     normEuZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "CET"
     normUsZone = if SysInfo.os == "mingw32" then "Central Standard Time" else "CST"
     summerEuZone = if SysInfo.os == "mingw32" then "W. Europe Daylight Time" else "CEST"
@@ -136,7 +136,7 @@ ordUnits = testGroup "Ord ZonedDateTime"
        assertBool "distinct zones do not compare EQ" (compare zZur zUtc /= EQ)
   ]
   where
-    euZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
+    euZone = "Europe/Zurich"
 
 hashUnits :: TestTree
 hashUnits = testGroup "Hashable ZonedDateTime"

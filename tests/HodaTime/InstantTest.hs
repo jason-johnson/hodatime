@@ -19,7 +19,6 @@ import Data.Time.Clock.POSIX (getPOSIXTime, posixSecondsToUTCTime)
 import Data.Time.Calendar (toGregorian)
 import Data.Time.Calendar.Julian (toJulian)
 import Data.Time.LocalTime (todHour, todMin, todSec, hoursToTimeZone, utcToLocalTime, LocalTime(..))
-import qualified System.Info as SysInfo
 import HodaTime.Util (get)
 
 instantTests :: TestTree
@@ -82,7 +81,7 @@ test_instantDate = do
 test_instantRoundTrip :: Assertion
 test_instantRoundTrip = mapM_ check ["UTC", euZone]
   where
-    euZone = if SysInfo.os == "mingw32" then "W. Europe Standard Time" else "Europe/Zurich"
+    euZone = "Europe/Zurich"
     check zoneName = do
       tz <- timeZone zoneName
       let
