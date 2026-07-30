@@ -25,5 +25,9 @@ main = doctest
   , "-hide-package", "hodatime"
   , "src/Data/HodaTime/Internal/Lens.hs"
   , "src/Data/HodaTime/Calendar/Gregorian.hs"
+  , "src/Data/HodaTime/Calendar/Julian.hs"
+  , "src/Data/HodaTime/Pattern/CalendarDate.hs"
   , "src/Data/HodaTime/CalendarDateTime/Internal.hs"
+  , "src/Data/HodaTime/CalendarDate.hs"
+  , "src/Data/HodaTime/Pattern.hs"
   ]
