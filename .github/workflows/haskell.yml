@@ -73,8 +73,8 @@ jobs:
       - name: publish to hackage
         run: |
           cabal update
-          export CABALCMD=$([ "${{ env.GITHUB_REF_TYPE }}" == 'tag' ] && echo "cabal upload --publish" || echo "cabal upload")
-          cabal sdist | tail -1 | xargs $CABALCMD -u "${{ vars.HACKAGE_USER }}" -p "$HACKAGE_PASSWORD" "$@"
-          cabal haddock --haddock-for-hackage | tail -1 | xargs cabal upload -u "${{ vars.HACKAGE_USER }}" -p "$HACKAGE_PASSWORD" -d "$@"
+          export CABALCMD=$([ "$GITHUB_REF_TYPE" == 'tag' ] && echo "cabal upload --publish" || echo "cabal upload")
+          cabal sdist | tail -1 | xargs $CABALCMD --token "$HACKAGE_TOKEN"
+          cabal haddock --haddock-for-hackage | tail -1 | xargs $CABALCMD --token "$HACKAGE_TOKEN" -d
         env:
-          HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
+          HACKAGE_TOKEN: ${{ secrets.HACKAGE_TOKEN }}
