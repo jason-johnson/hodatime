@@ -1,6 +1,6 @@
 cabal-version:  2.4
 name:           hodatime
-version:        0.2.2.1
+version:        1.0.0.0
 stability:      experimental
 license:        BSD-3-Clause
 license-file:   LICENSE
