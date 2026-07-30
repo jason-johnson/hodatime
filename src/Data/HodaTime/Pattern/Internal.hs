@@ -12,7 +12,6 @@ module Data.HodaTime.Pattern.Internal
   ,parse'
   ,parse''
   ,format
-  ,(<>)         -- TODO: Remove
   ,(<%)
   ,dimapP
   ,pairP

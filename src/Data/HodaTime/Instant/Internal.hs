@@ -13,7 +13,8 @@ where
 
 import Data.Word (Word32)
 import Data.Int (Int32)
-import Data.List (intercalate)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Constants (secondsPerDay, nsecsPerSecond, nsecsPerMicrosecond, unixDaysOffset)
 import Control.Arrow ((>>>), first)
 
@@ -21,19 +22,38 @@ import Control.Arrow ((>>>), first)
 
 -- | Represents a point on a global time line.  An Instant has no concept of time zone or
 --   calendar.  It is nothing more than the number of nanoseconds since epoch (1.March.2000)
-data Instant = Instant { iDays :: Int32, iSecs :: Word32, iNsecs :: Word32 }
+data Instant = Instant { iDays :: {-# UNPACK #-} !Int32, iSecs :: {-# UNPACK #-} !Word32, iNsecs :: {-# UNPACK #-} !Word32 }
   deriving (Eq, Ord)
+
+instance NFData Instant where
+  rnf (Instant days secs nsecs) = rnf days `seq` rnf secs `seq` rnf nsecs
+
+instance Hashable Instant where
+  hashWithSalt s (Instant days secs nsecs) = s `hashWithSalt` days `hashWithSalt` secs `hashWithSalt` nsecs
 
 -- | Represents a duration of time between instants.  It can be from days to nanoseconds,
 --   but anything longer is not representable by a duration because e.g. Months are calendar
 --   specific concepts.
 newtype Duration = Duration { getInstant :: Instant } {- NOTE: Defined here to avoid circular dependancy with Duration.Internal -}
-  deriving (Eq, Show)             -- TODO: Remove Show
+  deriving (Eq, Ord)
 
+instance NFData Duration where
+  rnf (Duration i) = rnf i
+
+instance Hashable Duration where
+  hashWithSalt s (Duration i) = hashWithSalt s i
+
+-- | A debug rendering exposing the internal epoch-relative fields (epoch is 1.March.2000).  There is no clean
+--   total constructor to reproduce an arbitrary 'Instant', so this is deliberately a labelled view, not a call.
 instance Show Instant where
-  show (Instant days secs nsecs) = intercalate "." [show (abs days), show secs, show nsecs, sign]
-    where
-      sign = if signum days == -1 then "BE" else "E"
+  showsPrec p (Instant days secs nsecs) = showParen (p > 10) $
+      showString "Instant " . shows days . showString "d "
+    . shows secs . showString "s " . shows nsecs . showString "ns"
+
+instance Show Duration where
+  showsPrec p (Duration (Instant days secs nsecs)) = showParen (p > 10) $
+      showString "Duration " . shows days . showString "d "
+    . shows secs . showString "s " . shows nsecs . showString "ns"
 
 -- interface
 
@@ -45,7 +65,7 @@ bigBang = Instant minBound minBound minBound
 fromSecondsSinceUnixEpoch :: Int -> Instant
 fromSecondsSinceUnixEpoch s = fromUnixGetTimeOfDay s 0
 
--- | Add a 'Duration' to an 'Instant' to get a future 'Instant'. /NOTE: does not handle all negative durations, use 'minus'/
+-- | Add a 'Duration' to an 'Instant' to get a future 'Instant'.
 add :: Instant -> Duration -> Instant
 add (Instant ldays lsecs lnsecs) (Duration (Instant rdays rsecs rnsecs)) = Instant days' secs'' nsecs'
     where
@@ -71,7 +91,7 @@ difference (Instant ldays lsecs lnsecs) (Instant rdays rsecs rnsecs) = Duration 
             | x < 0 = (pred bigger, x + size)
             | otherwise = (bigger, x)
 
--- | Subtract a 'Duration' from an 'Instant' to get an 'Instant' in the past.  /NOTE: does not handle negative durations, use 'add'/
+-- | Subtract a 'Duration' from an 'Instant' to get an 'Instant' in the past.
 minus :: Instant -> Duration -> Instant
 minus linstant (Duration rinstant) = getInstant $ difference linstant rinstant
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.HodaTime.Calendar.Julian
@@ -40,6 +41,8 @@ module Data.HodaTime.Calendar.Julian
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayNth, DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerFourYears)
 import Data.Int (Int32)
@@ -84,7 +87,7 @@ data Julian
     
 instance IsCalendar Julian where
   data Date Julian = JulianDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek Julian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -95,6 +98,7 @@ instance IsCalendar Julian where
   fromDays = julianFromDays
   toDays = julianToDays
   toYmd = julianToYmd
+  calendarName _ = "Julian"
 
   day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays julianFromDays julianToYmd
   {-# INLINE day' #-}
@@ -112,6 +116,24 @@ instance IsCalendar Julian where
   next' n dow (JulianDate days _ _ _) = moveByDow julianFromDays epochDayOfWeek n dow (-) (+) (>) (fromIntegral days)
 
   previous' n dow (JulianDate days _ _ _) = moveByDow julianFromDays epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+
+instance NFData (Date Julian) where
+  rnf (JulianDate days d m y) = rnf days `seq` rnf d `seq` rnf m `seq` rnf y
+
+instance Hashable (Date Julian) where
+  hashWithSalt s (JulianDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
+
+instance NFData (Month Julian) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month Julian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek Julian) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek Julian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
 
 instance IsCalendarDateTime Julian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (julianFromDays (days - julianEpochOffset)) (LocalTime secs nsecs)

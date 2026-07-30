@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
@@ -78,6 +79,8 @@ module Data.HodaTime.Calendar.Islamic
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayNth, DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays)
 import Data.Bits ((.&.), shiftL, testBit, popCount)
@@ -158,7 +161,7 @@ type IslamicBcl           = Islamic 'Base16
 
 instance KnownLeap l => IsCalendar (Islamic l) where
   data Date (Islamic l) = IslamicDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek (Islamic l) = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -169,6 +172,7 @@ instance KnownLeap l => IsCalendar (Islamic l) where
   fromDays = islamicFromDays (leapPatternBits @l)
   toDays = islamicToDays
   toYmd = islamicToYmd
+  calendarName _ = "Islamic"
 
   day' = let b = leapPatternBits @l in mkCommonDayLens invalidDayThresh (yearMonthDayToDays b) (islamicFromDays b) islamicToYmd
   {-# INLINE day' #-}
@@ -186,6 +190,24 @@ instance KnownLeap l => IsCalendar (Islamic l) where
   next' n dow (IslamicDate days _ _ _) = moveByDow (islamicFromDays (leapPatternBits @l)) epochDayOfWeek n dow (-) (+) (>) (fromIntegral days)
 
   previous' n dow (IslamicDate days _ _ _) = moveByDow (islamicFromDays (leapPatternBits @l)) epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+
+instance NFData (Date (Islamic l)) where
+  rnf (IslamicDate days d m y) = rnf days `seq` rnf d `seq` rnf m `seq` rnf y
+
+instance Hashable (Date (Islamic l)) where
+  hashWithSalt s (IslamicDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
+
+instance NFData (Month (Islamic l)) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month (Islamic l)) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek (Islamic l)) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek (Islamic l)) where
+  hashWithSalt s = hashWithSalt s . fromEnum
 
 instance KnownLeap l => IsCalendarDateTime (Islamic l) where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (islamicFromDays (leapPatternBits @l) days) (LocalTime secs nsecs)

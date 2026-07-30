@@ -24,6 +24,14 @@ import Data.HodaTime.Instant.Internal (Instant)
 import Data.Functor.Const (Const(..))
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
+
+-- $setup
+-- >>> import Data.Maybe (fromJust)
+-- >>> import Data.HodaTime.Internal.Lens (modify)
+-- >>> import qualified Data.HodaTime.Calendar.Gregorian as Gregorian
+-- >>> import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..))
 
 -- CalendarDate
 
@@ -61,6 +69,9 @@ class IsCalendar cal where
   -- | Decode a date to @(year, zero-based month, day-of-month)@.  The year is signed so calendars can represent
   --   pre-epoch (e.g. BC) years without wraparound.
   toYmd :: Date cal -> (Int32, Word8, Word8)
+  -- | The calendar's display name (e.g. @"Gregorian"@), used by 'Show' to render a date as the
+  --   smart-constructor call that builds it.
+  calendarName :: Date cal -> String
   day' :: Functor f => (DayOfMonth -> f DayOfMonth) -> Date cal -> f (Date cal)
   month' :: Date cal -> Month cal
   monthl' :: Functor f => (Int -> f Int) -> Date cal -> f (Date cal)
@@ -81,7 +92,7 @@ class HasDate d where
   --   so that
   --
   --   >>> modify monthl (+ 2) <$> Gregorian.calendarDate 31 January 2000
-  --   Just (CalendarDate 31 March 2000)
+  --   Just (fromJust (Gregorian.calendarDate 31 March 2000))
   --
   --   and not 29th of March as would happen with some libraries.
   monthl :: Functor f => (Int -> f Int) -> d -> f d
@@ -96,12 +107,12 @@ class HasDate d where
   -- | Returns a 'HasDate' shifted to the nth next Day of Week from the current 'HasDate', for example:
   --
   -- >>> next 1 Monday . fromJust $ Gregorian.calendarDate 31 January 2000
-  -- CalendarDate 7 February 2000
+  -- fromJust (Gregorian.calendarDate 7 February 2000)
   next :: Int -> DoW d -> d -> d
   -- | Returns a 'HasDate' shifted to the nth previous Day of Week from the current 'HasDate', for example:
   --
   -- >>> previous 1 Monday . fromJust $ Gregorian.calendarDate 31 January 2000
-  -- CalendarDate 24 January 2000
+  -- fromJust (Gregorian.calendarDate 24 January 2000)
   previous :: Int -> DoW d -> d -> d
   -- | Access the year, month and day-of-month components together in a single call, returned as a
   --   @(year, month, day)@ tuple.
@@ -128,11 +139,48 @@ instance (IsCalendar cal) => HasDate (Date cal) where
   next = next'
   previous = previous'
 
+-- | Renders the (partial) smart-constructor call that produces a date, e.g. @Gregorian.calendarDate 31 March 2000@,
+--   without the surrounding 'fromJust'.  Shared by the 'Show' instances for 'Date' and 'CalendarDateTime'.
+showsDateCon :: (IsCalendar cal, Show (Month cal)) => Date cal -> ShowS
+showsDateCon date =
+    showString (calendarName date) . showString ".calendarDate "
+  . showsPrec 11 (fromIntegral dom :: Int) . showChar ' '
+  . showsPrec 11 (month' date) . showChar ' '
+  . showsPrec 11 (fromIntegral yr :: Int)
+  where (yr, _m, dom) = toYmd date
+
+-- | Renders a date as the (honest) smart-constructor call that produces it, e.g.
+--   @fromJust (Gregorian.calendarDate 31 March 2000)@.  This is a debug rendering, not code to paste back
+--   verbatim (the calendar qualifier depends on how you imported it, and 'calendarDate' returns 'Maybe') \- it
+--   is meant to tell you exactly what the value is.
+instance (IsCalendar cal, Show (Month cal)) => Show (Date cal) where
+  showsPrec p date = showParen (p > 10) $ showString "fromJust (" . showsDateCon date . showChar ')'
+
 -- LocalTime
 
 -- | Represents a specific time of day with no reference to any calendar, date or time zone.
 data LocalTime = LocalTime { ltSecs :: Word32, ltNsecs :: Word32 }
-  deriving (Eq, Ord, Show)    -- TODO: Remove Show
+  deriving (Eq, Ord)
+
+-- | Renders the (partial) smart-constructor call that produces a 'LocalTime', e.g. @localTime 4 30 0 0@, without
+--   the surrounding 'fromJust'.  Shared by the 'Show' instances for 'LocalTime' and 'CalendarDateTime'.
+showsLocalTimeCon :: LocalTime -> ShowS
+showsLocalTimeCon (LocalTime secs nsecs) =
+    showString "localTime "
+  . showsPrec 11 h . showChar ' ' . showsPrec 11 m . showChar ' '
+  . showsPrec 11 s . showChar ' ' . showsPrec 11 (fromIntegral nsecs :: Int)
+  where
+    (h, r) = (fromIntegral secs :: Int) `divMod` 3600
+    (m, s) = r `divMod` 60
+
+instance Show LocalTime where
+  showsPrec p lt = showParen (p > 10) $ showString "fromJust (" . showsLocalTimeCon lt . showChar ')'
+
+instance NFData LocalTime where
+  rnf (LocalTime secs nsecs) = rnf secs `seq` rnf nsecs
+
+instance Hashable LocalTime where
+  hashWithSalt s (LocalTime secs nsecs) = s `hashWithSalt` secs `hashWithSalt` nsecs
 
 -- CalendarDateTime
 
@@ -144,7 +192,19 @@ data CalendarDateTime calendar = CalendarDateTime (Date calendar) LocalTime
 
 deriving instance Eq (Date cal) => Eq (CalendarDateTime cal)
 deriving instance Ord (Date cal) => Ord (CalendarDateTime cal)
-deriving instance Show (Date cal) => Show (CalendarDateTime cal)
+
+-- | Renders a 'CalendarDateTime' as the applicative construction that produces it, e.g.
+--   @fromJust (at \<$\> Gregorian.calendarDate 31 March 2000 \<*\> localTime 4 30 0 0)@.  A single 'fromJust'
+--   wraps the whole thing because that is how one actually builds the value from the (partial) smart constructors.
+instance (IsCalendar cal, Show (Month cal)) => Show (CalendarDateTime cal) where
+  showsPrec p (CalendarDateTime d lt) = showParen (p > 10) $
+      showString "fromJust (at <$> " . showsDateCon d . showString " <*> " . showsLocalTimeCon lt . showChar ')'
+
+instance NFData (Date cal) => NFData (CalendarDateTime cal) where
+  rnf (CalendarDateTime d lt) = rnf d `seq` rnf lt
+
+instance Hashable (Date cal) => Hashable (CalendarDateTime cal) where
+  hashWithSalt s (CalendarDateTime d lt) = s `hashWithSalt` d `hashWithSalt` lt
 
 instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   type DoW (CalendarDateTime cal) = DayOfWeek cal

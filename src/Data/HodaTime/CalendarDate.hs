@@ -17,25 +17,24 @@
 --
 -- ==== Building and inspecting a date
 --
--- > import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
--- > import Data.HodaTime.CalendarDate (dayOfWeek)
--- >
--- > valentines = calendarDate 14 February 2024     -- Just \<14 February 2024\>
--- > notADate   = calendarDate 30 February 2024     -- Nothing
--- >
--- > -- read-only components are just functions
--- > valentinesDoW = dayOfWeek \<$\> valentines        -- Just Wednesday
+-- Dates are built with a calendar's smart constructor, which returns 'Nothing' for a date that does not exist.
+-- Read-only components (such as the day of the week) are plain functions.
+--
+-- >>> calendarDate 14 February 2024
+-- Just (fromJust (Gregorian.calendarDate 14 February 2024))
+-- >>> calendarDate 30 February 2024
+-- Nothing
+-- >>> dayOfWeek <$> calendarDate 14 February 2024
+-- Just Wednesday
 --
 -- ==== Re-expressing a date in another calendar
 --
--- > import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
--- > import qualified Data.HodaTime.Calendar.Julian as Julian
--- > import Data.HodaTime.CalendarDate (withCalendar, CalendarDate)
--- >
--- > -- the Gregorian Christmas, re-expressed as the Julian (\"Old Calendar\") date still used liturgically
--- > julianChristmas :: Maybe (CalendarDate Julian.Julian)
--- > julianChristmas = withCalendar \<$\> calendarDate 25 December 2024
--- > -- the same day, which the Julian calendar labels 12 December 2024 (it runs thirteen days behind today)
+-- 'withCalendar' re-expresses a date in another calendar, preserving the same day on the absolute timeline; the
+-- target calendar is chosen by the result type.  Here the Gregorian Christmas becomes the Julian (\"Old Calendar\")
+-- date still used liturgically, which the Julian calendar labels 12 December 2024 (it runs thirteen days behind).
+--
+-- >>> withCalendar <$> calendarDate 25 December 2024 :: Maybe (CalendarDate Julian.Julian)
+-- Just (fromJust (Julian.calendarDate 12 December 2024))
 --
 -- ==== USA holidays for a given year
 --
@@ -69,6 +68,10 @@ where
 
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDate, DayNth(..), DayOfMonth, Year, WeekNumber, HasDate(..), CalendarDateTime(..), IsCalendarDateTime(..), at)
 import Data.HodaTime.LocalTime.Internal (midnight)
+
+-- $setup
+-- >>> import Data.HodaTime.Calendar.Gregorian (calendarDate, Month(..))
+-- >>> import qualified Data.HodaTime.Calendar.Julian as Julian
 
 -- | Re-express a 'CalendarDate' in a different calendar, preserving the same day on the absolute timeline.  For
 --   example, convert a Gregorian date to the Julian (\"Old Calendar\") date still used liturgically by the Eastern

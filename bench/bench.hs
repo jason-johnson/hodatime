@@ -7,12 +7,13 @@ import Criterion.Types (Config(..))
 
 import HodaTime.OffsetBench (offsetBenches)
 import HodaTime.CalendarBench (calendarBenches)
+import HodaTime.InstantBench (instantBenches)
 
 main :: IO ()
 main = defaultMainWith benchConfig [benches]
 
 benches :: Benchmark
-benches = bgroup "Benchmarks" [offsetBenches, calendarBenches]
+benches = bgroup "Benchmarks" [offsetBenches, calendarBenches, instantBenches]
 
 -- This configuration enables garbage collection between benchmarks. It is a
 -- good idea to do so. Otherwise GC might distort your results

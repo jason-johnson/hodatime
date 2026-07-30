@@ -62,6 +62,8 @@ module Data.HodaTime.Calendar.Hebrew
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayNth, DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkFromNthDay, moveByDow, dayOfWeekFromDays)
 import Data.Int (Int32)
@@ -97,7 +99,7 @@ instance KnownNumbering 'Scriptural where numberingStart = 7   -- 'Nisan' is cal
 instance KnownNumbering n => IsCalendar (Hebrew n) where
   -- | Denormalized: the flat, epoch-relative day count plus the decoded day, calendar-order month index and year.
   data Date (Hebrew n) = HebrewDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   -- | The Hebrew months, listed in calendar order from 'Tishri'.  'AdarI' (the leap month) sits between 'Shevat' and
   --   'Adar'; it exists only in leap years.  The constructors are shared by both numbering conventions — only their
@@ -112,6 +114,7 @@ instance KnownNumbering n => IsCalendar (Hebrew n) where
   fromDays = hebrewFromDays
   toDays = hebrewToDays
   toYmd = hebrewToYmd
+  calendarName _ = "Hebrew"
 
   day' = hebrewDayLens
   {-# INLINE day' #-}
@@ -137,6 +140,24 @@ instance KnownNumbering n => Enum (Month (Hebrew n)) where
   toEnum i
     | i >= 0 && i < monthCount = monthAt ((i + numberingStart @n) `mod` monthCount)
     | otherwise               = error "Data.HodaTime.Calendar.Hebrew: toEnum: month out of range 0..12"
+
+instance NFData (Date (Hebrew n)) where
+  rnf (HebrewDate days d m y) = rnf days `seq` rnf d `seq` rnf m `seq` rnf y
+
+instance Hashable (Date (Hebrew n)) where
+  hashWithSalt s (HebrewDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
+
+instance NFData (Month (Hebrew n)) where
+  rnf m = m `seq` ()
+
+instance KnownNumbering n => Hashable (Month (Hebrew n)) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek (Hebrew n)) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek (Hebrew n)) where
+  hashWithSalt s = hashWithSalt s . fromEnum
 
 instance IsCalendarDateTime (Hebrew n) where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (hebrewFromDays days) (LocalTime secs nsecs)

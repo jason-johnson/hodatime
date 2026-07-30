@@ -12,7 +12,6 @@ module Data.HodaTime.TimeZone.Internal
   ,addUtcTransition
   ,addUtcTransitionExpression
   ,activeTransitionFor
-  ,nextTransition
   ,emptyCalDateTransitions
   ,addCalDateTransition
   ,addCalDateTransitionExpression
@@ -33,22 +32,24 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.IntervalMap.FingerTree (IntervalMap, Interval(..))
 import qualified Data.IntervalMap.FingerTree as IMap
+import Data.Hashable (Hashable(..))
 
-data TZIdentifier = UTC | Zone String
+data TZIdentifier = UTC | Zone String
   deriving (Eq, Show)
+
+instance Hashable TZIdentifier where
+  hashWithSalt s UTC      = hashWithSalt s (0 :: Int)
+  hashWithSalt s (Zone n) = s `hashWithSalt` (1 :: Int) `hashWithSalt` n
 
 data TransitionInfo = TransitionInfo { tiUtcOffset :: Offset, tiIsDst :: Bool, tiAbbreviation :: String }
   deriving (Eq, Show)
 
+instance Hashable TransitionInfo where
+  hashWithSalt s (TransitionInfo off isDst abbr) = s `hashWithSalt` off `hashWithSalt` isDst `hashWithSalt` abbr
+
 data TransitionExpression =
-  NthDayExpression
-  {
-     teMonth :: Int
-    ,teNthDay :: Int
-    ,teDay :: Int
-    ,teSeconds :: Int
-  }
-  | JulianExpression { jeCountLeaps :: Bool, jeDay :: Int, jeSeconds :: Int }
+    NthDayExpression Int Int Int Int  -- ^ month, nthDay, day, seconds
+  | JulianExpression Bool Int Int     -- ^ countLeaps, day, seconds
   deriving (Eq, Show)
 
 data TransitionExpressionInfo = TransitionExpressionInfo
@@ -83,13 +84,6 @@ activeTransitionFor i (TimeZone _ utcM _) = fromTransInfo i f id . snd . fromMay
   where
     f (dstStart, dstEnd, stdTI, dstTI) = if i <= dstStart || i >= dstEnd then stdTI else dstTI
 
--- TODO: We would need to get the next year to complete this function but let's see if it's actually used before doing more work
-nextTransition :: Instant -> TimeZone -> (Instant, TransitionInfo)
-nextTransition i (TimeZone _ utcM _) = f . fromMaybe (Map.findMax utcM) $ Map.lookupGT i utcM
-  where
-    f (i', ti) = fromTransInfo i g (\ti' -> (i', ti')) ti
-    g (dstStart, dstEnd, stdTI, dstTI) = if i < dstStart then (dstStart, dstTI) else if i < dstEnd then (dstEnd, stdTI) else error "nextTransition: need next year"
-
 -- CalendarDate to transition
 
 data IntervalEntry a =
@@ -119,20 +113,25 @@ calDateTransitionsFor i (TimeZone _ _ cdtMap) = concatMap (fromTransInfo i f (:[
     search = IMap.search (Entry i)
     f = fmap snd . search . buildFixedTransIMap
 
--- TODO: this function need major cleanup, this implementation is really nasty and almost certainly unsafe
+-- NOTE: Only ever called (from 'resolve') when a local time falls in a spring-forward gap.  This looks partial but is
+-- total by construction: every zone's 'CalDateTransitionsMap' tiles [Smallest, Largest] (see the constructors), so the
+-- 'IMap.splitAfter' below always yields a non-empty 'front' and 'back' — the 'IMap.bounds'\/'leastView' Nothing cases
+-- cannot occur.  A top-level empty search ('go []') only happens in the fixed (historical) region: the expression
+-- region always returns a single interval and is handled by 'go [expr]', so the bracketing transitions are always
+-- fixed ('bomb' is unreachable).
 aroundCalDateTransition :: Instant -> TimeZone -> (TransitionInfo, TransitionInfo)
 aroundCalDateTransition i (TimeZone _ _ cdtMap) = go . fmap snd . IMap.search (Entry i) $ cdtMap
     where
       go [] = (before, after)
       go [(TransitionInfoExpression (TransitionExpressionInfo _ _ stdTI dstTI))] = (stdTI, dstTI) -- NOTE: Should be the only way this happens
-      go x = error $ "aroundCalDateTransition: unexpected search result" ++ show x
-      before = fromTransInfo i bomb id . snd . go' . flip IMap.search cdtMap . IMap.high . fromMaybe (error "around.before: fixme") . IMap.bounds $ front
-      after = fromTransInfo i bomb id . snd . fst . fromMaybe (error "around.after: fixme") . IMap.leastView $ back
+      go x = error $ "aroundCalDateTransition: unreachable - a gap search should return [] or a single expression, got: " ++ show x
+      before = fromTransInfo i bomb id . snd . go' . flip IMap.search cdtMap . IMap.high . fromMaybe (error "aroundCalDateTransition: unreachable - empty 'front' (the map always tiles from Smallest)") . IMap.bounds $ front
+      after = fromTransInfo i bomb id . snd . fst . fromMaybe (error "aroundCalDateTransition: unreachable - empty 'back' (the map always tiles to Largest)") . IMap.leastView $ back
       (front, back) = IMap.splitAfter (Entry i) cdtMap
-      go' [] = error "aroundCalDateTransition: no before transitions"
+      go' [] = error "aroundCalDateTransition: unreachable - no interval before the gap (the map always tiles from Smallest)"
       go' [tei] = tei
-      go' _ = error "aroundCalDateTransition: too many before transitions"
-      bomb = error "aroundCalDateTransition: got expression when fixed expected"
+      go' _ = error "aroundCalDateTransition: unreachable - more than one interval at the boundary before the gap"
+      bomb = error "aroundCalDateTransition: unreachable - bracketing transition was an expression, not fixed ('go []' only fires in the fixed region)"
 
 -- | Represents a time zone.  A 'TimeZone' can be used to instanciate a 'ZoneDateTime' from either and 'Instant' or a 'CalendarDateTime'
 data TimeZone =
@@ -142,7 +141,26 @@ data TimeZone =
       ,utcTransitionsMap :: UtcTransitionsMap
       ,calDateTransitionsMap :: CalDateTransitionsMap
     }
-  deriving (Eq, Show)
+
+-- | Shows a 'TimeZone' by its identity only (the transition maps are a derived cache, not part of identity).
+instance Show TimeZone where
+  show tz = case zoneName tz of
+    UTC    -> "<TimeZone UTC>"
+    Zone n -> "<TimeZone " ++ show n ++ ">"
+
+-- | Two 'TimeZone's are equal when they denote the same zone (compared by identifier).  The transition maps are a
+--   derived lookup cache fully determined by the identifier, so they are not part of the zone's identity.
+instance Eq TimeZone where
+  a == b = zoneName a == zoneName b
+
+instance Hashable TimeZone where
+  hashWithSalt s = hashWithSalt s . zoneName
+
+-- NOTE: 'TimeZone' deliberately has no 'NFData' instance.  'calDateTransitionsMap' is an 'IntervalMap' from the
+-- 'fingertree' package, which depends only on 'base' and therefore provides no 'NFData' instance to force it.  A
+-- partial 'rnf' that forced only the identifier would silently leave the bulk of the value (the transition maps)
+-- unevaluated, which would be a misleading 'NFData', so we omit it entirely.  The same reasoning applies to
+-- 'ZonedDateTime' and 'OffsetDateTime', which embed a 'TimeZone'.
 
 -- constructors
 

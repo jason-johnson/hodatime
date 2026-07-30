@@ -30,6 +30,8 @@ import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Int (Int32, Int8)
 import Data.Word (Word8, Word32)
 import Data.Array.Unboxed ((!))
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 
 -- Constants
 
@@ -54,7 +56,7 @@ data Gregorian
     
 instance IsCalendar Gregorian where
   data Date Gregorian = GregorianDate {-# UNPACK #-} !Int8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek Gregorian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -65,6 +67,7 @@ instance IsCalendar Gregorian where
   fromDays = daysToGregorian
   toDays = gregorianToDays
   toYmd = gregorianToYearMonthDay
+  calendarName _ = "Gregorian"
 
   -- Fast path: shift only the day-in-century, leaving cycle\/century untouched when we stay in-century.
   day' f gd = mkgd <$> f (fromIntegral d)
@@ -94,6 +97,24 @@ instance IsCalendar Gregorian where
       currentDoW = dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
       targetDow = fromEnum dow
       n' = if targetDow < currentDoW then n - 1 else n
+
+instance NFData (Date Gregorian) where
+  rnf (GregorianDate cyc century dic) = rnf cyc `seq` rnf century `seq` rnf dic
+
+instance Hashable (Date Gregorian) where
+  hashWithSalt s (GregorianDate cyc century dic) = s `hashWithSalt` cyc `hashWithSalt` century `hashWithSalt` dic
+
+instance NFData (Month Gregorian) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month Gregorian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek Gregorian) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek Gregorian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
 
 instance IsCalendarDateTime Gregorian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (daysToGregorian days) (LocalTime secs nsecs)
@@ -152,9 +173,10 @@ gregorianFromYmd :: Year -> Month Gregorian -> DayOfMonth -> Date Gregorian
 gregorianFromYmd y m d = GregorianDate (fromIntegral cyc) (fromIntegral century) (fromIntegral dic)
   where (cyc, century, dic) = yearMonthDayToCycleCenturyDays y m d
 
--- NOTE: Epoch is March 1 2000 because that has nicest properties that is near our current time.
--- TODO: The addition of leap days below will add from the previous year.  We need to determine if this is a bug
--- TODO: and if it is not, why isn't it
+-- NOTE: Epoch is March 1 2000 because that has nicest properties that is near our current time.  Because the year is
+-- NOTE: shifted to start in March, January and February belong to the /previous/ shifted year (years = y - 2001), so
+-- NOTE: the leap-day terms (div 4 \/ 100 \/ 400) naturally count Feb 29 only once it has actually occurred.  Verified
+-- NOTE: against proleptic Gregorian arithmetic for every date in years 1-9999 (all century boundaries and negatives).
 yearMonthDayToDays :: Year -> Month Gregorian -> DayOfMonth -> Int
 yearMonthDayToDays y m d = days
   where

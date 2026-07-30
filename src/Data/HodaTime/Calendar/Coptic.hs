@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.HodaTime.Calendar.Coptic
@@ -27,6 +28,8 @@ module Data.HodaTime.Calendar.Coptic
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayNth, DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays, daysPerStandardYear, daysPerFourYears)
 import Data.Int (Int32)
@@ -69,7 +72,7 @@ data Coptic
 
 instance IsCalendar Coptic where
   data Date Coptic = CopticDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek Coptic = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -80,6 +83,7 @@ instance IsCalendar Coptic where
   fromDays = copticFromDays
   toDays = copticToDays
   toYmd = copticToYmd
+  calendarName _ = "Coptic"
 
   day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays copticFromDays copticToYmd
   {-# INLINE day' #-}
@@ -97,6 +101,24 @@ instance IsCalendar Coptic where
   next' n dow (CopticDate days _ _ _) = moveByDow copticFromDays epochDayOfWeek n dow (-) (+) (>) (fromIntegral days)
 
   previous' n dow (CopticDate days _ _ _) = moveByDow copticFromDays epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+
+instance NFData (Date Coptic) where
+  rnf (CopticDate days d m y) = rnf days `seq` rnf d `seq` rnf m `seq` rnf y
+
+instance Hashable (Date Coptic) where
+  hashWithSalt s (CopticDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
+
+instance NFData (Month Coptic) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month Coptic) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek Coptic) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek Coptic) where
+  hashWithSalt s = hashWithSalt s . fromEnum
 
 instance IsCalendarDateTime Coptic where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (copticFromDays (days - copticEpoch)) (LocalTime secs nsecs)

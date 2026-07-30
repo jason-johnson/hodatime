@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.HodaTime.Calendar.Persian
@@ -51,6 +52,8 @@ module Data.HodaTime.Calendar.Persian
 where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), CalendarDate, DayNth, DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
+import Control.DeepSeq (NFData(..))
+import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays)
 import Data.HodaTime.Calendar.Persian.Astronomical (newYearDay, minPersianYear, maxPersianYear)
@@ -87,7 +90,7 @@ data Persian
 
 instance IsCalendar Persian where
   data Date Persian = PersianDate {-# UNPACK #-} !Int32 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Int32
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
   data DayOfWeek Persian = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -98,6 +101,7 @@ instance IsCalendar Persian where
   fromDays = persianFromDays
   toDays = persianToDays
   toYmd = persianToYmd
+  calendarName _ = "Persian"
 
   day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays persianFromDays persianToYmd
   {-# INLINE day' #-}
@@ -115,6 +119,24 @@ instance IsCalendar Persian where
   next' n dow (PersianDate days _ _ _) = moveByDow persianFromDays epochDayOfWeek n dow (-) (+) (>) (fromIntegral days)
 
   previous' n dow (PersianDate days _ _ _) = moveByDow persianFromDays epochDayOfWeek n dow subtract (-) (<) (fromIntegral days)  -- NOTE: subtract is (-) with the arguments flipped
+
+instance NFData (Date Persian) where
+  rnf (PersianDate days d m y) = rnf days `seq` rnf d `seq` rnf m `seq` rnf y
+
+instance Hashable (Date Persian) where
+  hashWithSalt s (PersianDate days d m y) = s `hashWithSalt` days `hashWithSalt` d `hashWithSalt` m `hashWithSalt` y
+
+instance NFData (Month Persian) where
+  rnf m = m `seq` ()
+
+instance Hashable (Month Persian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+instance NFData (DayOfWeek Persian) where
+  rnf d = d `seq` ()
+
+instance Hashable (DayOfWeek Persian) where
+  hashWithSalt s = hashWithSalt s . fromEnum
 
 instance IsCalendarDateTime Persian where
   fromAdjustedInstant (Instant days secs nsecs) = CalendarDateTime (persianFromDays days) (LocalTime secs nsecs)

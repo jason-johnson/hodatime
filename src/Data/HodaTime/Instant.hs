@@ -15,6 +15,11 @@ module Data.HodaTime.Instant
    Instant
   -- * Constructors
   ,fromSecondsSinceUnixEpoch
+  -- | The current time as an 'Instant'.
+  --
+  --   Note: Hoda Time does not model leap seconds, so 'now' follows POSIX time semantics — the returned 'Instant'
+  --   does not include leap seconds (every day is treated as exactly 86400 seconds).  This keeps @now@ consistent with
+  --   the rest of the library: round-tripping through a 'ZonedDateTime' never adds or removes leap seconds.
   ,now
   -- * Math
   ,add
@@ -22,12 +27,8 @@ module Data.HodaTime.Instant
   ,minus
   -- * Conversion
   ,inTimeZone
-  -- * Debug - to be removed
 )
 where
-
--- TODO - BUG: now is based on calling gettimeofday.  The question is if this returns a number with leap seconds removed or not.  If it does not then we will have
--- TODO - BUG: an issue if we go:  now -> ZoneDateTime -> Instant   because the last conversion will remove leap seconds.
 
 import Data.HodaTime.Instant.Internal
 import Data.HodaTime.Instant.Platform (now)
