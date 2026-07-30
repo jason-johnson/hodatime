@@ -18,12 +18,62 @@ import Data.Char (isDigit)
 import Data.List (sortOn, foldl')
 import Control.Monad (forM)
 import Control.Exception (bracket)
-import System.Win32.Types (LONG, HKEY, peekTString)
+import Data.Int (Int32)
+import System.Win32.Types (LONG, HKEY, peekTString, withTString)
 import System.Win32.Registry
 import System.Win32.Time (SYSTEMTIME(..))
-import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Marshal.Alloc (allocaBytes, alloca)
+import Foreign.Marshal.Array (allocaArray)
 import Foreign.Storable (sizeOf, Storable(..))
-import Foreign.Ptr (castPtr)
+import Foreign.Ptr (castPtr, Ptr)
+import Foreign.C.Types (CWchar)
+import Foreign.C.String (CString, withCString)
+
+-- ICU-based conversion between IANA and Windows zone ids.  Windows uses its own registry zone names (e.g.
+-- @"W. Europe Standard Time"@) while the rest of the world uses IANA ids (e.g. @"Europe/Zurich"@).  Rather than
+-- vendoring a CLDR windowsZones table (which Microsoft explicitly advises against, since time zones change often and
+-- they maintain the data), we delegate to ICU, which has shipped with Windows since Windows 10 v1703 (build 15063)
+-- and is kept current by Windows Update.  On older systems where @icu.dll@ is unavailable the conversions return
+-- 'Nothing' and we fall back to treating names as Windows registry names, i.e. the pre-ICU behaviour.
+foreign import ccall unsafe "ucal_getWindowsTimeZoneID"
+  c_getWindowsTimeZoneID :: Ptr CWchar -> Int32 -> Ptr CWchar -> Int32 -> Ptr Int32 -> IO Int32
+
+foreign import ccall unsafe "ucal_getTimeZoneIDForWindowsID"
+  c_getTimeZoneIDForWindowsID :: Ptr CWchar -> Int32 -> CString -> Ptr CWchar -> Int32 -> Ptr Int32 -> IO Int32
+
+-- | Output buffer size in UChar units for ICU zone-id conversions; zone ids are far shorter than this.
+icuBufLen :: Int
+icuBufLen = 128
+
+-- | Translate an IANA zone id (e.g. @"Europe/Zurich"@) to its Windows registry zone name via ICU.  Returns 'Nothing'
+--   when the argument is not a known IANA id (for instance it is already a Windows name) or ICU is unavailable.
+ianaToWindowsZone :: String -> IO (Maybe String)
+ianaToWindowsZone iana =
+  withTString iana $ \pIana ->
+  allocaArray icuBufLen $ \pOut ->
+  alloca $ \pStatus -> do
+    poke pStatus 0
+    n <- c_getWindowsTimeZoneID pIana (-1) pOut (fromIntegral icuBufLen) pStatus
+    st <- peek pStatus
+    if st <= 0 && n > 0 then Just <$> peekTString pOut else return Nothing
+
+-- | Translate a Windows registry zone name to its canonical IANA zone id (CLDR region @"001"@) via ICU.  Returns
+--   'Nothing' when the argument is not a known Windows name or ICU is unavailable.
+windowsZoneToIana :: String -> IO (Maybe String)
+windowsZoneToIana win =
+  withTString win $ \pWin ->
+  withCString "001" $ \pRegion ->
+  allocaArray icuBufLen $ \pOut ->
+  alloca $ \pStatus -> do
+    poke pStatus 0
+    n <- c_getTimeZoneIDForWindowsID pWin (-1) pRegion pOut (fromIntegral icuBufLen) pStatus
+    st <- peek pStatus
+    if st <= 0 && n > 0 then Just <$> peekTString pOut else return Nothing
+
+-- | Accept either a Windows registry zone name or an IANA id.  If ICU recognises the argument as an IANA id we use
+--   the matching Windows name; otherwise we assume it is already a Windows name (or ICU is unavailable).
+resolveWindowsZone :: String -> IO String
+resolveWindowsZone zone = maybe zone id <$> ianaToWindowsZone zone
 
 data REG_TZI_FORMAT = REG_TZI_FORMAT
   {
@@ -53,17 +103,19 @@ loadUTC = loadTimeZone "UTC"
 
 loadLocalZone :: IO (UtcTransitionsMap, CalDateTransitionsMap, String)
 loadLocalZone = do
-  zone <- readLocalZoneName
-  (utcM, calDateM) <- loadTimeZone zone
-  return (utcM, calDateM, zone)
+  winZone <- readLocalZoneName
+  (utcM, calDateM) <- loadTimeZone winZone
+  ianaName <- windowsZoneToIana winZone
+  return (utcM, calDateM, maybe winZone id ianaName)
 
 loadTimeZone :: String -> IO (UtcTransitionsMap, CalDateTransitionsMap)
 loadTimeZone "UTC" = return (utcM, calDateM)
   where
     (utcM, calDateM, _) = fixedOffsetZone "UTC" (Offset 0)
 loadTimeZone zone = do
-  (stdAbbr, dstAbbr, tzi) <- readTziForZone zone
-  dynTzis <- readDynamicDstForZone zone
+  winZone <- resolveWindowsZone zone
+  (stdAbbr, dstAbbr, tzi) <- readTziForZone winZone
+  dynTzis <- readDynamicDstForZone winZone
   return $ mkZoneMaps stdAbbr dstAbbr tzi dynTzis
 
 loadAvailableZones :: IO [String]
