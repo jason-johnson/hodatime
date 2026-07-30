@@ -16,23 +16,26 @@ jobs:
       fail-fast: false
       matrix:
         # Test the full modern GHC window (9.4 -> 9.10) on Linux, and smoke-test the
-        # latest snapshot on macOS and Windows. Snapshot -> GHC:
-        #   lts-21.25 -> 9.4.8, lts-22.44 -> 9.6.7, lts-23.28 -> 9.8.4, lts-24.52 -> 9.10.3
-        os: [ubuntu-latest]
-        snapshot: [lts-21.25, lts-22.44, lts-23.28, lts-24.52]
+        # latest snapshot on macOS and Windows. GHC is installed by the setup action
+        # (fast and tool-cached) and reused by stack via --system-ghc, so the slow
+        # `stack setup` GHC download is skipped and the stack cache stays small (deps
+        # only, no toolchain) which keeps it well under the repo cache limit.
         include:
-          - os: macos-latest
-            snapshot: lts-24.52
-          - os: windows-latest
-            snapshot: lts-24.52
+          - { os: ubuntu-latest,  snapshot: lts-21.25, ghc: 9.4.8 }
+          - { os: ubuntu-latest,  snapshot: lts-22.44, ghc: 9.6.7 }
+          - { os: ubuntu-latest,  snapshot: lts-23.28, ghc: 9.8.4 }
+          - { os: ubuntu-latest,  snapshot: lts-24.52, ghc: 9.10.3 }
+          - { os: macos-latest,   snapshot: lts-24.52, ghc: 9.10.3 }
+          - { os: windows-latest, snapshot: lts-24.52, ghc: 9.10.3 }
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Haskell (stack)
+      - name: Set up Haskell (GHC + stack)
         id: setup
         uses: haskell-actions/setup@v2
         with:
+          ghc-version: ${{ matrix.ghc }}
           enable-stack: true
           stack-version: latest
 
@@ -45,7 +48,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.snapshot }}-stack-
 
       - name: test project
-        run: stack test --resolver ${{ matrix.snapshot }} --no-terminal
+        run: stack test --resolver ${{ matrix.snapshot }} --system-ghc --no-install-ghc --no-terminal
 
   publish:
     name: publish hackage
