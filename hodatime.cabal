@@ -241,4 +241,3 @@ benchmark bench
                    hodatime
   ghc-options:
                    -Wall
-                   -O2
