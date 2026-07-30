@@ -37,6 +37,7 @@ category:       Data, Time
 tested-with:    GHC == 9.4.8 || == 9.6.7 || == 9.8.4 || == 9.10.3
 extra-doc-files:
                    README.md
+                   CHANGELOG.md
 extra-source-files:
                    platform/osx/Data/HodaTime/TimeZone/Platform.hs
                    platform/osx/Data/HodaTime/Instant/Platform.hs
