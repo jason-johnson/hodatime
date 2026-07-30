@@ -201,7 +201,7 @@ test-suite doctests
                    doctests.hs
   build-depends:
                    base >= 4.16 && < 4.21,
-                   doctest >= 0.16 && < 0.24,
+                   doctest >= 0.16 && < 0.25,
                    mtl < 2.4,
                    binary < 0.9,
                    bytestring < 0.13,
