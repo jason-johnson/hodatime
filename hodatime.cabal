@@ -79,7 +79,7 @@ library
                    array < 0.6
   if os(windows)
     build-depends: Win32 < 2.15
-    extra-libraries: kernel32, icu
+    extra-libraries: kernel32
   if !os(windows)
     build-depends: unix < 2.9,
                    filepath < 1.6,
