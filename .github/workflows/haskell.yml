@@ -30,6 +30,12 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync package version from Git
+        shell: bash
+        run: scripts/sync-version.sh
 
       - name: Set up Haskell (GHC + stack)
         id: setup
@@ -58,17 +64,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync package version from Git
+        run: scripts/sync-version.sh
 
       - name: Set up Haskell (cabal)
         uses: haskell-actions/setup@v2
         with:
           ghc-version: '9.6.7'
           cabal-version: latest
-
-      - name: get version
-        run: |
-          VERSION=$(grep "^version:" hodatime.cabal | awk -F':' '{ print $2 }' | xargs echo -n )
-          echo "hodatime_version=$VERSION" >> "$GITHUB_ENV"
 
       - name: publish to hackage
         run: |

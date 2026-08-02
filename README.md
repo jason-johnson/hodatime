@@ -55,6 +55,13 @@ The full API documentation is on [Hackage](https://hackage.haskell.org/package/h
 
 Release notes are published on the [GitHub releases page](https://github.com/jason-johnson/hodatime/releases).
 
+## Versioning
+
+Git release tags are the version source of truth. On a commit tagged `vX.Y.Z.W`,
+`scripts/sync-version.sh` sets the Cabal package version to `X.Y.Z.W`; later
+commits use `X.Y.Z.(W+1)`. CI runs the script before building or publishing.
+Run it locally after creating a tag to synchronize `hodatime.cabal`.
+
 ## License
 
 BSD-3-Clause. See [LICENSE](LICENSE).
