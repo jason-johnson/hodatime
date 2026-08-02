@@ -48,7 +48,7 @@ where
 import Data.HodaTime.ZonedDateTime.Internal
 import Data.HodaTime.CalendarDateTime.Internal (CalendarDateTime(..), CalendarDate, IsCalendarDateTime(..), IsCalendar(..), LocalTime)
 import Data.HodaTime.Instant.Internal (Instant)
-import qualified Data.HodaTime.LocalTime.Internal as LT(second)
+import qualified Data.HodaTime.LocalTime.Internal as LT(second, setSecond)
 import Data.HodaTime.Offset.Internal (Offset(..), adjustInstant)
 import Data.HodaTime.TimeZone.Internal (TimeZone, TZIdentifier(..), zoneName, TransitionInfo(..), calDateTransitionsFor, aroundCalDateTransition)
 import Control.Exception (Exception)
@@ -80,8 +80,7 @@ fromCalendarDateTimeLeniently = resolve ambiguous skipped
     ambiguous zdt _ = zdt
     skipped (ZonedDateTime _ _ (TransitionInfo (Offset bOff) _ _)) (ZonedDateTime cdt tz ti@(TransitionInfo (Offset aOff) _ _)) = ZonedDateTime cdt' tz ti
       where
-        cdt' = modify (\s -> s + aOff - bOff) LT.second cdt
-        modify f l = head . l ((:[]) . f)                 -- TODO: We may want to break down and define the 3 lens primitives we need somewhere
+        cdt' = LT.setSecond (LT.second cdt + aOff - bOff) cdt
 
 -- | Returns the mapping of this 'CalendarDateTime' within the given 'TimeZone', with "strict" rules applied such that ambiguous or skipped date times
 --   return the requested failure response (e.g. Nothing, Left, exception, etc.)

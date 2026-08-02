@@ -31,7 +31,7 @@ import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTi
 import Control.DeepSeq (NFData(..))
 import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays, daysPerStandardYear, daysPerFourYears)
+import Data.HodaTime.Calendar.Internal (mkCommonDaySetter, mkCommonMonthSetter, mkYearSetter, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays, daysPerStandardYear, daysPerFourYears)
 import Data.Int (Int32)
 import Data.Word (Word8)
 import Control.Monad (guard)
@@ -85,15 +85,16 @@ instance IsCalendar Coptic where
   toYmd = copticToYmd
   calendarName _ = "Coptic"
 
-  day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays copticFromDays copticToYmd
+  day' (CopticDate _ d _ _) = fromIntegral d
+  setDay' = mkCommonDaySetter invalidDayThresh yearMonthDayToDays copticFromDays copticToYmd
   {-# INLINE day' #-}
 
   month' (CopticDate _ _ m _) = toEnum . fromIntegral $ m
+  setMonthIndex' = mkCommonMonthSetter monthsPerYear firstCopDayTuple maxDaysInMonth yearMonthDayToDays copticToYmd copticFromDays
+  {-# INLINE month' #-}
 
-  monthl' = mkCommonMonthLens monthsPerYear firstCopDayTuple maxDaysInMonth yearMonthDayToDays copticToYmd copticFromDays
-  {-# INLINE monthl' #-}
-
-  year' = mkYearLens firstCopDayTuple maxDaysInMonth yearMonthDayToDays copticToYmd copticFromDays
+  year' (CopticDate _ _ _ y) = fromIntegral y
+  setYear' = mkYearSetter firstCopDayTuple maxDaysInMonth yearMonthDayToDays copticToYmd copticFromDays
   {-# INLINE year' #-}
 
   dayOfWeek' (CopticDate days _ _ _) = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral $ days

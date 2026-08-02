@@ -13,25 +13,26 @@ import Data.Time.Clock (UTCTime(..))
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
+import Data.HodaTime.CalendarDate (day, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
 import Data.HodaTime.Calendar.Hebrew (calendarDate, calendarDate', fromNthDay, fromWeekDate, HebrewCivil, HebrewScriptural, Month(..), DayOfWeek(..))
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (utc)
 import Data.HodaTime.ZonedDateTime (fromInstant, ZonedDateTime)
 import qualified Data.HodaTime.ZonedDateTime as Z
+import Data.HodaTime.Period (applyPeriod, days, months, years)
 
 hebrewTests :: TestTree
 hebrewTests = testGroup "Hebrew Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [roundTripProps, lensProps, nthDayProps]
+qcProps = testGroup "(checked by QuickCheck)" [roundTripProps, periodProps, nthDayProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [structureUnits, numberingUnits, crossCalendarUnits]
 
 -- | Decode a civil Hebrew date to (day, 1-based civil month, year) for explicit expected-value assertions.
 ymd :: CalendarDate HebrewCivil -> (Int, Int, Int)
-ymd x = (get day x, succ . fromEnum $ month x, get year x)
+ymd x = (day x, succ . fromEnum $ month x, year x)
 
 -- | Data.Time has no Hebrew calendar, so we verify the construct -> decode bijection directly.  'RandomHebrewDate'
 --   only generates valid dates (the leap month 'AdarI' in leap years, the swing months capped at their shorter length).
@@ -43,17 +44,17 @@ roundTripProps = testGroup "Constructor"
   where
     testRoundTrip (RandomHebrewDate y m d) = (ymd <$> calendarDate d m y) == Just (d, succ (fromEnum m), y)
 
-lensProps :: TestTree
-lensProps = testGroup "Lens"
+periodProps :: TestTree
+periodProps = testGroup "Period"
   [
      QC.testProperty "dayOfWeek . next n dow $ date == dow" testNextDoW
-    ,QC.testProperty "next n (dayOfWeek date) date == modify (+ n * 7) day date" $ testDirection next (+)
-    ,QC.testProperty "previous n (dayOfWeek date) date == modify (- n * 7) day date" $ testDirection previous $ flip (-)
+    ,QC.testProperty "next n (dayOfWeek date) date == a positive day period" $ testDirection next id
+    ,QC.testProperty "previous n (dayOfWeek date) date == a negative day period" $ testDirection previous negate
   ]
   where
     anchorDay = fromJust $ calendarDate 1 Tishri 5784
     testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ anchorDay) == dow
-    testDirection dir adjust (Positive n) = dir n (dayOfWeek anchorDay) anchorDay == modify (adjust $ n * 7) day anchorDay
+    testDirection dir adjust (Positive n) = dir n (dayOfWeek anchorDay) anchorDay == applyPeriod (days (adjust (n * 7))) anchorDay
 
 -- | 'fromNthDay' and 'fromWeekDate' are the generic constructors instantiated for Hebrew.  Every Hebrew month has at
 --   least 29 days, so a given weekday always occurs and the properties are total.
@@ -65,8 +66,8 @@ nthDayProps = testGroup "fromNthDay / fromWeekDate"
     ,QC.testProperty "fromWeekDate lands on the requested day-of-week" testWeekDoW
   ]
   where
-    testFirst dow (RandomHebrewDate y m _) = let r = fromNthDay First dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 1 && get day d <= 7) r
-    testLast dow (RandomHebrewDate y m _) = let r = fromNthDay Last dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 22) r
+    testFirst dow (RandomHebrewDate y m _) = let r = fromNthDay First dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 1 && day d <= 7) r
+    testLast dow (RandomHebrewDate y m _) = let r = fromNthDay Last dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 22) r
     testWeekDoW dow (RandomHebrewDate y _ _) = maybe True ((== dow) . dayOfWeek) (fromWeekDate 1 dow y)
 
 -- | The interesting Hebrew structure: the leap month 'AdarI' (present only in leap years) and the two swing months
@@ -84,11 +85,11 @@ structureUnits = testGroup "Structure"
     ,testCase "30 Kislev 5781 is invalid (deficient year: Kislev has 29)"    $ calendarDate 30 Kislev 5781 @?= Nothing
     ,testCase "30 AdarI 5784 is valid (leap year has the extra month)"       $ (ymd <$> calendarDate 30 AdarI 5784) @?= Just (30, 6, 5784)
     ,testCase "1 AdarI 5786 is invalid (common year has no AdarI)"           $ calendarDate 1 AdarI 5786 @?= Nothing
-    ,testCase "1 Shevat 5784 + 1 month == 1 AdarI (leap year keeps AdarI)"   $ (ymd <$> (modify (+1) monthl <$> calendarDate 1 Shevat 5784)) @?= Just (1, 6, 5784)
-    ,testCase "1 Shevat 5784 + 2 months == 1 Adar (leap year)"               $ (ymd <$> (modify (+2) monthl <$> calendarDate 1 Shevat 5784)) @?= Just (1, 7, 5784)
-    ,testCase "1 Shevat 5786 + 1 month == 1 Adar (common year skips AdarI)"  $ (ymd <$> (modify (+1) monthl <$> calendarDate 1 Shevat 5786)) @?= Just (1, 7, 5786)
-    ,testCase "1 Elul 5785 + 1 month == 1 Tishri 5786 (year rolls at Tishri)"$ (ymd <$> (modify (+1) monthl <$> calendarDate 1 Elul 5785)) @?= Just (1, 1, 5786)
-    ,testCase "30 AdarI 5784 + 1 year == 29 Adar 5785 (AdarI -> Adar, common)"$ (ymd <$> (modify (+1) year <$> calendarDate 30 AdarI 5784)) @?= Just (29, 7, 5785)
+    ,testCase "1 Shevat 5784 + 1 month == 1 AdarI (leap year keeps AdarI)"   $ (ymd . applyPeriod (months 1) <$> calendarDate 1 Shevat 5784) @?= Just (1, 6, 5784)
+    ,testCase "1 Shevat 5784 + 2 months == 1 Adar (leap year)"               $ (ymd . applyPeriod (months 2) <$> calendarDate 1 Shevat 5784) @?= Just (1, 7, 5784)
+    ,testCase "1 Shevat 5786 + 1 month == 1 Adar (common year skips AdarI)"  $ (ymd . applyPeriod (months 1) <$> calendarDate 1 Shevat 5786) @?= Just (1, 7, 5786)
+    ,testCase "1 Elul 5785 + 1 month == 1 Tishri 5786 (year rolls at Tishri)"$ (ymd . applyPeriod (months 1) <$> calendarDate 1 Elul 5785) @?= Just (1, 1, 5786)
+    ,testCase "30 AdarI 5784 + 1 year == 29 Adar 5785 (AdarI -> Adar, common)"$ (ymd . applyPeriod (years 1) <$> calendarDate 30 AdarI 5784) @?= Just (29, 7, 5785)
     ,testCase "year 0 is out of range"                                       $ calendarDate 1 Tishri 0 @?= Nothing
   ]
 
@@ -109,7 +110,7 @@ numberingUnits = testGroup "Month numbering (civil vs scriptural)"
   ]
   where
     scripturalNisan = calendarDate' 15 Nisan 5784 :: Maybe (CalendarDate HebrewScriptural)
-    dayYear x = (get day x, get year x)
+    dayYear x = (day x, year x)
 
 -- | The strongest checks: the same absolute day, anchored via Data.Time, must decode to the expected Hebrew date.  The
 --   anchors are well-known Gregorian equivalents (Rosh Hashanah of three years and Passover), independently verified.

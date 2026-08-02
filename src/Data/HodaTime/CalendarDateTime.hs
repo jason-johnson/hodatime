@@ -18,8 +18,17 @@ module Data.HodaTime.CalendarDateTime
 (
   -- * Types
    CalendarDateTime
-  ,IsCalendar(..)
-  ,HasDate(..)
+  ,IsCalendar
+  ,HasDate
+  ,DoW
+  ,MoY
+  ,day
+  ,month
+  ,year
+  ,dayOfWeek
+  ,next
+  ,previous
+  ,yearMonthDay
   -- * Constructors
   ,on
   ,at

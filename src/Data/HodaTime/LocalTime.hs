@@ -18,11 +18,15 @@ module Data.HodaTime.LocalTime
 (
   -- * Types
    LocalTime
-  ,HasLocalTime(..)
+  ,HasLocalTime
   ,Hour
   ,Minute
   ,Second
   ,Nanosecond
+  ,hour
+  ,minute
+  ,second
+  ,nanosecond
   -- * Constructors
   ,localTime
   -- * Exceptions

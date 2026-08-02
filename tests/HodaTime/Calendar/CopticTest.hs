@@ -14,8 +14,9 @@ import Data.Time.Clock (UTCTime(..))
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
+import Data.HodaTime.CalendarDate (day, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
 import Data.HodaTime.Calendar.Coptic (calendarDate, fromNthDay, fromWeekDate, Coptic, Month(..), DayOfWeek(..))
+import Data.HodaTime.Period (applyPeriod, days, months)
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (utc)
 import Data.HodaTime.ZonedDateTime (fromInstant, ZonedDateTime)
@@ -25,14 +26,14 @@ copticTests :: TestTree
 copticTests = testGroup "Coptic Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [roundTripProps, lensProps, nthDayProps]
+qcProps = testGroup "(checked by QuickCheck)" [roundTripProps, periodProps, nthDayProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [structureUnits, crossCalendarUnits]
 
 -- | Decode a Coptic date to (day, 1-based month, year) for explicit expected-value assertions.
 ymd :: CalendarDate Coptic -> (Int, Int, Int)
-ymd x = (get day x, succ . fromEnum $ month x, get year x)
+ymd x = (day x, succ . fromEnum $ month x, year x)
 
 -- | Data.Time has no Coptic calendar, so we verify the construct -> decode bijection directly.
 roundTripProps :: TestTree
@@ -43,17 +44,17 @@ roundTripProps = testGroup "Constructor"
   where
     testRoundTrip (RandomCopticDate y m d) = (ymd <$> calendarDate d m y) == Just (d, succ (fromEnum m), y)
 
-lensProps :: TestTree
-lensProps = testGroup "Lens"
+periodProps :: TestTree
+periodProps = testGroup "Period"
   [
      QC.testProperty "dayOfWeek . next n dow $ date == dow" testNextDoW
-    ,QC.testProperty "next n (dayOfWeek date) date == modify (+ n * 7) day date" $ testDirection next (+)
-    ,QC.testProperty "previous n (dayOfWeek date) date == modify (- n * 7) day date" $ testDirection previous $ flip (-)
+    ,QC.testProperty "next n (dayOfWeek date) date == a positive day period" $ testDirection next id
+    ,QC.testProperty "previous n (dayOfWeek date) date == a negative day period" $ testDirection previous negate
   ]
   where
     epochDay = fromJust $ calendarDate 1 Thout 1716
     testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
-    testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
+    testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == applyPeriod (days (adjust (n * 7))) epochDay
 
 -- | 'fromNthDay' and 'fromWeekDate' are the generic constructors instantiated for Coptic.  We skip the short thirteenth
 --   month (which has fewer than 7 days, so a given weekday may not occur) to keep the properties total.
@@ -67,10 +68,10 @@ nthDayProps = testGroup "fromNthDay / fromWeekDate"
   where
     testFirst dow (RandomCopticDate y m _)
       | m == PiKogiEnavot = True
-      | otherwise = let r = fromNthDay First dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 1 && get day d <= 7) r
+      | otherwise = let r = fromNthDay First dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 1 && day d <= 7) r
     testLast dow (RandomCopticDate y m _)
       | m == PiKogiEnavot = True
-      | otherwise = let r = fromNthDay Last dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 24) r
+      | otherwise = let r = fromNthDay Last dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 24) r
     testWeekDoW dow (RandomCopticDate y _ _) = maybe True ((== dow) . dayOfWeek) (fromWeekDate 1 dow y)
 
 structureUnits :: TestTree
@@ -81,8 +82,8 @@ structureUnits = testGroup "Structure"
     ,testCase "5 PiKogiEnavot is valid in a non-leap year (1732)" $ (ymd <$> calendarDate 5 PiKogiEnavot 1732) @?= Just (5, 13, 1732)
     ,testCase "6 PiKogiEnavot is valid in a leap year (1731, 1731 mod 4 == 3)" $ (ymd <$> calendarDate 6 PiKogiEnavot 1731) @?= Just (6, 13, 1731)
     ,testCase "6 PiKogiEnavot is invalid in a non-leap year (1732)" $ calendarDate 6 PiKogiEnavot 1732 @?= Nothing
-    ,testCase "1 Thout + 1 month == 1 Paopi" $ (ymd <$> (modify (+1) monthl <$> calendarDate 1 Thout 1716)) @?= Just (1, 2, 1716)
-    ,testCase "1 Mesori + 1 month == 1 PiKogiEnavot (12th -> 13th month)" $ (ymd <$> (modify (+1) monthl <$> calendarDate 1 Mesori 1716)) @?= Just (1, 13, 1716)
+    ,testCase "1 Thout + 1 month == 1 Paopi" $ (ymd . applyPeriod (months 1) <$> calendarDate 1 Thout 1716) @?= Just (1, 2, 1716)
+    ,testCase "1 Mesori + 1 month == 1 PiKogiEnavot (12th -> 13th month)" $ (ymd . applyPeriod (months 1) <$> calendarDate 1 Mesori 1716) @?= Just (1, 13, 1716)
   ]
 
 -- | The strongest checks: the same absolute day, anchored via Data.Time, must decode to the expected Coptic date.

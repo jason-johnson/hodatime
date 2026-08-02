@@ -1,6 +1,7 @@
 cabal-version:  2.4
 name:           hodatime
-version:        1.0.0.0
+-- Synced from Git tags by scripts/sync-version.sh before CI builds.
+version:        1.0.0.1
 stability:      experimental
 license:        BSD-3-Clause
 license-file:   LICENSE
@@ -39,6 +40,7 @@ extra-doc-files:
                    README.md
                    CHANGELOG.md
 extra-source-files:
+                   scripts/sync-version.sh
                    platform/osx/Data/HodaTime/TimeZone/Platform.hs
                    platform/osx/Data/HodaTime/Instant/Platform.hs
                    platform/linux/Data/HodaTime/TimeZone/Platform.hs
@@ -105,6 +107,7 @@ library
                    Data.HodaTime.Offset,
                    Data.HodaTime.LocalTime,
                    Data.HodaTime.OffsetDateTime,
+                   Data.HodaTime.Period,
                    Data.HodaTime.TimeZone,
                    Data.HodaTime.ZonedDateTime,
                    Data.HodaTime.Locale,
@@ -174,6 +177,7 @@ test-suite test
                    HodaTime.CalendarDateTimeTest,
                    HodaTime.ZonedDateTimeTest,
                    HodaTime.PatternTest,
+                   HodaTime.PeriodTest,
                    HodaTime.WithCalendarTest,
                    HodaTime.LocaleTest,
                    HodaTime.ClassInstanceTests

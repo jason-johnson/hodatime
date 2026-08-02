@@ -55,7 +55,7 @@ import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTi
 import Control.DeepSeq (NFData(..))
 import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays)
+import Data.HodaTime.Calendar.Internal (mkCommonDaySetter, mkCommonMonthSetter, mkYearSetter, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays)
 import Data.HodaTime.Calendar.Persian.Astronomical (newYearDay, minPersianYear, maxPersianYear)
 import Data.Int (Int32)
 import Data.Word (Word8)
@@ -103,15 +103,16 @@ instance IsCalendar Persian where
   toYmd = persianToYmd
   calendarName _ = "Persian"
 
-  day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays persianFromDays persianToYmd
+  day' (PersianDate _ d _ _) = fromIntegral d
+  setDay' = mkCommonDaySetter invalidDayThresh yearMonthDayToDays persianFromDays persianToYmd
   {-# INLINE day' #-}
 
   month' (PersianDate _ _ m _) = toEnum . fromIntegral $ m
+  setMonthIndex' = mkCommonMonthSetter monthsPerYear firstPerDayTuple maxDaysInMonth yearMonthDayToDays persianToYmd persianFromDays
+  {-# INLINE month' #-}
 
-  monthl' = mkCommonMonthLens monthsPerYear firstPerDayTuple maxDaysInMonth yearMonthDayToDays persianToYmd persianFromDays
-  {-# INLINE monthl' #-}
-
-  year' = mkYearLens firstPerDayTuple maxDaysInMonth yearMonthDayToDays persianToYmd persianFromDays
+  year' (PersianDate _ _ _ y) = fromIntegral y
+  setYear' = mkYearSetter firstPerDayTuple maxDaysInMonth yearMonthDayToDays persianToYmd persianFromDays
   {-# INLINE year' #-}
 
   dayOfWeek' (PersianDate days _ _ _) = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral $ days

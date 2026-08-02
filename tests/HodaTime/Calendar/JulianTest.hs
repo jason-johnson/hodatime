@@ -11,21 +11,22 @@ import Data.Maybe (fromJust)
 import Data.Time.Calendar.Julian (fromJulianValid, toJulian)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
+import Data.HodaTime.CalendarDate (day, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
 import Data.HodaTime.Calendar.Julian (calendarDate, fromNthDay, fromWeekDate, Julian, Month(..), DayOfWeek(..))
+import Data.HodaTime.Period (applyPeriod, days, months, years)
 
 julianTests :: TestTree
 julianTests = testGroup "Julian Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [constructorProps, lensProps, nthDayProps]
+qcProps = testGroup "(checked by QuickCheck)" [constructorProps, periodProps, nthDayProps]
 
 unitTests :: TestTree
-unitTests = testGroup "Unit tests" [constructorUnits, lensUnits]
+unitTests = testGroup "Unit tests" [constructorUnits, periodUnits]
 
 -- | Decode a Julian date to (day, 1-based month, year) for explicit expected-value assertions.
 ymd :: CalendarDate Julian -> (Int, Int, Int)
-ymd x = (get day x, succ . fromEnum $ month x, get year x)
+ymd x = (day x, succ . fromEnum $ month x, year x)
 
 -- | Differential test: 'Data.Time.Calendar.Julian' is the proleptic-Julian oracle.  This is the same shape as the
 --   Gregorian constructor property, but it exercises Julian's simpler every-4-years leap rule (so e.g. 1900 is a
@@ -40,25 +41,25 @@ constructorProps = testGroup "Constructor"
       areSame (Just hdate) (Just date) =
         let
           (ty, tm, tday) = toJulian date
-        in get day hdate == tday && (convertMonth . month $ hdate) == tm && get year hdate == fromIntegral ty
+        in day hdate == tday && (convertMonth . month $ hdate) == tm && year hdate == fromIntegral ty
       areSame _ _ = False
       convertMonth = succ . fromEnum
       testConstructor y m (Positive d) = areSame (calendarDate d m y') (fromJulianValid (fromIntegral y') (convertMonth m) d)
         where
           y' = (y `mod` 2445) - 44     -- NOTE: spans 45 BC (year -44, the calendar's introduction) .. AD 2400
 
-lensProps :: TestTree
-lensProps = testGroup "Lens"
+periodProps :: TestTree
+periodProps = testGroup "Period"
   [
      QC.testProperty "dayOfWeek . next n dow $ date == dow" $ testNextDoW
-    ,QC.testProperty "next n (dayOfWeek date) date == modify (+ n * 7) day date" $ testDirection next (+)
-    ,QC.testProperty "previous n (dayOfWeek date) date == modify (- n * 7) day date" $ testDirection previous $ flip (-)
+    ,QC.testProperty "next n (dayOfWeek date) date == applyPeriod (weeks n) date" $ testDirection next id
+    ,QC.testProperty "previous n (dayOfWeek date) date == applyPeriod (weeks (-n)) date" $ testDirection previous negate
     ,QC.testProperty "construct -> decode round-trips" $ testRoundTrip
   ]
   where
     epochDay = fromJust $ calendarDate 1 March 2000
     testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
-    testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
+    testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == applyPeriod (days (adjust (n * 7))) epochDay
     testRoundTrip (RandomJulianDate y m d) = (ymd <$> calendarDate d m y) == Just (d, succ (fromEnum m), y)
 
 -- | 'fromNthDay' and 'fromWeekDate' are the generic (calendar-agnostic) constructors instantiated for Julian.  These
@@ -73,10 +74,10 @@ nthDayProps = testGroup "fromNthDay / fromWeekDate"
   where
     testFirst dow (RandomJulianDate y m _) =
       let r = fromNthDay First dow m y
-      in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 1 && get day d <= 7) r
+      in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 1 && day d <= 7) r
     testLast dow (RandomJulianDate y m _) =
       let r = fromNthDay Last dow m y
-      in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 22) r
+      in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 22) r
     testWeekDoW dow (RandomJulianDate y _ _) =
       maybe True ((== dow) . dayOfWeek) (fromWeekDate 1 dow y)
 
@@ -100,10 +101,10 @@ constructorUnits = testGroup "Constructor"
     where
       juYmd d = let (ty, tm, td) = toJulian d in (td, tm, fromIntegral ty)
 
-lensUnits :: TestTree
-lensUnits = testGroup "Lens"
+periodUnits :: TestTree
+periodUnits = testGroup "Period"
   [
-     testCase "31 January 2000 + 1M == 29 February 2000 (2000 is a Julian leap year)" $ (ymd <$> (modify (+1) monthl <$> calendarDate 31 January 2000)) @?= Just (29, 2, 2000)
-    ,testCase "31 December 2000 + 1D == 1 January 2001" $ (ymd <$> (modify (+1) day <$> calendarDate 31 December 2000)) @?= Just (1, 1, 2001)
-    ,testCase "29 February 1900 + 1Y clamps to 28 February 1901" $ (ymd <$> (modify (+1) year <$> calendarDate 29 February 1900)) @?= Just (28, 2, 1901)
+     testCase "31 January 2000 + 1M == 29 February 2000 (2000 is a Julian leap year)" $ (ymd . applyPeriod (months 1) <$> calendarDate 31 January 2000) @?= Just (29, 2, 2000)
+    ,testCase "31 December 2000 + 1D == 1 January 2001" $ (ymd . applyPeriod (days 1) <$> calendarDate 31 December 2000) @?= Just (1, 1, 2001)
+    ,testCase "29 February 1900 + 1Y clamps to 28 February 1901" $ (ymd . applyPeriod (years 1) <$> calendarDate 29 February 1900) @?= Just (28, 2, 1901)
   ]

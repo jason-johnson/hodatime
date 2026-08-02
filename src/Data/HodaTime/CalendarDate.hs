@@ -61,12 +61,21 @@ module Data.HodaTime.CalendarDate
   ,WeekNumber
   ,DayOfMonth
   ,CalendarDate
-  ,HasDate(..)
+  ,HasDate
+  ,DoW
+  ,MoY
+  ,day
+  ,month
+  ,year
+  ,dayOfWeek
+  ,next
+  ,previous
+  ,yearMonthDay
   ,withCalendar
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (CalendarDate, DayNth(..), DayOfMonth, Year, WeekNumber, HasDate(..), CalendarDateTime(..), IsCalendarDateTime(..), at)
+import Data.HodaTime.CalendarDateTime.Internal (CalendarDate, DayNth(..), DayOfMonth, Year, WeekNumber, HasDate, DoW, MoY, day, month, year, dayOfWeek, next, previous, yearMonthDay, CalendarDateTime(..), IsCalendarDateTime(..), at)
 import Data.HodaTime.LocalTime.Internal (midnight)
 
 -- $setup

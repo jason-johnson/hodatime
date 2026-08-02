@@ -52,10 +52,9 @@ languages behave similiarly and handling imports is something a proper IDE can g
 
 === Accessors
 
-For access the convention is simple: read-only accessors are just functions and all read/write accessors are valid lenses.  We incur
-no dependancy on any lens library but the accessors are defined
-<https://github.com/ekmett/lens/wiki/How-can-I-write-lenses-without-depending-on-lens%3F here>.  The user of the library can use their
-favorite lens library or define 3 simple functions (see tests/HodaTime/Util.hs) if they do not wish to use any existing library.
+For access the convention is simple: read-only accessors are functions, and independent read/write product fields may be valid lenses.
+Calendar and clock arithmetic is represented by "Data.HodaTime.Period", because normalization, rollover and end-of-month clamping do
+not obey the lens laws.
 
 = How to use this library
 
@@ -76,6 +75,8 @@ Each concept below has its own type and module.  You rarely need all of them at 
 [@Instant@ — "Data.HodaTime.Instant"] A single point on the universal timeline, independent of any calendar or zone.
 
 [@Duration@ — "Data.HodaTime.Duration"] The exact time elapsed between two instants, measured in days, hours, seconds and nanoseconds.  This is /machine/ time — a precise count — as opposed to a calendar-aware amount such as "one month", whose length depends on which month you mean.
+
+[@Period@ — "Data.HodaTime.Period"] A calendar-relative amount such as "five months and two hours". Period unit constructors compose with @(<>)@, and their target type records whether date fields, time fields, or both are required.
 
 [@LocalTime@ — "Data.HodaTime.LocalTime"] A time of day on its own, such as 09:00:00, with no date attached.
 
@@ -173,13 +174,13 @@ __LocalTime.__  A @LocalTime@ is a wall-clock time with no date, built with @loc
 
 __CalendarDateTime.__  Glue a date and a time together with @at@ (or its flipped partner @on@) to get a @CalendarDateTime@, and @atStartOfDay@ pairs a date with midnight.  This is still a civil label — the very @CalendarDateTime@ we anchored in the opening example — and it becomes a point on the timeline only once you resolve it against an @Offset@ or a @TimeZone@.
 
-__Reading and changing fields.__  Every date type is an instance of @HasDate@, which offers its components in two forms.  The read-only accessors — @month@, @dayOfWeek@ and the combined @yearMonthDay@ — are ordinary functions.  The mutable components — @day@, @monthl@ (the month as an @Int@, so that arithmetic on it is meaningful) and @year@ — are /lenses/, while @next@ and @previous@ jump to the nth following or preceding weekday.  The lenses are quietly opinionated about the awkward cases:
+__Calendar arithmetic.__  Calendar-relative arithmetic is represented by a "Data.HodaTime.Period". Unit constructors compose monoidally, and the target type prevents applying a period to a value without the required fields:
 
-* @day@ does /not/ clamp: add 400 to it and the month and year roll over accordingly.
-* @monthl@ clamps only as a final step, and only for end-of-month days — so two months after 31 January is 31 March, not the 29 March that some libraries would hand you.
-* @year@ clamps 29 February back to the 28th in a common year.
+> applyPeriod (months 2) calendarDate
+> applyPeriod (hours 2) localTime
+> applyPeriod (months 5 <> hours 2) calendarDateTime
 
-Hoda Time takes no dependency on any lens library to provide these; as noted under /Accessors/ above, any lens package will drive them, or you can define the three one-line helpers from @tests\/HodaTime\/Util.hs@ if you would rather not pull one in.
+Date fields are applied from largest to smallest, then time fields. End-of-month values clamp when a year or month is applied, weeks and days move along the calendar timeline, a time-only period wraps at midnight, and a mixed period carries that rollover into its date.
 
 === Crossing over: offsets and zones
 

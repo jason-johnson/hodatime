@@ -71,7 +71,7 @@ import Data.HodaTime.Pattern.Offset (pOffsetCompact)
 import Data.HodaTime.Pattern.LocalTime (pHH, phh, phhSpace, pmm, pss, ppp')
 import Data.HodaTime.Pattern.ZonedDateTime.Internal (parseZonedDateTimeWith)
 import Data.HodaTime.Locale.Internal (Locale(..))
-import Data.HodaTime.CalendarDateTime.Internal (HasDate, DoW, CalendarDateTime, IsCalendar)
+import Data.HodaTime.CalendarDateTime.Internal (HasDate, DoW, MoY, Month, CalendarDateTime, IsCalendar)
 import Data.HodaTime.LocalTime.Internal (HasLocalTime)
 import Data.HodaTime.ZonedDateTime (ZonedDateTime)
 import Data.HodaTime.OffsetDateTime (OffsetDateTime)
@@ -170,7 +170,7 @@ stripZones (f : rest) = f : stripZones rest
 isZone :: Char -> Bool
 isZone c = c == 'Z' || c == 'z'
 
-dateConv :: (HasDate d, Enum (DoW d)) => Locale -> Char -> Either StrftimeError (Pattern (d -> d) (d -> String) String)
+dateConv :: (HasDate d, Enum (MoY d), Enum (DoW d)) => Locale -> Char -> Either StrftimeError (Pattern (d -> d) (d -> String) String)
 dateConv loc c = case c of
   'Y' -> Right pyyyy
   'y' -> Right pyy
@@ -196,7 +196,7 @@ timeConv loc c = case c of
 
 -- | Compile an explicit @strftime@ date layout against a 'Locale' (the locale supplies month\/weekday names for @%B@,
 --   @%b@, @%A@, @%a@).  Throws a 'StrftimeError' on an unsupported specifier.
-compileDatePattern :: (MonadThrow m, HasDate d, Enum (DoW d)) => Locale -> String -> m (Pattern (d -> d) (d -> String) String)
+compileDatePattern :: (MonadThrow m, HasDate d, Enum (MoY d), Enum (DoW d)) => Locale -> String -> m (Pattern (d -> d) (d -> String) String)
 compileDatePattern loc = either throwM return . compileWith (dateConv loc)
 
 -- | Compile an explicit @strftime@ time layout against a 'Locale' (the locale supplies the AM\/PM designators for
@@ -205,7 +205,7 @@ compileTimePattern :: (MonadThrow m, HasLocalTime lt) => Locale -> String -> m (
 compileTimePattern loc = either throwM return . compileWith (timeConv loc)
 
 -- | The locale's short date pattern, compiled from its short-date layout (@rawDateFormat@; @D_FMT@ on POSIX).
-localeDatePattern :: (MonadThrow m, HasDate d, Enum (DoW d)) => Locale -> m (Pattern (d -> d) (d -> String) String)
+localeDatePattern :: (MonadThrow m, HasDate d, Enum (MoY d), Enum (DoW d)) => Locale -> m (Pattern (d -> d) (d -> String) String)
 localeDatePattern loc = compileDatePattern loc (rawDateFormat loc)
 
 -- | The locale's time pattern, compiled from its time layout (@rawTimeFormat@; @T_FMT@ on POSIX).
@@ -214,7 +214,7 @@ localeTimePattern loc = compileTimePattern loc (rawTimeFormat loc)
 
 -- | Combined date-and-time mapping over 'CalendarDateTime': a date specifier resolves to its date field and a time
 --   specifier to its time field (both are valid on a 'CalendarDateTime', which is 'HasDate' and 'HasLocalTime').
-dateTimeConv :: (IsCalendar cal, Enum (DoW (CalendarDateTime cal))) => Locale -> Char -> Either StrftimeError (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String)
+dateTimeConv :: (IsCalendar cal, Enum (Month cal), Enum (DoW (CalendarDateTime cal))) => Locale -> Char -> Either StrftimeError (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String)
 dateTimeConv loc c = case dateConv loc c of
   Right p -> Right p
   Left _  -> timeConv loc c
@@ -222,7 +222,7 @@ dateTimeConv loc c = case dateConv loc c of
 -- | The locale's combined date-and-time pattern, compiled from its combined layout (@rawDateTimeFormat@; @D_T_FMT@ on
 --   POSIX) as a 'CalendarDateTime'.  The zone specifiers @%Z@\/@%z@ are dropped — see the note on time zones in the
 --   module header.
-localeDateTimePattern :: (MonadThrow m, IsCalendar cal, Enum (DoW (CalendarDateTime cal))) => Locale -> m (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String)
+localeDateTimePattern :: (MonadThrow m, IsCalendar cal, Enum (Month cal), Enum (DoW (CalendarDateTime cal))) => Locale -> m (Pattern (CalendarDateTime cal -> CalendarDateTime cal) (CalendarDateTime cal -> String) String)
 localeDateTimePattern loc = either throwM return (compileDroppingZones (dateTimeConv loc) (rawDateTimeFormat loc))
 
 -- | Thrown by 'parseZonedDateTime' when the locale's @D_T_FMT@ has no zone (@%Z@): such a layout describes civil time,
@@ -238,7 +238,7 @@ instance Exception ZonelessLayoutException
 --   times (e.g. @fromCalendarDateTimeStrictly@).  Throws 'ZonelessLayoutException' if the locale's layout has no @%Z@
 --   (a layout with no zone is not a zoned value).
 parseZonedDateTime
-  :: (MonadThrow m, IsCalendar cal, Enum (DoW (CalendarDateTime cal)))
+  :: (MonadThrow m, IsCalendar cal, Enum (Month cal), Enum (DoW (CalendarDateTime cal)))
   => (String -> m TimeZone)
   -> (CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal))
   -> Locale
@@ -268,7 +268,7 @@ instance Exception OffsetlessLayoutException
 --   needed.  Throws 'OffsetlessLayoutException' if the layout has no @%z@ (the abbreviation form @%Z@ is not an offset;
 --   use 'parseZonedDateTime' for that).
 localeOffsetDateTimePattern
-  :: (MonadThrow m, IsCalendar cal, Enum (DoW (CalendarDateTime cal)))
+  :: (MonadThrow m, IsCalendar cal, Enum (Month cal), Enum (DoW (CalendarDateTime cal)))
   => Locale
   -> m (Pattern (OffsetDateTime cal -> OffsetDateTime cal) (OffsetDateTime cal -> String) String)
 localeOffsetDateTimePattern loc

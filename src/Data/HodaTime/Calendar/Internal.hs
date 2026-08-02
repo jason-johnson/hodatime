@@ -2,9 +2,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Data.HodaTime.Calendar.Internal
 (
-   mkCommonDayLens
-  ,mkCommonMonthLens
-  ,mkYearLens
+  mkCommonDaySetter
+  ,mkCommonMonthSetter
+  ,mkYearSetter
   ,mkFromNthDay
   ,mkFromWeekDate
   ,moveByDow
@@ -37,38 +37,38 @@ daysPerCentury = 36524
 -- helper functions
 --
 -- NOTE: These are representation-agnostic: each calendar passes its own @fromDays@ (build a date from a flat
--- epoch-relative day count) and @toYmd@ (decode a date to year\/month\/day) so the same lens logic works whether
+-- epoch-relative day count) and @toYmd@ (decode a date to year\/month\/day) so the same setter logic works whether
 -- the calendar stores a flat day count, a packed cycle, or anything else.
 
-mkCommonDayLens :: (Functor f, Enum mon) =>
+mkCommonDaySetter :: Enum mon =>
      Int
   -> (Year -> mon -> DayOfMonth -> Int)
   -> (Int32 -> d)
   -> (d -> (Int32, Word8, Word8))
-  -> (DayOfMonth -> f DayOfMonth)
+  -> DayOfMonth
   -> d
-  -> f d
-mkCommonDayLens preStartDay yearMonthDayToDays fromDays toYmd f date = mkcd . (rest +) <$> f (fromIntegral d)
+  -> d
+mkCommonDaySetter preStartDay yearMonthDayToDays fromDays toYmd newDay date = mkcd (rest + newDay)
     where
-      (y, m, d) = toYmd date
+      (y, m, _) = toYmd date
       rest = pred $ yearMonthDayToDays (fromIntegral y) (toEnum . fromIntegral $ m) 1
       mkcd days = fromDays days'
         where days' = fromIntegral $ if days > preStartDay then days else preStartDay + 1
-{-# INLINE mkCommonDayLens #-}
+{-# INLINE mkCommonDaySetter #-}
 
-mkCommonMonthLens :: (Functor f, Enum mon) =>
+mkCommonMonthSetter :: Enum mon =>
      Int
   -> (Int, Int, Word8)
   -> (mon -> Year -> Int)
   -> (Year -> mon -> DayOfMonth -> Int)
   -> (d -> (Int32, Word8, Word8))
   -> (Int32 -> d)
-  -> (Int -> f Int)
+  -> Int
   -> d
-  -> f d
-mkCommonMonthLens monthsPerYear firstDayTuple maxDaysInMonth yearMonthDayToDays toYmd fromDays f date = mkcd <$> f (fromIntegral m)
+  -> d
+mkCommonMonthSetter monthsPerYear firstDayTuple maxDaysInMonth yearMonthDayToDays toYmd fromDays newMonth date = mkcd newMonth
     where
-      (y, m, d) = toYmd date
+      (y, _, d) = toYmd date
       mkcd months = fromDays (fromIntegral days)
         where
           (y', months') = flip divMod monthsPerYear >>> first (+ fromIntegral y) $ months
@@ -76,20 +76,20 @@ mkCommonMonthLens monthsPerYear firstDayTuple maxDaysInMonth yearMonthDayToDays 
           mdim = fromIntegral $ maxDaysInMonth (toEnum m') y'
           d'' = if d' > mdim then mdim else d'
           days = yearMonthDayToDays y'' (toEnum m') (fromIntegral d'')
-{-# INLINE mkCommonMonthLens #-}
+{-# INLINE mkCommonMonthSetter #-}
 
-mkYearLens :: (Functor f, Enum mon) =>
+mkYearSetter :: Enum mon =>
      (Int, Word8, Word8)
   -> (mon -> Year -> Int)
   -> (Year -> mon -> DayOfMonth -> Int)
   -> (d -> (Int32, Word8, Word8))
   -> (Int32 -> d)
-  -> (Int -> f Int)
+  -> Int
   -> d
-  -> f d
-mkYearLens firstDayTuple maxDaysInMonth yearMonthDayToDays toYmd fromDays f date = mkcd <$> f (fromIntegral y)
+  -> d
+mkYearSetter firstDayTuple maxDaysInMonth yearMonthDayToDays toYmd fromDays newYear date = mkcd newYear
     where
-      (y, m, d) = toYmd date
+      (_, m, d) = toYmd date
       mkcd y' = fromDays days
         where
           (y'', m', d') = if (y', m, d) < firstDayTuple then firstDayTuple else (y', m, d)
@@ -97,7 +97,7 @@ mkYearLens firstDayTuple maxDaysInMonth yearMonthDayToDays toYmd fromDays f date
           mdim = fromIntegral $ maxDaysInMonth m'' y''
           d'' = if d' > mdim then mdim else d'
           days = fromIntegral $ yearMonthDayToDays y'' m'' (fromIntegral d'')
-{-# INLINE mkYearLens #-}
+{-# INLINE mkYearSetter #-}
 
 -- | Build a date from the nth (or nth-from-last) weekday within a month (e.g. \"the third Monday\").  This is the
 --   calendar-agnostic core of a per-calendar @fromNthDay@: it reads the weekday of the anchor day (the 1st, or the

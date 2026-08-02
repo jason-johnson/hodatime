@@ -43,8 +43,7 @@ import Data.HodaTime.Pattern.Internal
 import Data.HodaTime.Pattern.ParseTypes (TimeInfo)
 import qualified Data.HodaTime.Pattern.ParseTypes as PT(hour, minute, second)
 import Data.HodaTime.LocalTime.Internal (HasLocalTime)
-import qualified Data.HodaTime.LocalTime.Internal as LT(hour, minute, second, nanosecond)
-import Data.HodaTime.Internal.Lens (view, set)
+import qualified Data.HodaTime.LocalTime.Internal as LT(hour, setHour, minute, setMinute, second, setSecond, nanosecond, setNanosecond)
 import Control.Applicative ((<|>))
 import Formatting (Format, later, left, (%.))
 import qualified Data.Text as T
@@ -79,47 +78,47 @@ phhSpace = twelveHour (pDigitsSpace 2 1 12) (f_shown_spad 2)
 --   the folded 1-12 hour).  Only the 1-12 position of the hour is rewritten on parse, preserving the AM\/PM half so it
 --   stays order-independent with 'pp'\/'ppp'.
 twelveHour :: HasLocalTime lt => Parser Int String -> ((lt -> Int) -> Format String (lt -> String)) -> Pattern (lt -> lt) (lt -> String) String
-twelveHour numP mkFmt = Pattern par (mkFmt (to12 . view LT.hour))
+twelveHour numP mkFmt = Pattern par (mkFmt (to12 . LT.hour))
   where
     par = (adjust <$> numP) <?> "hour: 01-12"
-    adjust n lt = set LT.hour (12 * (view LT.hour lt `div` 12) + (n `mod` 12)) lt   -- NOTE: replace only the 1-12 position, preserve the AM/PM half
+    adjust n lt = LT.setHour (12 * (LT.hour lt `div` 12) + (n `mod` 12)) lt
     to12 h = if h' == 0 then 12 else h' where h' = h `mod` 12
 
 -- | The hour of day in the 24-hour clock as @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 00-23.
 phour :: HasLocalTime lt => Int -> Pattern (lt -> lt) (lt -> String) String
-phour w = pat_lens LT.hour (pDigits w 2 0 23) (f_shown_pad w) "hour: 00-23"
+phour w = pat_field LT.hour LT.setHour (pDigits w 2 0 23) (f_shown_pad w) "hour: 00-23"
 
 -- | The double digit hour of day in the 24-hour clock (@'phour' 2@); a value 00-23.
 pHH :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
 pHH = phour 2
 
 hour' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
-hour' = pat_lens' PT.hour LT.hour (p_a <|> p_b) f_shown_two "hour: 00-23"
+hour' = pat_lens_field PT.hour LT.hour (p_a <|> p_b) f_shown_two "hour: 00-23"
   where
     p_a = digitsToInt <$> oneOf ['0', '1'] <*> digit 
     p_b = digitsToInt <$> P.char '2' <*> oneOf ['0'..'3']
 
 -- | The minute of the hour as @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 00-59.
 pminute :: HasLocalTime lt => Int -> Pattern (lt -> lt) (lt -> String) String
-pminute w = pat_lens LT.minute (pDigits w 2 0 59) (f_shown_pad w) "minute: 00-59"
+pminute w = pat_field LT.minute LT.setMinute (pDigits w 2 0 59) (f_shown_pad w) "minute: 00-59"
 
 -- | The double digit minute of the hour (@'pminute' 2@); a value 00-59.
 pmm :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
 pmm = pminute 2
 
 minute' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
-minute' = pat_lens' PT.minute LT.minute p_sixty f_shown_two "minute: 00-59"
+minute' = pat_lens_field PT.minute LT.minute p_sixty f_shown_two "minute: 00-59"
 
 -- | The second of the minute as @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 00-59.
 psecond :: HasLocalTime lt => Int -> Pattern (lt -> lt) (lt -> String) String
-psecond w = pat_lens LT.second (pDigits w 2 0 59) (f_shown_pad w) "second: 00-59"
+psecond w = pat_field LT.second LT.setSecond (pDigits w 2 0 59) (f_shown_pad w) "second: 00-59"
 
 -- | The double digit second of the minute (@'psecond' 2@); a value 00-59.
 pss :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
 pss = psecond 2
 
 second' :: HasLocalTime lt => Pattern (TimeInfo -> TimeInfo) (lt -> String) String
-second' = pat_lens' PT.second LT.second p_sixty f_shown_two "second: 00-59"
+second' = pat_lens_field PT.second LT.second p_sixty f_shown_two "second: 00-59"
 
 -- | Fractional seconds of a fixed width @n@ (1-9 digits, since the underlying resolution is nanoseconds).  Formatting
 --   shows exactly @n@ zero-padded digits (dropping any finer resolution); parsing reads exactly @n@ digits and scales
@@ -135,8 +134,8 @@ pfrac n
   | otherwise = Pattern par fmt
   where
     scale = 10 ^ (9 - n) :: Int
-    par = ((set LT.nanosecond . (* scale) . read) <$> count n digit) <?> ("fractional second: " ++ show n ++ " digits")
-    fmt = left n '0' %. f_shown (\lt -> view LT.nanosecond lt `div` scale)
+    par = ((LT.setNanosecond . (* scale) . read) <$> count n digit) <?> ("fractional second: " ++ show n ++ " digits")
+    fmt = left n '0' %. f_shown (\lt -> LT.nanosecond lt `div` scale)
 
 -- | 12 hour clock time period designation short form; either @A@ or @P@.  See 'ppp' for the long form.
 pp ::  HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String
@@ -173,12 +172,12 @@ ppp' loc = pPeriod (amName loc, pmName loc)
 
 -- | Rewrite only the AM\/PM half of the hour (morning \<-\> afternoon), preserving the 1-12 position set by 'phh'.
 amPmSetter :: HasLocalTime lt => Bool -> lt -> lt
-amPmSetter isPM lt = set LT.hour (h12 + if isPM then 12 else 0) lt
-  where h12 = view LT.hour lt `mod` 12
+amPmSetter isPM lt = LT.setHour (h12 + if isPM then 12 else 0) lt
+  where h12 = LT.hour lt `mod` 12
 
 -- | Render the AM\/PM designator, choosing the form via the supplied function (True == PM).
 amPmFormat :: HasLocalTime lt => (Bool -> String) -> Format String (lt -> String)
-amPmFormat render = later (TLB.fromText . T.pack . render . (>= (12 :: Int)) . view LT.hour)
+amPmFormat render = later (TLB.fromText . T.pack . render . (>= (12 :: Int)) . LT.hour)
 
 -- | Short format pattern. Currently defined as "HH:mm" but should eventually follow the locale
 pt :: HasLocalTime lt => Pattern (lt -> lt) (lt -> String) String

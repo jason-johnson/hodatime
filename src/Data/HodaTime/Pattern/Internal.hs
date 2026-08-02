@@ -17,8 +17,8 @@ module Data.HodaTime.Pattern.Internal
   ,pairP
   ,string
   ,char
-  ,pat_lens
-  ,pat_lens'
+  ,pat_field
+  ,pat_lens_field
   ,digitsToInt
   ,p_sixty
   ,f_shown
@@ -41,7 +41,7 @@ import Control.Applicative ((<|>))
 import Data.Char (toLower, toUpper)
 import Formatting (Format, later, formatToString, left, (%.), (%), now)
 import Data.String (fromString)
-import Data.HodaTime.Internal.Lens (view, set, Lens)
+import Data.HodaTime.Internal.Lens (set, Lens)
 import Data.HodaTime.Pattern.ApplyParse (DefaultForParse(..), ApplyParse(..))
 import Control.Exception (Exception)
 import Data.Typeable (Typeable)
@@ -112,26 +112,27 @@ parse'' (Pattern p _) s =
 format :: Pattern a r String -> r
 format (Pattern _ fmt) = formatToString fmt
 
-pat_lens :: Lens s s a a
+pat_field :: (s -> a)
+              -> (a -> s -> s)
               -> Parser a String
               -> ((s -> a) -> Format String (s -> String))
               -> String
               -> Pattern (s -> s) (s -> String) String
-pat_lens l p f err = Pattern par fmt
+pat_field getter setter p f err = Pattern par fmt
   where
-    fmt = f $ view l
-    par = set l <$> p <?> err
+    fmt = f getter
+    par = setter <$> p <?> err
 
-pat_lens' :: Lens s s a a
-              -> Lens s' s' a' a'
+pat_lens_field :: Lens s s a a
+              -> (s' -> a')
               -> Parser a String
               -> ((s' -> a') -> Format String (s' -> String))
               -> String
               -> Pattern (s -> s) (s' -> String) String
-pat_lens' lp lf p f err = Pattern par fmt
+pat_lens_field lens getter p f err = Pattern par fmt
   where
-    fmt = f $ view lf
-    par = set lp <$> p <?> err
+    fmt = f getter
+    par = set lens <$> p <?> err
 
 digitsToInt :: (Num n, Read n) => Char -> Char -> n
 digitsToInt a b = read [a, b]

@@ -13,8 +13,9 @@ import Data.Time.Clock (UTCTime(..))
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
+import Data.HodaTime.CalendarDate (day, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
 import Data.HodaTime.Calendar.Islamic (calendarDate, calendarDate', fromNthDay, fromWeekDate, IslamicBcl, IslamicBase15, IslamicIndian, IslamicHabashAlHasib, Month(..), DayOfWeek(..))
+import Data.HodaTime.Period (applyPeriod, days, months)
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (utc)
 import Data.HodaTime.ZonedDateTime (fromInstant, ZonedDateTime)
@@ -24,14 +25,14 @@ islamicTests :: TestTree
 islamicTests = testGroup "Islamic Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [roundTripProps, lensProps, nthDayProps]
+qcProps = testGroup "(checked by QuickCheck)" [roundTripProps, periodProps, nthDayProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [structureUnits, leapPatternUnits, crossCalendarUnits]
 
 -- | Decode an Islamic date to (day, 1-based month, year) for explicit expected-value assertions.
 ymd :: CalendarDate IslamicBcl -> (Int, Int, Int)
-ymd x = (get day x, succ . fromEnum $ month x, get year x)
+ymd x = (day x, succ . fromEnum $ month x, year x)
 
 -- | Data.Time has no Islamic calendar, so we verify the construct -> decode bijection directly.
 roundTripProps :: TestTree
@@ -42,17 +43,17 @@ roundTripProps = testGroup "Constructor"
   where
     testRoundTrip (RandomIslamicDate y m d) = (ymd <$> calendarDate d m y) == Just (d, succ (fromEnum m), y)
 
-lensProps :: TestTree
-lensProps = testGroup "Lens"
+periodProps :: TestTree
+periodProps = testGroup "Period"
   [
      QC.testProperty "dayOfWeek . next n dow $ date == dow" testNextDoW
-    ,QC.testProperty "next n (dayOfWeek date) date == modify (+ n * 7) day date" $ testDirection next (+)
-    ,QC.testProperty "previous n (dayOfWeek date) date == modify (- n * 7) day date" $ testDirection previous $ flip (-)
+    ,QC.testProperty "next n (dayOfWeek date) date == a positive day period" $ testDirection next id
+    ,QC.testProperty "previous n (dayOfWeek date) date == a negative day period" $ testDirection previous negate
   ]
   where
     epochDay = fromJust $ calendarDate 1 Muharram 1443
     testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
-    testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
+    testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == applyPeriod (days (adjust (n * 7))) epochDay
 
 -- | 'fromNthDay' and 'fromWeekDate' are the generic constructors instantiated for Islamic.  Every Islamic month has at
 --   least 29 days, so a given weekday always occurs and the properties are total.
@@ -64,8 +65,8 @@ nthDayProps = testGroup "fromNthDay / fromWeekDate"
     ,QC.testProperty "fromWeekDate lands on the requested day-of-week" testWeekDoW
   ]
   where
-    testFirst dow (RandomIslamicDate y m _) = let r = fromNthDay First dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 1 && get day d <= 7) r
-    testLast dow (RandomIslamicDate y m _) = let r = fromNthDay Last dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 22) r
+    testFirst dow (RandomIslamicDate y m _) = let r = fromNthDay First dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 1 && day d <= 7) r
+    testLast dow (RandomIslamicDate y m _) = let r = fromNthDay Last dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 22) r
     testWeekDoW dow (RandomIslamicDate y _ _) = maybe True ((== dow) . dayOfWeek) (fromWeekDate 1 dow y)
 
 structureUnits :: TestTree
@@ -78,8 +79,8 @@ structureUnits = testGroup "Structure"
     ,testCase "30 DhulHijjah is valid in the leap year 1442" $ (ymd <$> calendarDate 30 DhulHijjah 1442) @?= Just (30, 12, 1442)
     ,testCase "30 DhulHijjah is invalid in the non-leap year 1443" $ calendarDate 30 DhulHijjah 1443 @?= Nothing
     ,testCase "29 DhulHijjah is valid in a non-leap year (1443)" $ (ymd <$> calendarDate 29 DhulHijjah 1443) @?= Just (29, 12, 1443)
-    ,testCase "1 Muharram + 1 month == 1 Safar" $ (ymd <$> (modify (+1) monthl <$> calendarDate 1 Muharram 1443)) @?= Just (1, 2, 1443)
-    ,testCase "1 DhulQadah + 1 month == 1 DhulHijjah (11th -> 12th month)" $ (ymd <$> (modify (+1) monthl <$> calendarDate 1 DhulQadah 1443)) @?= Just (1, 12, 1443)
+    ,testCase "1 Muharram + 1 month == 1 Safar" $ (ymd . applyPeriod (months 1) <$> calendarDate 1 Muharram 1443) @?= Just (1, 2, 1443)
+    ,testCase "1 DhulQadah + 1 month == 1 DhulHijjah (11th -> 12th month)" $ (ymd . applyPeriod (months 1) <$> calendarDate 1 DhulQadah 1443) @?= Just (1, 12, 1443)
     ,testCase "year 0 is out of range" $ calendarDate 1 Muharram 0 @?= Nothing
   ]
 

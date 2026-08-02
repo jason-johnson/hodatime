@@ -10,16 +10,10 @@ module HodaTime.Util
   ,RandomPersianDate(..)
   ,RandomIslamicDate(..)
   ,RandomHebrewDate(..)
-  ,get
-  ,modify
-  ,set
 )
 where
 
 import Test.Tasty.QuickCheck (Arbitrary(..), choose, elements)
-
-import Control.Applicative (Const(..))
-import Data.Functor.Identity (Identity(..))
 
 import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..), Gregorian)
 import qualified Data.HodaTime.Calendar.Julian as J
@@ -208,14 +202,3 @@ instance Arbitrary RandomHebrewDate where
     (m, cap) <- elements months
     d <- choose (1,cap)
     return $ RandomHebrewDate y m d
-
--- Lenses
-
-get :: ((s -> Const s c) -> a -> Const t b) -> a -> t
-get l = getConst . l Const
-  
-modify :: (s -> b) -> ((s -> Identity b) -> a -> Identity t) -> a -> t
-modify f l = runIdentity . l (Identity . f)
-  
-set :: s -> ((b -> Identity s) -> a -> Identity t) -> a -> t
-set v = modify (const v)
