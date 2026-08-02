@@ -105,6 +105,7 @@ library
                    Data.HodaTime.Offset,
                    Data.HodaTime.LocalTime,
                    Data.HodaTime.OffsetDateTime,
+                   Data.HodaTime.Period,
                    Data.HodaTime.TimeZone,
                    Data.HodaTime.ZonedDateTime,
                    Data.HodaTime.Locale,
@@ -174,6 +175,7 @@ test-suite test
                    HodaTime.CalendarDateTimeTest,
                    HodaTime.ZonedDateTimeTest,
                    HodaTime.PatternTest,
+                   HodaTime.PeriodTest,
                    HodaTime.WithCalendarTest,
                    HodaTime.LocaleTest,
                    HodaTime.ClassInstanceTests
