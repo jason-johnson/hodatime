@@ -14,12 +14,11 @@ import Data.HodaTime.TimeZone (utc, timeZone)
 import Data.HodaTime.ZonedDateTime (fromInstant, toLocalTime, toInstant, ZonedDateTime, year, month, day)
 import Data.HodaTime.Calendar.Gregorian (Gregorian)
 import Data.HodaTime.Calendar.Julian (Julian)
-import Data.HodaTime.LocalTime (HasLocalTime(..))
+import Data.HodaTime.LocalTime (hour, minute, second)
 import Data.Time.Clock.POSIX (getPOSIXTime, posixSecondsToUTCTime)
 import Data.Time.Calendar (toGregorian)
 import Data.Time.Calendar.Julian (toJulian)
 import Data.Time.LocalTime (todHour, todMin, todSec, hoursToTimeZone, utcToLocalTime, LocalTime(..))
-import HodaTime.Util (get)
 
 instantTests :: TestTree
 instantTests = testGroup "Instant Tests" [unitTests, qcProps]
@@ -52,7 +51,7 @@ test_fromSecondsSinceUnixEpoch = do
     utcT = posixSecondsToUTCTime posT
     (LocalTime _ tod) = utcToLocalTime (hoursToTimeZone 0) utcT
     todT = (todHour tod, todMin tod, round . todSec $ tod)
-    t = (get hour lt, get minute lt, get second lt)
+    t = (hour lt, minute lt, second lt)
     str = "time(" ++ show secs ++ "): "
   assertEqual str todT t
 

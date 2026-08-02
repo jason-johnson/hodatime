@@ -21,7 +21,6 @@ module Data.HodaTime.CalendarDateTime.Internal
 where
 
 import Data.HodaTime.Instant.Internal (Instant)
-import Data.Functor.Const (Const(..))
 import Data.Int (Int32)
 import Data.Word (Word8, Word32)
 import Control.DeepSeq (NFData(..))
@@ -29,7 +28,6 @@ import Data.Hashable (Hashable(..))
 
 -- $setup
 -- >>> import Data.Maybe (fromJust)
--- >>> import Data.HodaTime.Internal.Lens (modify)
 -- >>> import qualified Data.HodaTime.Calendar.Gregorian as Gregorian
 -- >>> import Data.HodaTime.Calendar.Gregorian (Month(..), DayOfWeek(..))
 
@@ -72,10 +70,13 @@ class IsCalendar cal where
   -- | The calendar's display name (e.g. @"Gregorian"@), used by 'Show' to render a date as the
   --   smart-constructor call that builds it.
   calendarName :: Date cal -> String
-  day' :: Functor f => (DayOfMonth -> f DayOfMonth) -> Date cal -> f (Date cal)
+  day' :: Date cal -> DayOfMonth
+  setDay' :: DayOfMonth -> Date cal -> Date cal
   month' :: Date cal -> Month cal
-  monthl' :: Functor f => (Int -> f Int) -> Date cal -> f (Date cal)
-  year' :: Functor f => (Year -> f Year) -> Date cal -> f (Date cal)
+  monthl' :: Date cal -> Int
+  setMonthl' :: Int -> Date cal -> Date cal
+  year' :: Date cal -> Year
+  setYear' :: Year -> Date cal -> Date cal
   dayOfWeek' :: Date cal -> DayOfWeek cal
   next' :: Int -> DayOfWeek cal -> Date cal -> Date cal
   previous' :: Int -> DayOfWeek cal -> Date cal -> Date cal
@@ -83,22 +84,16 @@ class IsCalendar cal where
 class HasDate d where
   type DoW d
   type MoY d
-  -- | Lens for the day component of a 'HasDate'.  Please note that days are not clamped: if you add e.g. 400 days then the month and year will roll
-  day :: Functor f => (DayOfMonth -> f DayOfMonth) -> d -> f d
+  -- | Day-of-month component.
+  day :: d -> DayOfMonth
+  setDay :: DayOfMonth -> d -> d
   -- | Accessor for the Month component of a 'HasDate'.
   month :: d -> MoY d
-  -- | Lens for interacting with the month component of a 'HasDate'.  Please note that we convert the month to an Int so meaningful math can be done on it.  Also
-  --   please note that the day will be unaffected except in the case of "end of month" days which may clamp.  Note that this clamping will only occur as a final step,
-  --   so that
-  --
-  --   >>> modify monthl (+ 2) <$> Gregorian.calendarDate 31 January 2000
-  --   Just (fromJust (Gregorian.calendarDate 31 March 2000))
-  --
-  --   and not 29th of March as would happen with some libraries.
-  monthl :: Functor f => (Int -> f Int) -> d -> f d
-  -- | Lens for the year component of a 'HasDate'.  Please note that the rest of the date is left as is, with two exceptions: Feb 29 will clamp to 28 in a non-leapyear
-  --   and if the new year is earlier than the earliest supported year it will clamp back to that year
-  year :: Functor f => (Year -> f Year) -> d -> f d
+  monthl :: d -> Int
+  setMonthl :: Int -> d -> d
+  -- | Year component.
+  year :: d -> Year
+  setYear :: Year -> d -> d
   -- | Accessor for the Day of the week enum of a 'HasDate', for example:
   --
   -- >>> dayOfWeek . fromJust $ Gregorian.calendarDate 31 January 2000
@@ -126,15 +121,18 @@ class HasDate d where
   --   'Date') there is nothing to decode and this is simply the three field reads, so it is never slower than the
   --   individual accessors and callers can use it unconditionally.
   yearMonthDay :: d -> (Year, MoY d, DayOfMonth)
-  yearMonthDay d = (getConst (year Const d), month d, getConst (day Const d))
+  yearMonthDay d = (year d, month d, day d)
 
 instance (IsCalendar cal) => HasDate (Date cal) where
   type DoW (Date cal) = DayOfWeek cal
   type MoY (Date cal) = Month cal
   day = day'
+  setDay = setDay'
   month = month'
   monthl = monthl'
+  setMonthl = setMonthl'
   year = year'
+  setYear = setYear'
   dayOfWeek = dayOfWeek'
   next = next'
   previous = previous'
@@ -209,10 +207,13 @@ instance Hashable (Date cal) => Hashable (CalendarDateTime cal) where
 instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   type DoW (CalendarDateTime cal) = DayOfWeek cal
   type MoY (CalendarDateTime cal) = Month cal
-  day f (CalendarDateTime cd lt) = flip CalendarDateTime lt <$> day f cd
+  day (CalendarDateTime cd _) = day cd
+  setDay value (CalendarDateTime cd lt) = CalendarDateTime (setDay value cd) lt
   month (CalendarDateTime cd _) = month cd
-  monthl f (CalendarDateTime cd lt) = flip CalendarDateTime lt <$> monthl f cd
-  year f (CalendarDateTime cd lt) = flip CalendarDateTime lt <$> year f cd
+  monthl (CalendarDateTime cd _) = monthl cd
+  setMonthl value (CalendarDateTime cd lt) = CalendarDateTime (setMonthl value cd) lt
+  year (CalendarDateTime cd _) = year cd
+  setYear value (CalendarDateTime cd lt) = CalendarDateTime (setYear value cd) lt
   dayOfWeek (CalendarDateTime cd _) = dayOfWeek cd
   next i dow (CalendarDateTime cd lt) = CalendarDateTime (next i dow cd) lt
   previous i dow (CalendarDateTime cd lt) = CalendarDateTime (previous i dow cd) lt

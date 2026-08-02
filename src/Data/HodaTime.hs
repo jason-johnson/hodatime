@@ -54,8 +54,7 @@ languages behave similiarly and handling imports is something a proper IDE can g
 
 For access the convention is simple: read-only accessors are functions, and independent read/write product fields may be valid lenses.
 Calendar and clock arithmetic is represented by "Data.HodaTime.Period", because normalization, rollover and end-of-month clamping do
-not obey the lens laws. The older @HasDate@ and @HasLocalTime@ component optics remain temporarily for source compatibility and for the
-pattern implementation; new arithmetic code should use 'Data.HodaTime.Period.applyPeriod'.
+not obey the lens laws.
 
 = How to use this library
 

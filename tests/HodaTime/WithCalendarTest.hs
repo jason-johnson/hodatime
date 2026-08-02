@@ -10,7 +10,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Data.Maybe (fromJust)
 
-import HodaTime.Util (get)
 import Data.HodaTime.CalendarDate (withCalendar, day, month, year, CalendarDate, HasDate, MoY)
 import qualified Data.HodaTime.CalendarDateTime as CDT
 import qualified Data.HodaTime.ZonedDateTime as Z
@@ -27,7 +26,7 @@ withCalendarTests = testGroup "withCalendar Tests" [dateTests, dateTimeTests, zo
 
 -- | Decode any 'HasDate' value to (day, 1-based month, year).
 ymd :: (HasDate d, Enum (MoY d)) => d -> (Int, Int, Int)
-ymd x = (get day x, succ . fromEnum $ month x, get year x)
+ymd x = (day x, succ . fromEnum $ month x, year x)
 
 mkG :: Int -> G.Month G.Gregorian -> Int -> CalendarDate G.Gregorian
 mkG d m y = fromJust $ G.calendarDate d m y

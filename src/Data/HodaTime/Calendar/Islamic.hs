@@ -82,7 +82,7 @@ import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTi
 import Control.DeepSeq (NFData(..))
 import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays)
+import Data.HodaTime.Calendar.Internal (mkCommonDaySetter, mkCommonMonthSetter, mkYearSetter, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays)
 import Data.Bits ((.&.), shiftL, testBit, popCount)
 import Data.Int (Int32)
 import Data.Word (Word8)
@@ -174,15 +174,18 @@ instance KnownLeap l => IsCalendar (Islamic l) where
   toYmd = islamicToYmd
   calendarName _ = "Islamic"
 
-  day' = let b = leapPatternBits @l in mkCommonDayLens invalidDayThresh (yearMonthDayToDays b) (islamicFromDays b) islamicToYmd
+  day' (IslamicDate _ d _ _) = fromIntegral d
+  setDay' = let b = leapPatternBits @l in mkCommonDaySetter invalidDayThresh (yearMonthDayToDays b) (islamicFromDays b) islamicToYmd
   {-# INLINE day' #-}
 
   month' (IslamicDate _ _ m _) = toEnum . fromIntegral $ m
 
-  monthl' = let b = leapPatternBits @l in mkCommonMonthLens monthsPerYear firstIslDayTuple (maxDaysInMonth b) (yearMonthDayToDays b) islamicToYmd (islamicFromDays b)
+  monthl' (IslamicDate _ _ m _) = fromIntegral m
+  setMonthl' = let b = leapPatternBits @l in mkCommonMonthSetter monthsPerYear firstIslDayTuple (maxDaysInMonth b) (yearMonthDayToDays b) islamicToYmd (islamicFromDays b)
   {-# INLINE monthl' #-}
 
-  year' = let b = leapPatternBits @l in mkYearLens firstIslDayTuple (maxDaysInMonth b) (yearMonthDayToDays b) islamicToYmd (islamicFromDays b)
+  year' (IslamicDate _ _ _ y) = fromIntegral y
+  setYear' = let b = leapPatternBits @l in mkYearSetter firstIslDayTuple (maxDaysInMonth b) (yearMonthDayToDays b) islamicToYmd (islamicFromDays b)
   {-# INLINE year' #-}
 
   dayOfWeek' (IslamicDate days _ _ _) = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral $ days

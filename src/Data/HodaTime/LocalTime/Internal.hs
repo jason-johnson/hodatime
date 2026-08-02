@@ -15,10 +15,9 @@ module Data.HodaTime.LocalTime.Internal
 )
 where
 
-import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..), CalendarDateTime(..), CalendarDate, day, IsCalendar(..))
-import Data.HodaTime.Internal (hoursFromSecs, minutesFromSecs, secondsFromSecs, secondsFromHours, secondsFromMinutes)
+import Data.HodaTime.CalendarDateTime.Internal (LocalTime(..), CalendarDateTime(..), CalendarDate, day, setDay, IsCalendar(..))
+import Data.HodaTime.Internal (secondsFromHours, secondsFromMinutes)
 import Data.HodaTime.Constants (secondsPerDay)
-import Data.Functor.Identity (Identity(..))
 import Data.Word (Word32)
 import Control.Monad (unless)
 import Control.Monad.Catch (MonadThrow, throwM)
@@ -59,54 +58,50 @@ type Second = Int
 type Nanosecond = Int
 
 class HasLocalTime lt where
-  -- | Lens for the hour component of the 'LocalTime'
-  hour :: Functor f => (Hour -> f Hour) -> lt -> f lt
-  -- | Lens for the minute component of the 'LocalTime'
-  minute :: Functor f => (Minute -> f Minute) -> lt -> f lt
-  -- | Lens for the second component of the 'LocalTime'
-  second :: Functor f => (Second -> f Second) -> lt -> f lt
-  -- | Lens for the nanoseconds component of the 'LocalTime'.  NOTE: no effort is made to detect nano overflow.  They will simply roll over on overflow without affecting the rest of the time.
-  nanosecond :: Functor f => (Nanosecond -> f Nanosecond) -> lt -> f lt
+  hour :: lt -> Hour
+  setHour :: Hour -> lt -> lt
+  minute :: lt -> Minute
+  setMinute :: Minute -> lt -> lt
+  second :: lt -> Second
+  setSecond :: Second -> lt -> lt
+  nanosecond :: lt -> Nanosecond
+  setNanosecond :: Nanosecond -> lt -> lt
 
 instance HasLocalTime LocalTime where
-  hour f (LocalTime secs nsecs) = hoursFromSecs to f secs
-    where
-      to = fromSecondsClamped nsecs
+  hour (LocalTime secs _) = fromIntegral (secs `div` 3600)
   {-# INLINE hour #-}
+  setHour value (LocalTime secs nsecs) = fromSecondsClamped nsecs (replaceHour value secs)
 
-  minute f (LocalTime secs nsecs) = minutesFromSecs to f secs
-    where
-      to = fromSecondsClamped nsecs
+  minute (LocalTime secs _) = fromIntegral (secs `mod` 3600 `div` 60)
   {-# INLINE minute #-}
+  setMinute value (LocalTime secs nsecs) = fromSecondsClamped nsecs (replaceMinute value secs)
 
-  second f (LocalTime secs nsecs) = secondsFromSecs to f secs
-    where
-      to = fromSecondsClamped nsecs
+  second (LocalTime secs _) = fromIntegral (secs `mod` 60)
   {-# INLINE second #-}
+  setSecond value (LocalTime secs nsecs) = fromSecondsClamped nsecs (replaceSecond value secs)
 
-  nanosecond f (LocalTime secs nsecs) = LocalTime secs . fromIntegral <$> (f . fromIntegral) nsecs
+  nanosecond (LocalTime _ nsecs) = fromIntegral nsecs
   {-# INLINE nanosecond #-}
+  setNanosecond value (LocalTime secs _) = LocalTime secs (fromIntegral value)
 
 instance IsCalendar cal => HasLocalTime (CalendarDateTime cal) where
-  hour f (CalendarDateTime cd (LocalTime secs nsecs)) = hoursFromSecs to f secs
-    where
-      to = fromSecondsRolled cd nsecs
+  hour (CalendarDateTime _ lt) = hour lt
   {-# INLINE hour #-}
+  setHour value (CalendarDateTime cd (LocalTime secs nsecs)) = fromSecondsRolled cd nsecs (replaceHour value secs)
 
-  minute f (CalendarDateTime cd (LocalTime secs nsecs)) = minutesFromSecs to f secs
-    where
-      to = fromSecondsRolled cd nsecs
+  minute (CalendarDateTime _ lt) = minute lt
   {-# INLINE minute #-}
+  setMinute value (CalendarDateTime cd (LocalTime secs nsecs)) = fromSecondsRolled cd nsecs (replaceMinute value secs)
 
-  second f (CalendarDateTime cd (LocalTime secs nsecs)) = secondsFromSecs to f secs
-    where
-      to = fromSecondsRolled cd nsecs
+  second (CalendarDateTime _ lt) = second lt
   {-# INLINE second #-}
+  setSecond value (CalendarDateTime cd (LocalTime secs nsecs)) = fromSecondsRolled cd nsecs (replaceSecond value secs)
 
-  nanosecond f (CalendarDateTime cd lt) = CalendarDateTime cd <$> nanosecond f lt
+  nanosecond (CalendarDateTime _ lt) = nanosecond lt
   {-# INLINE nanosecond #-}
+  setNanosecond value (CalendarDateTime cd lt) = CalendarDateTime cd (setNanosecond value lt)
 
--- NOTE: AM/PM is handled in the pattern layer (see Data.HodaTime.Pattern.LocalTime), not as a lens here: the
+-- NOTE: AM/PM is handled in the pattern layer (see Data.HodaTime.Pattern.LocalTime): the
 --       designator and the 12-hour hour each rewrite only their half of the 'hour' via div/mod 12, which keeps
 --       them order independent when composed.
 
@@ -125,7 +120,16 @@ fromSecondsRolled :: IsCalendar cal => CalendarDate cal -> Word32 -> Word32 -> C
 fromSecondsRolled date nsecs secs = CalendarDateTime date' $ LocalTime secs' nsecs
     where
       (d, secs') = secs `divMod` secondsPerDay
-      date' = if d == 0 then date else runIdentity . day (Identity . (+ fromIntegral d)) $ date  -- NOTE: inlining the modify lens here
+      date' = if d == 0 then date else setDay (day date + fromIntegral d) date
+
+replaceHour :: Hour -> Word32 -> Word32
+replaceHour value secs = secs - (secs `div` 3600 * 3600) + fromIntegral value * 3600
+
+replaceMinute :: Minute -> Word32 -> Word32
+replaceMinute value secs = secs - (secs `mod` 3600 `div` 60 * 60) + fromIntegral value * 60
+
+replaceSecond :: Second -> Word32 -> Word32
+replaceSecond value secs = secs - secs `mod` 60 + fromIntegral value
 
 -- constructors
 

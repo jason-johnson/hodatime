@@ -41,7 +41,6 @@ module Data.HodaTime.Period
 )
 where
 
-import Data.Functor.Identity (Identity(..))
 import Data.HodaTime.CalendarDateTime.Internal
   (CalendarDateTime(..), Date, HasDate(..), IsCalendar(..), LocalTime(..))
 import Data.HodaTime.LocalTime.Internal (HasLocalTime)
@@ -123,19 +122,21 @@ instance IsCalendar cal => ApplyPeriod (CalendarDateTime cal) where
 -- end-of-month date.
 applyDatePeriod :: HasDate target => Period periodTarget -> target -> target
 applyDatePeriod period =
-    shiftDateByDays (7 * periodWeeks period + periodDays period)
-  . modifyDate monthl (periodMonths period)
-  . modifyDate year (periodYears period)
+    shiftDateByDays (periodDays period)
+  . shiftDateByDays (7 * periodWeeks period)
+  . adjustDate monthl setMonthl (periodMonths period)
+  . adjustDate year setYear (periodYears period)
 
 shiftDateByDays :: HasDate target => Int -> target -> target
-shiftDateByDays = modifyDate day
+shiftDateByDays = adjustDate day setDay
 
-modifyDate
-  :: ((Int -> Identity Int) -> target -> Identity target)
+adjustDate
+  :: (target -> Int)
+  -> (Int -> target -> target)
   -> Int
   -> target
   -> target
-modifyDate lens amount = runIdentity . lens (Identity . (+ amount))
+adjustDate getter setter amount target = setter (getter target + amount) target
 
 applyTimePeriod :: Period target -> LocalTime -> (Int, LocalTime)
 applyTimePeriod period (LocalTime currentSeconds currentNanoseconds) =

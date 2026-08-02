@@ -44,7 +44,7 @@ import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTi
 import Control.DeepSeq (NFData(..))
 import Data.Hashable (Hashable(..))
 import Data.HodaTime.Instant.Internal (Instant(..))
-import Data.HodaTime.Calendar.Internal (mkCommonDayLens, mkCommonMonthLens, mkYearLens, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerFourYears)
+import Data.HodaTime.Calendar.Internal (mkCommonDaySetter, mkCommonMonthSetter, mkYearSetter, mkFromNthDay, mkFromWeekDate, moveByDow, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerFourYears)
 import Data.Int (Int32)
 import Data.Word (Word8)
 import Control.Arrow ((>>>), (***), (&&&))
@@ -56,7 +56,7 @@ import Data.List (findIndex)
 
 -- | Julian dates are valid from the calendar's introduction, 1.January.45 BC (astronomical year -44), onward; earlier
 --   dates are rejected \- the calendar did not exist and this implementation does not extend it backwards.  There is no
---   upper bound beyond the 'Int32' day representation.  This tuple is also the floor the shared lens\/constructor
+--   upper bound beyond the 'Int32' day representation. This tuple is also the floor the shared setter\/constructor
 --   helpers clamp to.
 firstJulDayTuple :: (Integral a, Integral b, Integral c) => (a, b, c)
 firstJulDayTuple = (-44, 0, 1)        -- NOTE: 1.Jan.45 BC
@@ -100,15 +100,18 @@ instance IsCalendar Julian where
   toYmd = julianToYmd
   calendarName _ = "Julian"
 
-  day' = mkCommonDayLens invalidDayThresh yearMonthDayToDays julianFromDays julianToYmd
+  day' (JulianDate _ d _ _) = fromIntegral d
+  setDay' = mkCommonDaySetter invalidDayThresh yearMonthDayToDays julianFromDays julianToYmd
   {-# INLINE day' #-}
 
   month' (JulianDate _ _ m _) = toEnum . fromIntegral $ m
 
-  monthl' = mkCommonMonthLens 12 firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
+  monthl' (JulianDate _ _ m _) = fromIntegral m
+  setMonthl' = mkCommonMonthSetter 12 firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
   {-# INLINE monthl' #-}
 
-  year' = mkYearLens firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
+  year' (JulianDate _ _ _ y) = fromIntegral y
+  setYear' = mkYearSetter firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
   {-# INLINE year' #-}
 
   dayOfWeek' (JulianDate days _ _ _) = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral $ days

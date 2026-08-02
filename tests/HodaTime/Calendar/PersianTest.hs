@@ -13,8 +13,9 @@ import Data.Time.Clock (UTCTime(..))
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 
 import HodaTime.Util
-import Data.HodaTime.CalendarDate (day, monthl, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
+import Data.HodaTime.CalendarDate (day, month, year, next, previous, dayOfWeek, DayNth(..), CalendarDate)
 import Data.HodaTime.Calendar.Persian (calendarDate, fromNthDay, fromWeekDate, Persian, Month(..), DayOfWeek(..))
+import Data.HodaTime.Period (applyPeriod, days, months)
 import Data.HodaTime.Instant (fromSecondsSinceUnixEpoch)
 import Data.HodaTime.TimeZone (utc)
 import Data.HodaTime.ZonedDateTime (fromInstant, ZonedDateTime)
@@ -24,14 +25,14 @@ persianTests :: TestTree
 persianTests = testGroup "Persian Tests" [qcProps, unitTests]
 
 qcProps :: TestTree
-qcProps = testGroup "(checked by QuickCheck)" [roundTripProps, lensProps, nthDayProps]
+qcProps = testGroup "(checked by QuickCheck)" [roundTripProps, periodProps, nthDayProps]
 
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [structureUnits, crossCalendarUnits]
 
 -- | Decode a Persian date to (day, 1-based month, year) for explicit expected-value assertions.
 ymd :: CalendarDate Persian -> (Int, Int, Int)
-ymd x = (get day x, succ . fromEnum $ month x, get year x)
+ymd x = (day x, succ . fromEnum $ month x, year x)
 
 -- | Data.Time has no Persian calendar, so we verify the construct -> decode bijection directly.
 roundTripProps :: TestTree
@@ -42,17 +43,17 @@ roundTripProps = testGroup "Constructor"
   where
     testRoundTrip (RandomPersianDate y m d) = (ymd <$> calendarDate d m y) == Just (d, succ (fromEnum m), y)
 
-lensProps :: TestTree
-lensProps = testGroup "Lens"
+periodProps :: TestTree
+periodProps = testGroup "Period"
   [
      QC.testProperty "dayOfWeek . next n dow $ date == dow" testNextDoW
-    ,QC.testProperty "next n (dayOfWeek date) date == modify (+ n * 7) day date" $ testDirection next (+)
-    ,QC.testProperty "previous n (dayOfWeek date) date == modify (- n * 7) day date" $ testDirection previous $ flip (-)
+    ,QC.testProperty "next n (dayOfWeek date) date == a positive day period" $ testDirection next id
+    ,QC.testProperty "previous n (dayOfWeek date) date == a negative day period" $ testDirection previous negate
   ]
   where
     epochDay = fromJust $ calendarDate 1 Farvardin 1400
     testNextDoW dow (Positive n) = (dayOfWeek . next n dow $ epochDay) == dow
-    testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == modify (adjust $ n * 7) day epochDay
+    testDirection dir adjust (Positive n) = dir n (dayOfWeek epochDay) epochDay == applyPeriod (days (adjust (n * 7))) epochDay
 
 -- | 'fromNthDay' and 'fromWeekDate' are the generic constructors instantiated for Persian.  Every Persian month has at
 --   least 29 days, so a given weekday always occurs and the properties are total.
@@ -64,8 +65,8 @@ nthDayProps = testGroup "fromNthDay / fromWeekDate"
     ,QC.testProperty "fromWeekDate lands on the requested day-of-week" testWeekDoW
   ]
   where
-    testFirst dow (RandomPersianDate y m _) = let r = fromNthDay First dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 1 && get day d <= 7) r
-    testLast dow (RandomPersianDate y m _) = let r = fromNthDay Last dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> get day d >= 22) r
+    testFirst dow (RandomPersianDate y m _) = let r = fromNthDay First dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 1 && day d <= 7) r
+    testLast dow (RandomPersianDate y m _) = let r = fromNthDay Last dow m y in (dayOfWeek <$> r) == Just dow && maybe False (\d -> day d >= 22) r
     testWeekDoW dow (RandomPersianDate y _ _) = maybe True ((== dow) . dayOfWeek) (fromWeekDate 1 dow y)
 
 structureUnits :: TestTree
@@ -79,8 +80,8 @@ structureUnits = testGroup "Structure"
     ,testCase "30 Esfand is valid in the leap year 1403" $ (ymd <$> calendarDate 30 Esfand 1403) @?= Just (30, 12, 1403)
     ,testCase "30 Esfand is invalid in 1407 (the 1403->1408 five-year gap)" $ calendarDate 30 Esfand 1407 @?= Nothing
     ,testCase "29 Esfand is valid in a non-leap year (1400)" $ (ymd <$> calendarDate 29 Esfand 1400) @?= Just (29, 12, 1400)
-    ,testCase "1 Farvardin + 1 month == 1 Ordibehesht" $ (ymd <$> (modify (+1) monthl <$> calendarDate 1 Farvardin 1400)) @?= Just (1, 2, 1400)
-    ,testCase "1 Bahman + 1 month == 1 Esfand (11th -> 12th month)" $ (ymd <$> (modify (+1) monthl <$> calendarDate 1 Bahman 1400)) @?= Just (1, 12, 1400)
+    ,testCase "1 Farvardin + 1 month == 1 Ordibehesht" $ (ymd . applyPeriod (months 1) <$> calendarDate 1 Farvardin 1400) @?= Just (1, 2, 1400)
+    ,testCase "1 Bahman + 1 month == 1 Esfand (11th -> 12th month)" $ (ymd . applyPeriod (months 1) <$> calendarDate 1 Bahman 1400) @?= Just (1, 12, 1400)
     ,testCase "year 0 is out of range" $ calendarDate 1 Farvardin 0 @?= Nothing
     ,testCase "year 1600 is out of range" $ calendarDate 1 Farvardin 1600 @?= Nothing
   ]

@@ -94,7 +94,7 @@ class KnownNumbering (n :: MonthNumbering) where
 instance KnownNumbering 'Civil      where numberingStart = 0
 instance KnownNumbering 'Scriptural where numberingStart = 7   -- 'Nisan' is calendar-order index 7
 
--- | The Hebrew calendar.  All of the field lenses and conversions run in numbering-independent calendar order; the
+-- | The Hebrew calendar. All field access and conversions run in numbering-independent calendar order; the
 --   numbering only selects how 'Month' values are numbered by 'Enum'.
 instance KnownNumbering n => IsCalendar (Hebrew n) where
   -- | Denormalized: the flat, epoch-relative day count plus the decoded day, calendar-order month index and year.
@@ -116,15 +116,18 @@ instance KnownNumbering n => IsCalendar (Hebrew n) where
   toYmd = hebrewToYmd
   calendarName _ = "Hebrew"
 
-  day' = hebrewDayLens
+  day' (HebrewDate _ d _ _) = fromIntegral d
+  setDay' = setHebrewDay
   {-# INLINE day' #-}
 
   month' (HebrewDate _ _ ci _) = monthAt (fromIntegral ci)
 
-  monthl' = hebrewMonthLens (numberingStart @n)
+  monthl' (HebrewDate _ _ ci _) = (fromIntegral ci - numberingStart @n) `mod` monthCount
+  setMonthl' = setHebrewMonth (numberingStart @n)
   {-# INLINE monthl' #-}
 
-  year' = hebrewYearLens
+  year' (HebrewDate _ _ _ y) = fromIntegral y
+  setYear' = setHebrewYear
   {-# INLINE year' #-}
 
   dayOfWeek' (HebrewDate days _ _ _) = toEnum . dayOfWeekFromDays epochDayOfWeek . fromIntegral $ days
@@ -366,49 +369,43 @@ hebrewToDays (HebrewDate flatDays _ _ _) = flatDays
 hebrewToYmd :: Date (Hebrew n) -> (Int32, Word8, Word8)
 hebrewToYmd (HebrewDate _ d ci y) = (y, ci, d)
 
--- lenses (Hebrew-specific: the shared helpers assume a fixed month count and that the stored month index equals the
+-- setters (Hebrew-specific: the shared helpers assume a fixed month count and that the stored month index equals the
 -- numbering's Enum number, neither of which holds here, so these work in numbering-independent calendar-index space)
 
--- | Day-of-month lens: shifts the flat day directly, so overflowing the month rolls into the next (not clamped).
-hebrewDayLens :: Functor f => (DayOfMonth -> f DayOfMonth) -> Date (Hebrew n) -> f (Date (Hebrew n))
-hebrewDayLens f date = rebuild <$> f (fromIntegral d)
+-- | Set the day of month, rolling overflow into the next month.
+setHebrewDay :: DayOfMonth -> Date (Hebrew n) -> Date (Hebrew n)
+setHebrewDay newDay date = hebrewFromDays (fromIntegral days)
   where
-    (y, ci, d) = hebrewToYmd date
+    (y, ci, _) = hebrewToYmd date
     startOfMonth = pred $ hebrewYearMonthDayToDays (fromIntegral y) (fromIntegral ci) 1
-    rebuild newDay = hebrewFromDays (fromIntegral days)
-      where
-        raw = startOfMonth + newDay
-        days = if raw > invalidDayThresh then raw else invalidDayThresh + 1
+    raw = startOfMonth + newDay
+    days = if raw > invalidDayThresh then raw else invalidDayThresh + 1
 
--- | Month lens.  The exposed 'Int' is the month in the calendar's numbering; adding to it moves that many months in
+-- | Set the numbered month. Values outside the current year move in calendar order,
 --   calendar order (carrying the year at 'Tishri' and skipping the absent 'AdarI' in common years), clamping the day.
-hebrewMonthLens :: Functor f => Int -> (Int -> f Int) -> Date (Hebrew n) -> f (Date (Hebrew n))
-hebrewMonthLens start f date = rebuild <$> f current
+setHebrewMonth :: Int -> Int -> Date (Hebrew n) -> Date (Hebrew n)
+setHebrewMonth start target date = hebrewFromDays (fromIntegral days)
   where
     (y, ci, d) = hebrewToYmd date
     yr = fromIntegral y
     cur = fromIntegral ci
     current = (cur - start) `mod` monthCount
-    rebuild target = hebrewFromDays (fromIntegral days)
-      where
-        (y', ci') = addMonthsChrono yr cur (target - current)
-        mdim = monthLengthByIndex (max 1 y') ci'
-        d' = min (fromIntegral d) mdim
-        raw = hebrewYearMonthDayToDays (max 1 y') ci' d'
-        days = if raw > invalidDayThresh then raw else invalidDayThresh + 1
+    (y', ci') = addMonthsChrono yr cur (target - current)
+    mdim = monthLengthByIndex (max 1 y') ci'
+    d' = min (fromIntegral d) mdim
+    raw = hebrewYearMonthDayToDays (max 1 y') ci' d'
+    days = if raw > invalidDayThresh then raw else invalidDayThresh + 1
 
--- | Year lens: keeps the month and day (clamping the day, and moving 'AdarI' to 'Adar' when the target year is common).
-hebrewYearLens :: Functor f => (Year -> f Year) -> Date (Hebrew n) -> f (Date (Hebrew n))
-hebrewYearLens f date = rebuild <$> f (fromIntegral y)
+-- | Set the year, clamping the day and moving 'AdarI' to 'Adar' when necessary.
+setHebrewYear :: Year -> Date (Hebrew n) -> Date (Hebrew n)
+setHebrewYear newYear date = hebrewFromDays (fromIntegral days)
   where
-    (y, ci, d) = hebrewToYmd date
-    rebuild newYear = hebrewFromDays (fromIntegral days)
-      where
-        y' = max 1 newYear
-        ci' = if fromIntegral ci == adarICalIndex && not (isLeapYear y') then adarCalIndex else fromIntegral ci
-        mdim = monthLengthByIndex y' ci'
-        d' = min (fromIntegral d) mdim
-        days = hebrewYearMonthDayToDays y' ci' d'
+    (_, ci, d) = hebrewToYmd date
+    y' = max 1 newYear
+    ci' = if fromIntegral ci == adarICalIndex && not (isLeapYear y') then adarCalIndex else fromIntegral ci
+    mdim = monthLengthByIndex y' ci'
+    d' = min (fromIntegral d) mdim
+    days = hebrewYearMonthDayToDays y' ci' d'
 
 -- | Move a @(year, calendar-order month index)@ by a number of months in calendar order, carrying the year at 'Tishri'
 --   and stepping over the absent 'AdarI' in common years.

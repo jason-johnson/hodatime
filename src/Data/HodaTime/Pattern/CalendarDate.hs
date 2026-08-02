@@ -49,13 +49,12 @@ module Data.HodaTime.Pattern.CalendarDate
 where
 
 import Data.HodaTime.Pattern.Internal
-import Data.HodaTime.CalendarDateTime.Internal (HasDate, Month, IsCalendar, monthl, dayOfWeek, DoW)
-import qualified Data.HodaTime.CalendarDateTime.Internal as CDT (day, year)
+import Data.HodaTime.CalendarDateTime.Internal (HasDate, Month, IsCalendar, monthl, setMonthl, dayOfWeek, DoW)
+import qualified Data.HodaTime.CalendarDateTime.Internal as CDT (day, setDay, year, setYear)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Text.Parsec (choice, try, (<?>))
 import Formatting (later)
-import Data.HodaTime.Internal.Lens (view, set)
 import Data.HodaTime.Locale.Internal (Locale(..))
 
 -- d1 = maybe (error "duh") id $ calendarDate 1 January 2000
@@ -70,7 +69,7 @@ import Data.HodaTime.Locale.Internal (Locale(..))
 --   inference).  Values 0-9999 (note: not all dates will be valid in all calendars, if the date is too early it will
 --   clamp to earliest valid date)
 pyear :: HasDate d => Int -> Pattern (d -> d) (d -> String) String
-pyear w = pat_lens CDT.year (pDigits w 4 0 9999) (f_shown_pad w) "year: 0-9999"
+pyear w = pat_field CDT.year CDT.setYear (pDigits w 4 0 9999) (f_shown_pad w) "year: 0-9999"
 
 -- | Absolute year in exactly 4 digits (@'pyear' 4@); values 0000-9999.
 pyyyy :: HasDate d => Pattern (d -> d) (d -> String) String
@@ -86,8 +85,8 @@ pyy :: HasDate d => Pattern (d -> d) (d -> String) String
 pyy = Pattern par fmt
   where
     par = expand <$> pDigits 2 2 0 99 <?> "year: two digits (century inferred)"
-    expand v d = set CDT.year (fullYear (view CDT.year d) v) d
-    fmt = f_shown_pad 2 (\d -> view CDT.year d `mod` 100)
+    expand v d = CDT.setYear (fullYear (CDT.year d) v) d
+    fmt = f_shown_pad 2 (\d -> CDT.year d `mod` 100)
     fullYear t v = base + k * 100
       where
         base = (t `div` 100) * 100 + v
@@ -95,7 +94,7 @@ pyy = Pattern par fmt
 
 -- | Month of year as a number of @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 1-12.
 pmonthNum :: HasDate d => Int -> Pattern (d -> d) (d -> String) String
-pmonthNum w = pat_lens monthl (subtract 1 <$> pDigits w 2 1 12) fmt "month: 1-12"
+pmonthNum w = pat_field monthl setMonthl (subtract 1 <$> pDigits w 2 1 12) fmt "month: 1-12"
   where
     fmt x = f_shown_pad w (succ . x)
 
@@ -105,7 +104,7 @@ pMM = pmonthNum 2
 
 -- | Full month name, parsed case-insensitively.  Formats in title case
 pMMMM :: forall cal d c. (d ~ c cal, IsCalendar cal, HasDate d, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
-pMMMM = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
+pMMMM = pat_field monthl setMonthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
   where
     fm = minBound :: Month cal
     lm = maxBound :: Month cal
@@ -118,7 +117,7 @@ pMMMM = pat_lens monthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
 --   a three-letter prefix (e.g. the Hebrew @AdarI@ and @Adar@) parsing is ambiguous and resolves to the first match in
 --   month order.  Use 'pMMMM' (full name) or 'pMM' (number) when you need an unambiguous round-trip.
 pMMM :: forall cal d c. (d ~ c cal, IsCalendar cal, HasDate d, Bounded (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
-pMMM = pat_lens monthl p' fmt' $ "month: " ++ abbr fm ++ "-" ++ abbr lm
+pMMM = pat_field monthl setMonthl p' fmt' $ "month: " ++ abbr fm ++ "-" ++ abbr lm
   where
     fm = minBound :: Month cal
     lm = maxBound :: Month cal
@@ -127,7 +126,7 @@ pMMM = pat_lens monthl p' fmt' $ "month: " ++ abbr fm ++ "-" ++ abbr lm
     fmt' x = later (TLB.fromText . T.pack . abbr . (toEnum :: Int -> Month cal) . x)
 -- | Day of month of @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 1-31.
 pday :: HasDate d => Int -> Pattern (d -> d) (d -> String) String
-pday w = pat_lens CDT.day (pDigits w 2 1 31) (f_shown_pad w) "day: 1-31"
+pday w = pat_field CDT.day CDT.setDay (pDigits w 2 1 31) (f_shown_pad w) "day: 1-31"
 
 -- | Day of month, zero-padded (@'pday' 2@); values 01-31.
 pdd :: HasDate d => Pattern (d -> d) (d -> String) String
@@ -136,7 +135,7 @@ pdd = pday 2
 -- | Day of month, /space/-padded to two characters (the @strftime@ @%e@ convention), e.g. @\" 3\"@ or @\"15\"@.  On
 --   parse it also accepts the bare and zero-padded forms.
 pdaySpace :: HasDate d => Pattern (d -> d) (d -> String) String
-pdaySpace = pat_lens CDT.day (pDigitsSpace 2 1 31) (f_shown_spad 2) "day: 1-31 (space padded)"
+pdaySpace = pat_field CDT.day CDT.setDay (pDigitsSpace 2 1 31) (f_shown_spad 2) "day: 1-31 (space padded)"
 
 -- | Abbreviated day of week name (e.g. @Mon@), parsed case-insensitively and formatted in title case.  Note: on parse
 --   this only /consumes/ the weekday, it is not validated against the day\/month\/year (which fully determine the date).
@@ -182,7 +181,7 @@ pyearMonth = pyyyy <% char ' ' <> pMMMM
 --   and 'pMMM''; pass 'Data.HodaTime.Locale.monthNames' (or @monthNamesShort@) for OS locale names, or any list of the
 --   right length for a custom calendar.  Parsing is case-insensitive and, like 'pMMMM', tries the names in order.
 pMonthName :: HasDate d => [String] -> Pattern (d -> d) (d -> String) String
-pMonthName names = pat_lens monthl par fmt "month name"
+pMonthName names = pat_field monthl setMonthl par fmt "month name"
   where
     par = choice . fmap (\(i, n) -> i <$ try (caseInsensitiveString n)) $ zip [0 :: Int ..] names
     fmt x = later (TLB.fromText . T.pack . (names !!) . x)

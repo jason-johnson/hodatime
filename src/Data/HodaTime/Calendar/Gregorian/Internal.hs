@@ -24,7 +24,7 @@ where
 
 import Data.HodaTime.CalendarDateTime.Internal (IsCalendar(..), IsCalendarDateTime(..), DayOfMonth, Year, WeekNumber, CalendarDateTime(..), LocalTime(..), Date)
 import Data.HodaTime.Calendar.Gregorian.CacheTable (DTCacheTable(..), decodeMonth, decodeYear, decodeDay, cacheTable)
-import Data.HodaTime.Calendar.Internal (mkCommonMonthLens, mkYearLens, mkFromWeekDate, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
+import Data.HodaTime.Calendar.Internal (mkCommonMonthSetter, mkYearSetter, mkFromWeekDate, dayOfWeekFromDays, commonMonthDayOffsets, borders, daysPerStandardYear, daysPerCentury)
 import Data.HodaTime.Instant.Internal (Instant(..))
 import Control.Arrow ((>>>), (&&&), (***), first)
 import Data.Int (Int32, Int8)
@@ -70,18 +70,26 @@ instance IsCalendar Gregorian where
   calendarName _ = "Gregorian"
 
   -- Fast path: shift only the day-in-century, leaving cycle\/century untouched when we stay in-century.
-  day' f gd = mkgd <$> f (fromIntegral d)
+  day' gd = fromIntegral d
+    where (_, _, d) = gregorianToYearMonthDay gd
+
+  setDay' newDay gd = shiftDaysWith clampToValid (newDay - fromIntegral d) gd
     where
       (_, _, d) = gregorianToYearMonthDay gd
-      mkgd d' = shiftDaysWith clampToValid (d' - fromIntegral d) gd
 
   month' gd = toEnum . fromIntegral $ m
     where (_, m, _) = gregorianToYearMonthDay gd
 
-  monthl' = mkCommonMonthLens 12 firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian
+  monthl' gd = fromIntegral m
+    where (_, m, _) = gregorianToYearMonthDay gd
+
+  setMonthl' = mkCommonMonthSetter 12 firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian
   {-# INLINE monthl' #-}
 
-  year' = mkYearLens firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian
+  year' gd = fromIntegral y
+    where (y, _, _) = gregorianToYearMonthDay gd
+
+  setYear' = mkYearSetter firstGregDayTuple maxDaysInMonth yearMonthDayToDays gregorianToYearMonthDay daysToGregorian
   {-# INLINE year' #-}
 
   dayOfWeek' (GregorianDate _ century dic) = toEnum . dayOfWeekFromDays epochDayOfWeek $ 5 * fromIntegral century + fromIntegral dic
