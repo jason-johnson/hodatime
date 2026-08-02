@@ -4,6 +4,9 @@ on:
   push:
     paths-ignore:
       - "**.md"
+  pull_request:
+    paths-ignore:
+      - "**.md"
 
 permissions:
   contents: read
@@ -56,6 +59,49 @@ jobs:
       - name: test project
         run: stack test --resolver ${{ matrix.snapshot }} --system-ghc --no-install-ghc --no-terminal
 
+  haddock:
+    name: haddock candidate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync package version from Git
+        run: scripts/sync-version.sh
+
+      - name: Set up Haskell (cabal)
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          cabal-version: latest
+
+      - name: Build Haddock candidate
+        run: |
+          cabal update
+          cabal haddock --haddock-for-hackage
+          archive=$(find dist-newstyle -type f -name 'hodatime-*-docs.tar.gz' -print -quit)
+          test -n "$archive"
+          mkdir haddock-candidate
+          tar -xzf "$archive" -C haddock-candidate --strip-components=1
+          test -f haddock-candidate/Data-HodaTime.html
+
+      - name: Upload Haddock candidate
+        id: upload-haddock
+        uses: actions/upload-artifact@v4
+        with:
+          name: haddock-candidate-pr-${{ github.event.pull_request.number }}
+          path: haddock-candidate
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Add candidate link to summary
+        run: |
+          echo "## Haddock candidate" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Download browsable HTML](${{ steps.upload-haddock.outputs.artifact-url }}) and open \`Data-HodaTime.html\`." >> "$GITHUB_STEP_SUMMARY"
+
   publish:
     name: publish hackage
     runs-on: ubuntu-latest
@@ -81,6 +127,9 @@ jobs:
           cabal update
           export CABALCMD=$([ "$GITHUB_REF_TYPE" == 'tag' ] && echo "cabal upload --publish" || echo "cabal upload")
           cabal sdist | tail -1 | xargs $CABALCMD --token "$HACKAGE_TOKEN"
-          cabal haddock --haddock-for-hackage | tail -1 | xargs $CABALCMD --token "$HACKAGE_TOKEN" -d
+          cabal haddock --haddock-for-hackage
+          docs_archive=$(find dist-newstyle -type f -name 'hodatime-*-docs.tar.gz' -print -quit)
+          test -n "$docs_archive"
+          $CABALCMD --token "$HACKAGE_TOKEN" -d "$docs_archive"
         env:
           HACKAGE_TOKEN: ${{ secrets.HACKAGE_TOKEN }}
