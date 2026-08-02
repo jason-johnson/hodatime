@@ -49,8 +49,8 @@ module Data.HodaTime.Pattern.CalendarDate
 where
 
 import Data.HodaTime.Pattern.Internal
-import Data.HodaTime.CalendarDateTime.Internal (HasDate, Month, IsCalendar, monthl, setMonthl, dayOfWeek, DoW)
-import qualified Data.HodaTime.CalendarDateTime.Internal as CDT (day, setDay, year, setYear)
+import Data.HodaTime.CalendarDateTime.Internal (HasDate, Month, MoY, IsCalendar, setMonthIndex, dayOfWeek, DoW)
+import qualified Data.HodaTime.CalendarDateTime.Internal as CDT (day, setDay, month, year, setYear)
 import qualified  Data.Text as T
 import qualified  Data.Text.Lazy.Builder as TLB
 import Text.Parsec (choice, try, (<?>))
@@ -93,18 +93,18 @@ pyy = Pattern par fmt
         k = (t - base + 50) `div` 100
 
 -- | Month of year as a number of @w@ digits, zero-padded; a width of @1@ means /no padding/.  Values 1-12.
-pmonthNum :: HasDate d => Int -> Pattern (d -> d) (d -> String) String
-pmonthNum w = pat_field monthl setMonthl (subtract 1 <$> pDigits w 2 1 12) fmt "month: 1-12"
+pmonthNum :: (HasDate d, Enum (MoY d)) => Int -> Pattern (d -> d) (d -> String) String
+pmonthNum w = pat_field (fromEnum . CDT.month) setMonthIndex (subtract 1 <$> pDigits w 2 1 12) fmt "month: 1-12"
   where
     fmt x = f_shown_pad w (succ . x)
 
 -- | Month of year as a zero-padded number (@'pmonthNum' 2@); values 01-12.
-pMM :: HasDate d => Pattern (d -> d) (d -> String) String
+pMM :: (HasDate d, Enum (MoY d)) => Pattern (d -> d) (d -> String) String
 pMM = pmonthNum 2
 
 -- | Full month name, parsed case-insensitively.  Formats in title case
-pMMMM :: forall cal d c. (d ~ c cal, IsCalendar cal, HasDate d, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
-pMMMM = pat_field monthl setMonthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
+pMMMM :: forall cal d c. (d ~ c cal, MoY d ~ Month cal, IsCalendar cal, HasDate d, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
+pMMMM = pat_field (fromEnum . CDT.month) setMonthIndex p' fmt' $ "month: " ++ show fm ++ "-" ++ show lm
   where
     fm = minBound :: Month cal
     lm = maxBound :: Month cal
@@ -116,8 +116,8 @@ pMMMM = pat_field monthl setMonthl p' fmt' $ "month: " ++ show fm ++ "-" ++ show
 --   NOTE: the abbreviation is simply the first three letters of the month name, so in calendars where two months share
 --   a three-letter prefix (e.g. the Hebrew @AdarI@ and @Adar@) parsing is ambiguous and resolves to the first match in
 --   month order.  Use 'pMMMM' (full name) or 'pMM' (number) when you need an unambiguous round-trip.
-pMMM :: forall cal d c. (d ~ c cal, IsCalendar cal, HasDate d, Bounded (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
-pMMM = pat_field monthl setMonthl p' fmt' $ "month: " ++ abbr fm ++ "-" ++ abbr lm
+pMMM :: forall cal d c. (d ~ c cal, MoY d ~ Month cal, IsCalendar cal, HasDate d, Bounded (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (d -> d) (d -> String) String
+pMMM = pat_field (fromEnum . CDT.month) setMonthIndex p' fmt' $ "month: " ++ abbr fm ++ "-" ++ abbr lm
   where
     fm = minBound :: Month cal
     lm = maxBound :: Month cal
@@ -157,31 +157,31 @@ pdddd = Pattern par fmt
     fmt = later (TLB.fromText . T.pack . show . dayOfWeek)
 
 -- | This is the short date pattern, currently defined as "dd/MM/yyyy".
-pd :: HasDate d => Pattern (d -> d) (d -> String) String
+pd :: (HasDate d, Enum (MoY d)) => Pattern (d -> d) (d -> String) String
 pd = pdd <% char '/' <> pMM <% char '/' <> pyyyy
 
 -- | This is the long date pattern, currently defined as "dddd, dd MMMM yyyy".
-pD :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal), Show (DoW (c cal)), Enum (DoW (c cal)), Bounded (DoW (c cal))) => Pattern (c cal -> c cal) (c cal -> String) String
+pD :: (HasDate (c cal), MoY (c cal) ~ Month cal, IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal), Show (DoW (c cal)), Enum (DoW (c cal)), Bounded (DoW (c cal))) => Pattern (c cal -> c cal) (c cal -> String) String
 pD = pdddd <% string ", " <> pdd <% char ' ' <> pMMMM <% char ' ' <> pyyyy
 
 -- | The ISO-8601 round-trippable date pattern, "yyyy-MM-dd".
-pR :: HasDate d => Pattern (d -> d) (d -> String) String
+pR :: (HasDate d, Enum (MoY d)) => Pattern (d -> d) (d -> String) String
 pR = pyyyy <% char '-' <> pMM <% char '-' <> pdd
 
 -- | The month-and-day partial pattern (no year), currently "MMMM dd", e.g. @March 03@.
-pmonthDay :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
+pmonthDay :: (HasDate (c cal), MoY (c cal) ~ Month cal, IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
 pmonthDay = pMMMM <% char ' ' <> pdd
 
 -- | The year-and-month partial pattern (no day), currently "yyyy MMMM", e.g. @2020 March@.
-pyearMonth :: (HasDate (c cal), IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
+pyearMonth :: (HasDate (c cal), MoY (c cal) ~ Month cal, IsCalendar cal, Bounded (Month cal), Read (Month cal), Show (Month cal), Enum (Month cal)) => Pattern (c cal -> c cal) (c cal -> String) String
 pyearMonth = pyyyy <% char ' ' <> pMMMM
 
 -- | Format and parse the month using an explicit list of names (index 0 is the calendar's first month), instead of the
 --   calendar's built-in English constructor names.  This is the calendar-agnostic core behind the locale-aware 'pMMMM''
 --   and 'pMMM''; pass 'Data.HodaTime.Locale.monthNames' (or @monthNamesShort@) for OS locale names, or any list of the
 --   right length for a custom calendar.  Parsing is case-insensitive and, like 'pMMMM', tries the names in order.
-pMonthName :: HasDate d => [String] -> Pattern (d -> d) (d -> String) String
-pMonthName names = pat_field monthl setMonthl par fmt "month name"
+pMonthName :: (HasDate d, Enum (MoY d)) => [String] -> Pattern (d -> d) (d -> String) String
+pMonthName names = pat_field (fromEnum . CDT.month) setMonthIndex par fmt "month name"
   where
     par = choice . fmap (\(i, n) -> i <$ try (caseInsensitiveString n)) $ zip [0 :: Int ..] names
     fmt x = later (TLB.fromText . T.pack . (names !!) . x)
@@ -196,11 +196,11 @@ pDayName names = Pattern par fmt
     fmt = later (TLB.fromText . T.pack . (names !!) . fromEnum . dayOfWeek)
 
 -- | Full month name in the given 'Locale' (e.g. @März@); the locale-aware counterpart to 'pMMMM'.
-pMMMM' :: HasDate d => Locale -> Pattern (d -> d) (d -> String) String
+pMMMM' :: (HasDate d, Enum (MoY d)) => Locale -> Pattern (d -> d) (d -> String) String
 pMMMM' = pMonthName . monthNames
 
 -- | Abbreviated month name in the given 'Locale'; the locale-aware counterpart to 'pMMM'.
-pMMM' :: HasDate d => Locale -> Pattern (d -> d) (d -> String) String
+pMMM' :: (HasDate d, Enum (MoY d)) => Locale -> Pattern (d -> d) (d -> String) String
 pMMM' = pMonthName . monthNamesShort
 
 -- | Full weekday name in the given 'Locale' (e.g. @Sonntag@); the locale-aware counterpart to 'pdddd'.

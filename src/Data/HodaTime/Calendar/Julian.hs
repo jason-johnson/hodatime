@@ -105,10 +105,8 @@ instance IsCalendar Julian where
   {-# INLINE day' #-}
 
   month' (JulianDate _ _ m _) = toEnum . fromIntegral $ m
-
-  monthl' (JulianDate _ _ m _) = fromIntegral m
-  setMonthl' = mkCommonMonthSetter 12 firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
-  {-# INLINE monthl' #-}
+  setMonthIndex' = mkCommonMonthSetter 12 firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays
+  {-# INLINE month' #-}
 
   year' (JulianDate _ _ _ y) = fromIntegral y
   setYear' = mkYearSetter firstJulDayTuple maxDaysInMonth yearMonthDayToDays julianToYmd julianFromDays

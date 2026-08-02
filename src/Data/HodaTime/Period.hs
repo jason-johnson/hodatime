@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      : Data.HodaTime.Period
@@ -108,10 +109,10 @@ class ApplyPeriod target where
 instance ApplyPeriod LocalTime where
   applyPeriod period = snd . applyTimePeriod period
 
-instance IsCalendar cal => ApplyPeriod (Date cal) where
+instance (IsCalendar cal, Enum (Month cal)) => ApplyPeriod (Date cal) where
   applyPeriod = applyDatePeriod
 
-instance IsCalendar cal => ApplyPeriod (CalendarDateTime cal) where
+instance (IsCalendar cal, Enum (Month cal)) => ApplyPeriod (CalendarDateTime cal) where
   applyPeriod period (CalendarDateTime date time) =
     CalendarDateTime (shiftDateByDays carry (applyDatePeriod period date)) time'
     where
@@ -120,11 +121,11 @@ instance IsCalendar cal => ApplyPeriod (CalendarDateTime cal) where
 -- Noda Time applies period fields from largest to smallest. Keeping year and
 -- month as separate operations preserves that behavior when either clamps an
 -- end-of-month date.
-applyDatePeriod :: HasDate target => Period periodTarget -> target -> target
+applyDatePeriod :: (HasDate target, Enum (MoY target)) => Period periodTarget -> target -> target
 applyDatePeriod period =
     shiftDateByDays (periodDays period)
   . shiftDateByDays (7 * periodWeeks period)
-  . adjustDate monthl setMonthl (periodMonths period)
+  . adjustDate (fromEnum . month) setMonthIndex (periodMonths period)
   . adjustDate year setYear (periodYears period)
 
 shiftDateByDays :: HasDate target => Int -> target -> target

@@ -90,10 +90,8 @@ instance IsCalendar Coptic where
   {-# INLINE day' #-}
 
   month' (CopticDate _ _ m _) = toEnum . fromIntegral $ m
-
-  monthl' (CopticDate _ _ m _) = fromIntegral m
-  setMonthl' = mkCommonMonthSetter monthsPerYear firstCopDayTuple maxDaysInMonth yearMonthDayToDays copticToYmd copticFromDays
-  {-# INLINE monthl' #-}
+  setMonthIndex' = mkCommonMonthSetter monthsPerYear firstCopDayTuple maxDaysInMonth yearMonthDayToDays copticToYmd copticFromDays
+  {-# INLINE month' #-}
 
   year' (CopticDate _ _ _ y) = fromIntegral y
   setYear' = mkYearSetter firstCopDayTuple maxDaysInMonth yearMonthDayToDays copticToYmd copticFromDays

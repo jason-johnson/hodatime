@@ -29,7 +29,7 @@ import Data.HodaTime.Pattern.CalendarDateTime (ps)
 import Data.HodaTime.Pattern.Offset (pOffset)
 import Data.HodaTime.OffsetDateTime (OffsetDateTime, offset, toCalendarDateTime, fromCalendarDateTimeWithOffset)
 import Data.HodaTime.CalendarDateTime (CalendarDateTime)
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, Month)
 import Data.HodaTime.Offset (Offset)
 
 -- | Join a Gregorian-or-other 'CalendarDateTime' pattern to an 'Offset' pattern, producing an 'OffsetDateTime'
@@ -42,5 +42,5 @@ offsetDateTimePattern
 offsetDateTimePattern = pairP toCalendarDateTime offset fromCalendarDateTimeWithOffset
 
 -- | The ISO-8601 offset date/time pattern, @yyyy-MM-ddTHH:mm:ss±HH:mm@ (e.g. @2024-04-23T09:00:00+02:00@).
-pOffsetDateTime :: IsCalendar cal => Pattern (OffsetDateTime cal -> OffsetDateTime cal) (OffsetDateTime cal -> String) String
+pOffsetDateTime :: (IsCalendar cal, Enum (Month cal)) => Pattern (OffsetDateTime cal -> OffsetDateTime cal) (OffsetDateTime cal -> String) String
 pOffsetDateTime = offsetDateTimePattern ps pOffset

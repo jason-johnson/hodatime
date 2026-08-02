@@ -179,10 +179,8 @@ instance KnownLeap l => IsCalendar (Islamic l) where
   {-# INLINE day' #-}
 
   month' (IslamicDate _ _ m _) = toEnum . fromIntegral $ m
-
-  monthl' (IslamicDate _ _ m _) = fromIntegral m
-  setMonthl' = let b = leapPatternBits @l in mkCommonMonthSetter monthsPerYear firstIslDayTuple (maxDaysInMonth b) (yearMonthDayToDays b) islamicToYmd (islamicFromDays b)
-  {-# INLINE monthl' #-}
+  setMonthIndex' = let b = leapPatternBits @l in mkCommonMonthSetter monthsPerYear firstIslDayTuple (maxDaysInMonth b) (yearMonthDayToDays b) islamicToYmd (islamicFromDays b)
+  {-# INLINE month' #-}
 
   year' (IslamicDate _ _ _ y) = fromIntegral y
   setYear' = let b = leapPatternBits @l in mkYearSetter firstIslDayTuple (maxDaysInMonth b) (yearMonthDayToDays b) islamicToYmd (islamicFromDays b)

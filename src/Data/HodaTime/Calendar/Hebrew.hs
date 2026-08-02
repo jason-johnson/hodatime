@@ -121,10 +121,8 @@ instance KnownNumbering n => IsCalendar (Hebrew n) where
   {-# INLINE day' #-}
 
   month' (HebrewDate _ _ ci _) = monthAt (fromIntegral ci)
-
-  monthl' (HebrewDate _ _ ci _) = (fromIntegral ci - numberingStart @n) `mod` monthCount
-  setMonthl' = setHebrewMonth (numberingStart @n)
-  {-# INLINE monthl' #-}
+  setMonthIndex' = setHebrewMonth (numberingStart @n)
+  {-# INLINE month' #-}
 
   year' (HebrewDate _ _ _ y) = fromIntegral y
   setYear' = setHebrewYear

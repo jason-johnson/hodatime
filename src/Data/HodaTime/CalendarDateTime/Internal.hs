@@ -73,8 +73,7 @@ class IsCalendar cal where
   day' :: Date cal -> DayOfMonth
   setDay' :: DayOfMonth -> Date cal -> Date cal
   month' :: Date cal -> Month cal
-  monthl' :: Date cal -> Int
-  setMonthl' :: Int -> Date cal -> Date cal
+  setMonthIndex' :: Int -> Date cal -> Date cal
   year' :: Date cal -> Year
   setYear' :: Year -> Date cal -> Date cal
   dayOfWeek' :: Date cal -> DayOfWeek cal
@@ -89,8 +88,7 @@ class HasDate d where
   setDay :: DayOfMonth -> d -> d
   -- | Accessor for the Month component of a 'HasDate'.
   month :: d -> MoY d
-  monthl :: d -> Int
-  setMonthl :: Int -> d -> d
+  setMonthIndex :: Int -> d -> d
   -- | Year component.
   year :: d -> Year
   setYear :: Year -> d -> d
@@ -129,8 +127,7 @@ instance (IsCalendar cal) => HasDate (Date cal) where
   day = day'
   setDay = setDay'
   month = month'
-  monthl = monthl'
-  setMonthl = setMonthl'
+  setMonthIndex = setMonthIndex'
   year = year'
   setYear = setYear'
   dayOfWeek = dayOfWeek'
@@ -210,8 +207,7 @@ instance (IsCalendar cal) => HasDate (CalendarDateTime cal) where
   day (CalendarDateTime cd _) = day cd
   setDay value (CalendarDateTime cd lt) = CalendarDateTime (setDay value cd) lt
   month (CalendarDateTime cd _) = month cd
-  monthl (CalendarDateTime cd _) = monthl cd
-  setMonthl value (CalendarDateTime cd lt) = CalendarDateTime (setMonthl value cd) lt
+  setMonthIndex value (CalendarDateTime cd lt) = CalendarDateTime (setMonthIndex value cd) lt
   year (CalendarDateTime cd _) = year cd
   setYear value (CalendarDateTime cd lt) = CalendarDateTime (setYear value cd) lt
   dayOfWeek (CalendarDateTime cd _) = dayOfWeek cd

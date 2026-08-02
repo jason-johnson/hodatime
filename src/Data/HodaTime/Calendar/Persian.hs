@@ -108,10 +108,8 @@ instance IsCalendar Persian where
   {-# INLINE day' #-}
 
   month' (PersianDate _ _ m _) = toEnum . fromIntegral $ m
-
-  monthl' (PersianDate _ _ m _) = fromIntegral m
-  setMonthl' = mkCommonMonthSetter monthsPerYear firstPerDayTuple maxDaysInMonth yearMonthDayToDays persianToYmd persianFromDays
-  {-# INLINE monthl' #-}
+  setMonthIndex' = mkCommonMonthSetter monthsPerYear firstPerDayTuple maxDaysInMonth yearMonthDayToDays persianToYmd persianFromDays
+  {-# INLINE month' #-}
 
   year' (PersianDate _ _ _ y) = fromIntegral y
   setYear' = mkYearSetter firstPerDayTuple maxDaysInMonth yearMonthDayToDays persianToYmd persianFromDays

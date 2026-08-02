@@ -38,7 +38,7 @@ import Data.HodaTime.Pattern.ZonedDateTime.Internal (parseZonedDateTimeWith)
 import Data.HodaTime.Pattern.CalendarDateTime (ps)
 import Data.HodaTime.ZonedDateTime (ZonedDateTime, toCalendarDateTime, zoneId)
 import Data.HodaTime.CalendarDateTime (CalendarDateTime)
-import Data.HodaTime.CalendarDateTime.Internal (IsCalendar)
+import Data.HodaTime.CalendarDateTime.Internal (IsCalendar, Month)
 import Data.HodaTime.TimeZone (TimeZone)
 import Control.Monad.Catch (MonadThrow)
 import Formatting (later)
@@ -62,7 +62,7 @@ zonedDateTimePattern cdtPat renderZone = Pattern par fmt
 
 -- | The ISO-8601 local date\/time followed by a space and the (unambiguous) IANA zone id, e.g.
 --   @2024-04-23T09:00:00 Europe\/Zurich@.
-pZonedDateTime :: IsCalendar cal => Pattern (ZonedDateTime cal -> ZonedDateTime cal) (ZonedDateTime cal -> String) String
+pZonedDateTime :: (IsCalendar cal, Enum (Month cal)) => Pattern (ZonedDateTime cal -> ZonedDateTime cal) (ZonedDateTime cal -> String) String
 pZonedDateTime = zonedDateTimePattern ps (\zdt -> " " ++ zoneId zdt)
 
 -- | Parse a zoned date\/time and resolve it to a 'ZonedDateTime'.  You supply a zone /provider/ (which loads the
@@ -70,7 +70,7 @@ pZonedDateTime = zonedDateTimePattern ps (\zdt -> " " ++ zoneId zdt)
 --   into a 'ZonedDateTime', deciding the skipped\/ambiguous cases — e.g. @fromCalendarDateTimeStrictly@).  This is the
 --   only way to parse a 'ZonedDateTime'; the pure @parse@ cannot (it is a type error on 'pZonedDateTime').
 parseZonedDateTime
-  :: (MonadThrow m, IsCalendar cal)
+  :: (MonadThrow m, IsCalendar cal, Enum (Month cal))
   => (String -> m TimeZone)
   -> (CalendarDateTime cal -> TimeZone -> m (ZonedDateTime cal))
   -> String
