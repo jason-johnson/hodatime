@@ -60,7 +60,10 @@ Release notes are published on the [GitHub releases page](https://github.com/jas
 Git release tags are the version source of truth. On a commit tagged `vX.Y.Z.W`,
 `scripts/sync-version.sh` sets the Cabal package version to `X.Y.Z.W`; later
 commits use `X.Y.Z.(W+1)`. CI runs the script before building or publishing.
-Run it locally after creating a tag to synchronize `hodatime.cabal`.
+No local step is required when publishing a tag. The version committed in
+`hodatime.cabal` may therefore still show the pre-release development version.
+Run `scripts/sync-version.sh` only when you want the local checkout to use the
+version derived from its nearest tag.
 
 ## License
 
