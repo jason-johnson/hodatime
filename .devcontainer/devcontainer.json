@@ -1,4 +1,4 @@
-y// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/images/tree/main/src/base-debian
 {
   "name": "Haskell (Community)",
