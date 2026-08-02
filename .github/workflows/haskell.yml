@@ -59,18 +59,30 @@ jobs:
       - name: test project
         run: stack test --resolver ${{ matrix.snapshot }} --system-ghc --no-install-ghc --no-terminal
 
-  haddock:
-    name: haddock candidate
+  candidate:
+    name: hackage candidate
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Sync package version from Git
-        run: scripts/sync-version.sh
+      - name: Set candidate version
+        id: version
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          base_version=$(scripts/sync-version.sh)
+          candidate_version="$base_version.$PR_NUMBER.$RUN_NUMBER.$RUN_ATTEMPT"
+          scripts/sync-version.sh --set "$candidate_version"
+          echo "version=$candidate_version" >> "$GITHUB_OUTPUT"
 
       - name: Set up Haskell (cabal)
         uses: haskell-actions/setup@v2
@@ -78,29 +90,29 @@ jobs:
           ghc-version: '9.6.7'
           cabal-version: latest
 
-      - name: Build Haddock candidate
+      - name: Build Hackage candidate
+        env:
+          CANDIDATE_VERSION: ${{ steps.version.outputs.version }}
+          HACKAGE_TOKEN: ${{ secrets.HACKAGE_TOKEN }}
         run: |
           cabal update
+          cabal check
+          cabal sdist
           cabal haddock --haddock-for-hackage
-          archive=$(find dist-newstyle -type f -name 'hodatime-*-docs.tar.gz' -print -quit)
-          test -n "$archive"
-          mkdir haddock-candidate
-          tar -xzf "$archive" -C haddock-candidate --strip-components=1
-          test -f haddock-candidate/Data-HodaTime.html
-
-      - name: Upload Haddock candidate
-        id: upload-haddock
-        uses: actions/upload-artifact@v4
-        with:
-          name: haddock-candidate-pr-${{ github.event.pull_request.number }}
-          path: haddock-candidate
-          if-no-files-found: error
-          retention-days: 14
+          source_archive="dist-newstyle/sdist/hodatime-$CANDIDATE_VERSION.tar.gz"
+          docs_archive="dist-newstyle/hodatime-$CANDIDATE_VERSION-docs.tar.gz"
+          test -f "$source_archive"
+          test -f "$docs_archive"
+          cabal upload --token "$HACKAGE_TOKEN" "$source_archive"
+          cabal upload --token "$HACKAGE_TOKEN" --documentation "$docs_archive"
 
       - name: Add candidate link to summary
+        env:
+          CANDIDATE_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          echo "## Haddock candidate" >> "$GITHUB_STEP_SUMMARY"
-          echo "[Download browsable HTML](${{ steps.upload-haddock.outputs.artifact-url }}) and open \`Data-HodaTime.html\`." >> "$GITHUB_STEP_SUMMARY"
+          candidate_url="https://hackage.haskell.org/package/hodatime-$CANDIDATE_VERSION/candidate"
+          echo "## Hackage candidate" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Package candidate]($candidate_url) | [Rendered documentation]($candidate_url/docs/doc-index.html)" >> "$GITHUB_STEP_SUMMARY"
 
   publish:
     name: publish hackage
