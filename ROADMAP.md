@@ -240,6 +240,7 @@ existing functions would be a separate breaking decision.
 
 **Status:** Confirmed  
 **Likely impact:** Additive; Platform; operational caching semantics
+**Jason's questions** is this one impacted by Haskell's non-strict evaluation?  Is it needed like it is in iotatime?
 
 ### Proposal
 
@@ -307,6 +308,7 @@ replacing an offset label, which would change the represented instant.
 **Status:** Confirmed  
 **Likely impact:** Additive; behavior around time-zone transitions must be
 specified precisely
+**Jason's questions** does nodatime support this?
 
 ### Proposal
 
@@ -500,7 +502,7 @@ instant nanoseconds depend on resolving the representation decision in item 17.
 
 ## 15. Explicit `strftime` layout compilers
 
-**Status:** Not currently a gap  
+**Status:** Rejected - we use typed formats only, never strings  
 **Likely impact:** None unless deliberately promoted as a new API in both
 libraries
 
@@ -516,20 +518,11 @@ implementation details. Both publicly expose helpers that compile the layouts
 stored in a `Locale`. iotaTime therefore does not currently have the public API
 that the original claim proposed porting.
 
-### Possible future API
-
-Promoting the private compilers may still be useful, but it is a shared design
-proposal rather than an iotaTime parity item. Doing so would expose the supported
-specifier subset and `StrftimeError` behavior as compatibility commitments.
-
-Before promotion, decide whether unsupported specifiers return `Either`, throw
-through `MonadThrow`, or both, and whether zone-bearing layouts are compiled or
-handled only by specialized zoned/offset entry points.
-
 ## 16. Typed locale acquisition
 
 **Status:** Confirmed  
 **Likely impact:** Additive if retained alongside current functions; Platform
+**Jason's question** is it not understood here that MonadThrow is about flexibility in return value and not exceptions?
 
 ### Proposal
 
