@@ -72,8 +72,8 @@ instance Semigroup (Period target) where
 instance Monoid (Period target) where
   mempty = Period 0 0 0 0 0 0 0 0
 
--- | Construct a period measured in calendar years.
 years, months, weeks, days :: HasDate target => Int -> Period target
+-- | Construct a period measured in calendar years.
 years value = mempty { periodYears = value }
 -- | Construct a period measured in calendar months.
 months value = mempty { periodMonths = value }
@@ -82,8 +82,8 @@ weeks value = mempty { periodWeeks = value }
 -- | Construct a period measured in calendar days.
 days value = mempty { periodDays = value }
 
--- | Construct a period measured in hours.
 hours, minutes, seconds, nanoseconds :: HasLocalTime target => Int -> Period target
+-- | Construct a period measured in hours.
 hours value = mempty { periodHours = value }
 -- | Construct a period measured in minutes.
 minutes value = mempty { periodMinutes = value }
